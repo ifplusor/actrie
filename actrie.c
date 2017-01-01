@@ -12,6 +12,7 @@
 #endif
 
 #define BINARY
+//#define ADVBIN
 
 #define REGIONSIZE 2048
 #define REGIONOFFSET 18
@@ -24,11 +25,11 @@ typedef struct node {
 	size_t child,brother,parent,failed;
 	unsigned char key;
 	unsigned char flag;
-	short len;
+	unsigned short len;
 }TRIENODE,*PTRIENODE;
 
-PTRIENODE nodepool[REGIONSIZE],root;
-size_t autoindex = 0;
+static PTRIENODE nodepool[REGIONSIZE],root;
+static size_t autoindex = 0;
 
 
 size_t allocNode()
@@ -57,7 +58,7 @@ size_t allocNode()
 	return autoindex++;
 }
 
-PTRIENODE getNode(size_t index)
+static inline PTRIENODE getNode(size_t index)
 {
 	size_t region = index / POOLPOSITIONSIZE;
 	size_t position = index % POOLPOSITIONSIZE;
@@ -165,9 +166,30 @@ PTRIENODE nextNode(PTRIENODE pNode, unsigned char key)
 size_t nextStateByBinary(size_t iNode, unsigned char key)
 {
 	PTRIENODE pNode = getNode(iNode);
-	if (pNode->len > 0) {
+	if (pNode->len >= 1) {
+#ifdef ADVBIN
+		unsigned char tkey, rkey = 0;
+		size_t left = pNode->child - 1;
+		size_t right = pNode->child + pNode->len;
+		while (left+1 < right) {
+			size_t middle = (left+right)>>1;
+			tkey = getNode(middle)->key;
+			if (tkey < key) {
+				left = middle;
+			} else {
+				rkey = tkey;
+				right = middle;
+			}
+		}
+		if (rkey == key)
+			return right;
+#else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
+		/*if (getNode(left)->key > key)
+			return 0;
+		if (getNode(right)->key < key)
+			return 0;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
 			PTRIENODE pMiddle = getNode(middle);
@@ -179,15 +201,37 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 				left = middle+1;
 			}
 		}
+#endif
 	}
 	return 0;
 }
 
 PTRIENODE nextNodeByBinary(PTRIENODE pNode, unsigned char key)
 {
-	if (pNode->len > 0) {
+	if (pNode->len >= 1) {
+#ifdef ADVBIN // 过度优化?
+		unsigned char tkey, rkey = 0; // 不会搜索'\0'
+		size_t left = pNode->child - 1;
+		size_t right = pNode->child + pNode->len;
+		while (left+1 < right) {
+			size_t middle = (left+right)>>1;
+			tkey = getNode(middle)->key;
+			if (tkey < key) {
+				left = middle;
+			} else {
+				rkey = tkey;
+				right = middle;
+			}
+		}
+		if (rkey == key)
+			return getNode(right);
+#else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
+		/*if (getNode(left)->key > key)
+			return root;
+		if (getNode(right)->key < key)
+			return root;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
 			PTRIENODE pMiddle = getNode(middle);
@@ -199,19 +243,40 @@ PTRIENODE nextNodeByBinary(PTRIENODE pNode, unsigned char key)
 				left = middle+1;
 			}
 		}
+#endif
 	}
 	return root;
 }
 
 void swapNodeData(PTRIENODE pa, PTRIENODE pb)
 {
-	char *pva = (char*) pa;
-	char *pvb = (char*) pb;
-	for (int i = 0; i < sizeof(TRIENODE); i++) {
-		pva[i] ^= pvb[i];
-		pvb[i] ^= pva[i];
-		pva[i] ^= pvb[i];
-	}
+	pa->child ^= pb->child;
+	pb->child ^= pa->child;
+	pa->child ^= pb->child;
+
+	pa->brother ^= pb->brother;
+	pb->brother ^= pa->brother;
+	pa->brother ^= pb->brother;
+
+	pa->parent ^= pb->parent;
+	pb->parent ^= pa->parent;
+	pa->parent ^= pb->parent;
+
+	pa->failed ^= pb->failed;
+	pb->failed ^= pa->failed;
+	pa->failed ^= pb->failed;
+
+	pa->key ^= pb->key;
+	pb->key ^= pa->key;
+	pa->key ^= pb->key;
+
+	pa->flag ^= pb->flag;
+	pb->flag ^= pa->flag;
+	pa->flag ^= pb->flag;
+
+	pa->len ^= pb->len;
+	pb->len ^= pa->len;
+	pa->len ^= pb->len;
 }
 
 size_t swapNode(size_t iChild, size_t iTarget)
@@ -311,8 +376,8 @@ void constructTrie(FILE *fp)
 		}
 		++i;
 	}
-	printf("pattern: %d, node: %d\n", i, autoindex);
-	printf("constructTrie succeed!\n");
+	fprintf(stderr, "pattern: %d, node: %d\n", i, autoindex);
+	fprintf(stderr, "constructTrie succeed!\n");
 }
 
 void sortForBFS()
@@ -330,7 +395,7 @@ void sortForBFS()
 			iTarget++;
 		}
 	}
-	printf("sort succeed!\n");
+	fprintf(stderr, "sort succeed!\n");
 }
 
 void setParentByDFS(size_t current, size_t parent)
@@ -350,7 +415,7 @@ void rebuildParentByDFS()
 	if (root->child != 0) {
 		setParentByDFS(root->child, 0);
 	}
-	printf("rebuild parent succeed!\n");
+	fprintf(stderr, "rebuild parent succeed!\n");
 }
 
 void constructAutomation()
@@ -381,7 +446,7 @@ void constructAutomation()
 			iChild = pChild->brother;
 		}
 	}
-	printf("construct AC automation succeed!\n");
+	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
 void match(unsigned char *content)
@@ -416,7 +481,7 @@ int main(int argc, char *argv[])
 
 	time_t s0 = time(NULL);
 	// 建立字典树
-	fpdict = fopen("sdict.utf8", "rb");
+	fpdict = fopen("sdict", "rb");
 	if (fpdict == NULL) return -1;
 	constructTrie(fpdict);
 	fclose(fpdict);
