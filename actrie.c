@@ -60,8 +60,10 @@ size_t allocNode()
 
 static inline PTRIENODE getNode(size_t index)
 {
-	size_t region = index / POOLPOSITIONSIZE;
-	size_t position = index % POOLPOSITIONSIZE;
+	/*size_t region = index / POOLPOSITIONSIZE;
+	size_t position = index % POOLPOSITIONSIZE;*/
+	size_t region = index >> REGIONOFFSET;
+	size_t position = index & POSITIONMASK;
 #ifdef CHECK
 	if (region >= POOLREGIONSIZE || nodepool[region] == NULL
 			|| !(nodepool[region][position].flag & 1)) {
@@ -510,7 +512,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(fpcorpus);
 	time_t s5 = time(NULL);
-	fprintf(stderr, "s4: %ld\n", s5-s4);
+	fprintf(stderr, "s5: %ld\n", s5-s4);
 
 	closeTrie();
 	return 0;
