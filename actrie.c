@@ -11,8 +11,13 @@
 #define FALSE 0
 #endif
 
-#define BINARY
+
+#define ADVSCH
+#ifndef ADVSCH
+#define BINSCH
+#endif
 //#define ADVBIN
+
 
 #define REGIONSIZE 2048
 #define REGIONOFFSET 18
@@ -21,14 +26,20 @@
 const size_t POOLREGIONSIZE = REGIONSIZE;
 const size_t POOLPOSITIONSIZE = POSITIONMASK+1;
 
+typedef struct node *trienode_ptr;
+typedef trienode_ptr (*nextnode_func)(trienode_ptr, unsigned char);
+
 typedef struct node {
 	size_t child,brother,parent,failed;
+#ifdef ADVSCH
+	nextnode_func next;
+#endif
 	unsigned char key;
 	unsigned char flag;
 	unsigned short len;
-}TRIENODE,*PTRIENODE;
+} trienode;
 
-static PTRIENODE nodepool[REGIONSIZE],root;
+static trienode_ptr nodepool[REGIONSIZE],root;
 static size_t autoindex = 0;
 
 
@@ -36,15 +47,20 @@ size_t allocNode()
 {
 	size_t region = autoindex >> REGIONOFFSET;
 	size_t position = autoindex & POSITIONMASK;
+#ifdef CHECK
+	if (region >= REGIONSIZE) {
+		return -1;
+	}
+#endif
 	if (nodepool[region] == NULL) {
 		//printf("call malloc!\n");
-		PTRIENODE pnode = (PTRIENODE) malloc(sizeof(TRIENODE)*POOLPOSITIONSIZE);
+		trienode_ptr pnode = (trienode_ptr) malloc(sizeof(trienode)*POOLPOSITIONSIZE);
 		if (pnode != NULL) {
 			nodepool[region] = pnode;
 		} else {
 			return -1;
 		}
-		memset(pnode, 0, sizeof(TRIENODE)*POOLPOSITIONSIZE);
+		memset(pnode, 0, sizeof(trienode)*POOLPOSITIONSIZE);
 	}
 #ifdef CHECK
 	if (nodepool[region][position].flag & 1) {
@@ -58,7 +74,7 @@ size_t allocNode()
 	return autoindex++;
 }
 
-static inline PTRIENODE getNode(size_t index)
+static inline trienode_ptr getNode(size_t index)
 {
 	/*size_t region = index / POOLPOSITIONSIZE;
 	size_t position = index % POOLPOSITIONSIZE;*/
@@ -93,11 +109,11 @@ void closeTrie()
 
 BOOL addKeyword(unsigned char *keyword)
 {
-	PTRIENODE pNode = root;
+	trienode_ptr pNode = root;
 	size_t iNode = 0; // iParent保存pNode的index
 	for (int i = 0; keyword[i] != '\0'; i++) {
 		size_t iChild = pNode->child, iBrother; // iBrother跟踪iChild
-		PTRIENODE pChild = NULL;
+		trienode_ptr pChild = NULL;
 		while (iChild != 0) {
 			// 从所有孩子中查找
 			pChild = getNode(iChild);
@@ -118,7 +134,7 @@ BOOL addKeyword(unsigned char *keyword)
 			if (index == -1) {
 				return FALSE;
 			}
-			PTRIENODE pc = getNode(index);
+			trienode_ptr pc = getNode(index);
 			if (pc == NULL) {
 				return FALSE;
 			}
@@ -145,7 +161,7 @@ size_t nextState(size_t iNode, unsigned char key)
 {
 	size_t iChild = getNode(iNode)->child;
 	while (iChild != 0) {
-		PTRIENODE pChild = getNode(iChild);
+		trienode_ptr pChild = getNode(iChild);
 		if (pChild->key == key)
 			break;
 		iChild = pChild->brother;
@@ -153,21 +169,21 @@ size_t nextState(size_t iNode, unsigned char key)
 	return iChild;
 }
 
-PTRIENODE nextNode(PTRIENODE pNode, unsigned char key)
+trienode_ptr nextNode(trienode_ptr pNode, unsigned char key)
 {
-	size_t iChild = pNode->child;
-	while (iChild != 0) {
-		PTRIENODE pChild = getNode(iChild);
-		if (pChild->key == key)
+	trienode_ptr pChild = getNode(pNode->child);
+	while (pChild != root) {
+		if (pChild->key == key) {
 			return pChild;
-		iChild = pChild->brother;
+		}
+		pChild = getNode(pChild->brother);
 	}
 	return root;
 }
 
 size_t nextStateByBinary(size_t iNode, unsigned char key)
 {
-	PTRIENODE pNode = getNode(iNode);
+	trienode_ptr pNode = getNode(iNode);
 	if (pNode->len >= 1) {
 #ifdef ADVBIN
 		unsigned char tkey, rkey = 0;
@@ -194,7 +210,7 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 			return 0;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
-			PTRIENODE pMiddle = getNode(middle);
+			trienode_ptr pMiddle = getNode(middle);
 			if (pMiddle->key == key) {
 				return middle;
 			} else if (pMiddle->key > key) {
@@ -208,7 +224,7 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 	return 0;
 }
 
-PTRIENODE nextNodeByBinary(PTRIENODE pNode, unsigned char key)
+trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 {
 	if (pNode->len >= 1) {
 #ifdef ADVBIN // 过度优化?
@@ -236,7 +252,7 @@ PTRIENODE nextNodeByBinary(PTRIENODE pNode, unsigned char key)
 			return root;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
-			PTRIENODE pMiddle = getNode(middle);
+			trienode_ptr pMiddle = getNode(middle);
 			if (pMiddle->key == key) {
 				return pMiddle;
 			} else if (pMiddle->key > key) {
@@ -250,7 +266,32 @@ PTRIENODE nextNodeByBinary(PTRIENODE pNode, unsigned char key)
 	return root;
 }
 
-void swapNodeData(PTRIENODE pa, PTRIENODE pb)
+trienode_ptr nextNodeByDouble(trienode_ptr pNode, unsigned char key)
+{
+	trienode_ptr pChild = getNode(pNode->child);
+	if (pChild->key == key) {
+		return pChild;
+	}
+	pChild = getNode(pChild->brother);
+	if (pChild->key == key)
+		return pChild;
+	return root;
+}
+
+trienode_ptr nextNodeBySingle(trienode_ptr pNode, unsigned char key)
+{
+	trienode_ptr pChild = getNode(pNode->child);
+	if (pChild->key == key)
+		return pChild;
+	return root;
+}
+
+trienode_ptr nextNodeByEmpty(trienode_ptr pNode, unsigned char key)
+{
+	return root;
+}
+
+void swapNodeData(trienode_ptr pa, trienode_ptr pb)
 {
 	pa->child ^= pb->child;
 	pb->child ^= pa->child;
@@ -283,9 +324,9 @@ void swapNodeData(PTRIENODE pa, PTRIENODE pb)
 
 size_t swapNode(size_t iChild, size_t iTarget)
 {
-	PTRIENODE pChild = getNode(iChild);
+	trienode_ptr pChild = getNode(iChild);
 	if (iChild != iTarget) {
-		PTRIENODE pTarget = getNode(iTarget);
+		trienode_ptr pTarget = getNode(iTarget);
 
 		// 常量
 		const size_t ipc = pChild->parent;
@@ -299,7 +340,7 @@ size_t swapNode(size_t iChild, size_t iTarget)
 
 		// 交换节点内容
 		swapNodeData(pChild, pTarget);
-		PTRIENODE ptmp = pChild;
+		trienode_ptr ptmp = pChild;
 		pChild = pTarget;
 		pTarget = ptmp;
 
@@ -351,7 +392,7 @@ size_t swapNode(size_t iChild, size_t iTarget)
 	return pChild->brother;
 }
 
-void printKeywordByRecursion(PTRIENODE pNode)
+void printKeywordByRecursion(trienode_ptr pNode)
 {
 	if (pNode == root) {
 		return;
@@ -361,7 +402,7 @@ void printKeywordByRecursion(PTRIENODE pNode)
 	putc(pNode->key, stdout);
 }
 
-void printKeyword(PTRIENODE pNode)
+void printKeyword(trienode_ptr pNode)
 {
 	printKeywordByRecursion(pNode);
 	putc('\n', stdout);
@@ -387,7 +428,7 @@ void sortForBFS()
 	size_t iTarget = 1;
 	for (size_t i = 0; i < iTarget; i++) { // 隐式bfs队列
 		//printf("sort process: %d\n", i);
-		PTRIENODE pNode = getNode(i);
+		trienode_ptr pNode = getNode(i);
 		// 将pNode的子节点调整到iTarget位置（加入队列）
 		size_t iChild = pNode->child;
 		while (iChild != 0) {
@@ -396,13 +437,30 @@ void sortForBFS()
 			iChild = swapNode(iChild, iTarget);
 			iTarget++;
 		}
+#ifdef ADVSCH
+		// 设置next函数指针
+		switch (pNode->len) {
+			case 0:
+				pNode->next = nextNodeByEmpty;
+				break;
+			case 1:
+				pNode->next = nextNodeBySingle;
+				break;
+			case 2:
+				pNode->next = nextNodeByDouble;
+				break;
+			default:
+				pNode->next = nextNodeByBinary;
+				break;
+		}
+#endif
 	}
 	fprintf(stderr, "sort succeed!\n");
 }
 
 void setParentByDFS(size_t current, size_t parent)
 {
-	PTRIENODE pNode = getNode(current);
+	trienode_ptr pNode = getNode(current);
 	pNode->parent = parent;
 	if (pNode->child != 0) {
 		setParentByDFS(pNode->child, current);
@@ -423,21 +481,21 @@ void rebuildParentByDFS()
 void constructAutomation()
 {
 	for (size_t index = 1; index < autoindex; index++) { // bfs
-		PTRIENODE pNode = getNode(index);
+		trienode_ptr pNode = getNode(index);
 		size_t iChild = pNode->child;
 		while (iChild != 0) {
-			PTRIENODE pChild = getNode(iChild);
+			trienode_ptr pChild = getNode(iChild);
 			unsigned char key = pChild->key;
 
 			size_t iFailed = pNode->failed;
-#ifdef BINARY
+#ifdef BINSCH
 			size_t match = nextStateByBinary(iFailed, key);
 #else
 			size_t match = nextState(iFailed, key);
 #endif
 			while (iFailed != 0 && match == 0) {
 				iFailed = getNode(iFailed)->failed;
-#ifdef BINARY
+#ifdef BINSCH
 				match = nextStateByBinary(iFailed, key);
 #else
 				match = nextState(iFailed, key);
@@ -453,16 +511,20 @@ void constructAutomation()
 
 void match(unsigned char *content)
 {
-	PTRIENODE pCursor = root;
+	trienode_ptr pCursor = root;
 	while(*content != '\0') {
-#ifdef BINARY
-		PTRIENODE pNext = nextNodeByBinary(pCursor, *content);
+#if defined ADVSCH
+		trienode_ptr pNext = pCursor->next(pCursor, *content);
+#elif defined BINSCH
+		trienode_ptr pNext = nextNodeByBinary(pCursor, *content);
 #else
-		PTRIENODE pNext = nextNode(pCursor, *content);
+		trienode_ptr pNext = nextNode(pCursor, *content);
 #endif
 		while(pCursor != root && pNext == root) {
 			pCursor = getNode(pCursor->failed);
-#ifdef BINARY
+#if defined ADVSCH
+			pNext = pCursor->next(pCursor, *content);
+#elif defined BINSCH
 			pNext = nextNodeByBinary(pCursor, *content);
 #else
 			pNext = nextNode(pCursor, *content);
