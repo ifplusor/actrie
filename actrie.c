@@ -530,11 +530,13 @@ void match(unsigned char *content)
 			pNext = nextNode(pCursor, *content);
 #endif
 		}
-		if (pNext->flag & 2) {
-			printKeyword(pNext);
-		}
 		pCursor = pNext;
 		content++;
+		while (pNext != root) {
+			if (pNext->flag & 2)
+				printKeyword(pNext);
+			pNext = getNode(pNext->failed);
+		}
 	}
 }
 

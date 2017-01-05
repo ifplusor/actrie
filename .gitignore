@@ -1,6 +1,8 @@
 actrie
+actrie.s
 dict*
 sdict*
 corpus*
 rs*
 report*
+gmon.out
