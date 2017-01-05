@@ -12,11 +12,15 @@
 #endif
 
 
-#define ADVSCH
+//#define ADVSCH
 #ifndef ADVSCH
 #define BINSCH
 #endif
 //#define ADVBIN
+//#define LOWERUPPER
+#ifdef LOWERUPPER
+#define INBFS
+#endif
 
 
 #define REGIONSIZE 2048
@@ -34,9 +38,13 @@ typedef struct node {
 #ifdef ADVSCH
 	nextnode_func next;
 #endif
-	unsigned char key;
-	unsigned char flag;
 	unsigned short len;
+	unsigned char flag;
+	unsigned char key;
+#ifdef LOWERUPPER
+	unsigned char lower;
+	unsigned char upper;
+#endif
 } trienode;
 
 static trienode_ptr nodepool[REGIONSIZE],root;
@@ -141,10 +149,20 @@ BOOL addKeyword(unsigned char *keyword)
 			pc->key = keyword[i];
 			if (pChild == NULL) {
 				// 没有子节点
+#ifdef LOWERUPPER
+#ifndef INBFS
+				pNode->lower = pc->key;
+#endif
+#endif
 				pNode->child = index;
 				pc->parent = iNode;
 			} else {
 				// 尾插法，无法保证后无向前指针
+#ifdef LOWERUPPER
+#ifndef INBFS
+				pNode->upper = pc->key;
+#endif
+#endif
 				pChild->brother = index;
 				pc->parent = iBrother;
 			}
@@ -186,9 +204,11 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 	trienode_ptr pNode = getNode(iNode);
 	if (pNode->len >= 1) {
 #ifdef ADVBIN
-		unsigned char tkey, rkey = 0;
-		size_t left = pNode->child - 1;
 		size_t right = pNode->child + pNode->len;
+		if (key < getNode(pNode->child)->key || getNode(right-1)->key < key)
+			return 0;
+		size_t left = pNode->child - 1;
+		unsigned char tkey, rkey = 0;
 		while (left+1 < right) {
 			size_t middle = (left+right)>>1;
 			tkey = getNode(middle)->key;
@@ -204,10 +224,8 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 #else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
-		/*if (getNode(left)->key > key)
+		if (key < getNode(left)->key || getNode(right)->key < key)
 			return 0;
-		if (getNode(right)->key < key)
-			return 0;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
 			trienode_ptr pMiddle = getNode(middle);
@@ -226,11 +244,20 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 
 trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 {
+#ifndef ADVSCH
 	if (pNode->len >= 1) {
+#endif
+#ifdef LOWERUPPER
+		if (key < pNode->lower || pNode->upper < key)
+			return root;
+#else
+		if (key < getNode(pNode->child)->key || getNode(pNode->child+pNode->len-1)->key < key)
+			return root;
+#endif
 #ifdef ADVBIN // 过度优化?
-		unsigned char tkey, rkey = 0; // 不会搜索'\0'
 		size_t left = pNode->child - 1;
 		size_t right = pNode->child + pNode->len;
+		unsigned char tkey, rkey = 0; // 不会搜索'\0'
 		while (left+1 < right) {
 			size_t middle = (left+right)>>1;
 			tkey = getNode(middle)->key;
@@ -246,43 +273,53 @@ trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 #else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
-		/*if (getNode(left)->key > key)
-			return root;
-		if (getNode(right)->key < key)
-			return root;*/
 		while (left <= right) {
 			size_t middle = (left+right)>>1;
 			trienode_ptr pMiddle = getNode(middle);
-			if (pMiddle->key == key) {
-				return pMiddle;
+			if (pMiddle->key < key) {
+				left = middle+1;
 			} else if (pMiddle->key > key) {
 				right = middle-1;
 			} else {
-				left = middle+1;
+				return pMiddle;
 			}
 		}
 #endif
+#ifndef ADVSCH
 	}
+#endif
 	return root;
 }
 
+#ifdef ADVSCH
 trienode_ptr nextNodeByDouble(trienode_ptr pNode, unsigned char key)
 {
+#ifdef LOWERUPPER
+	if (pNode->lower == key)
+		return getNode(pNode->child);
+	if (pNode->upper == key)
+		return getNode(pNode->child+1);
+#else
 	trienode_ptr pChild = getNode(pNode->child);
-	if (pChild->key == key) {
+	if (pChild->key == key)
 		return pChild;
-	}
 	pChild = getNode(pChild->brother);
 	if (pChild->key == key)
 		return pChild;
+#endif
 	return root;
 }
 
 trienode_ptr nextNodeBySingle(trienode_ptr pNode, unsigned char key)
 {
+#ifdef LOWERUPPER
+	if (pNode->lower == key)
+		return getNode(pNode->child);
+#else
 	trienode_ptr pChild = getNode(pNode->child);
 	if (pChild->key == key)
 		return pChild;
+#endif
 	return root;
 }
 
@@ -290,6 +327,7 @@ trienode_ptr nextNodeByEmpty(trienode_ptr pNode, unsigned char key)
 {
 	return root;
 }
+#endif
 
 void swapNodeData(trienode_ptr pa, trienode_ptr pb)
 {
@@ -309,6 +347,10 @@ void swapNodeData(trienode_ptr pa, trienode_ptr pb)
 	pb->failed ^= pa->failed;
 	pa->failed ^= pb->failed;
 
+	pa->len ^= pb->len;
+	pb->len ^= pa->len;
+	pa->len ^= pb->len;
+
 	pa->key ^= pb->key;
 	pb->key ^= pa->key;
 	pa->key ^= pb->key;
@@ -317,9 +359,17 @@ void swapNodeData(trienode_ptr pa, trienode_ptr pb)
 	pb->flag ^= pa->flag;
 	pa->flag ^= pb->flag;
 
-	pa->len ^= pb->len;
-	pb->len ^= pa->len;
-	pa->len ^= pb->len;
+#ifdef LOWERUPPER
+#ifndef INBFS
+	pa->lower ^= pb->lower;
+	pb->lower ^= pa->lower;
+	pa->lower ^= pb->lower;
+
+	pa->upper ^= pb->upper;
+	pb->upper ^= pa->upper;
+	pa->upper ^= pb->upper;
+#endif
+#endif
 }
 
 size_t swapNode(size_t iChild, size_t iTarget)
@@ -437,6 +487,14 @@ void sortForBFS()
 			iChild = swapNode(iChild, iTarget);
 			iTarget++;
 		}
+#ifdef LOWERUPPER
+#ifdef INBFS
+		if (pNode->child != 0) {
+			pNode->lower = getNode(pNode->child)->key;
+			pNode->upper = getNode(pNode->child+pNode->len-1)->key;
+		}
+#endif
+#endif
 #ifdef ADVSCH
 		// 设置next函数指针
 		switch (pNode->len) {
