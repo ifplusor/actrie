@@ -1,91 +1,57 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <memory.h>
-#include <unistd.h>
-#include <time.h>
+
+#include "actrie.h"
 
 
-#ifndef BOOL
-#define BOOL int
-#define TRUE 1
-#define FALSE 0
-#endif
+// Prime Trie
+// ========================================================
 
-
-//#define ADVSCH
-#ifndef ADVSCH
-#define BINSCH
-#endif
-//#define ADVBIN
-//#define LOWERUPPER
-#ifdef LOWERUPPER
-#define INBFS
-#endif
-
-
-#define REGIONSIZE 2048
-#define REGIONOFFSET 18
-#define POSITIONMASK 0x0003FFFF
-
-const size_t POOLREGIONSIZE = REGIONSIZE;
-const size_t POOLPOSITIONSIZE = POSITIONMASK+1;
-
-typedef struct node *trienode_ptr;
-typedef trienode_ptr (*nextnode_func)(trienode_ptr, unsigned char);
-
-typedef struct node {
-	size_t child,brother,parent,failed;
-#ifdef ADVSCH
-	nextnode_func next;
-#endif
-	unsigned short len;
-	unsigned char flag;
-	unsigned char key;
-#ifdef LOWERUPPER
-	unsigned char lower;
-	unsigned char upper;
-#endif
-} trienode;
-
-static trienode_ptr nodepool[REGIONSIZE],root;
+static trienode_ptr nodepool[REGIONSIZE];
 static size_t autoindex = 0;
 
+trienode_ptr trie_root;
+
+
+size_t getTrieSize()
+{
+	return autoindex;
+}
 
 size_t allocNode()
 {
 	size_t region = autoindex >> REGIONOFFSET;
 	size_t position = autoindex & POSITIONMASK;
 #ifdef CHECK
-	if (region >= REGIONSIZE) {
-		return -1;
-	}
+	if (region >= POOLREGIONSIZE) return -1;
 #endif
 	if (nodepool[region] == NULL) {
-		//printf("call malloc!\n");
 		trienode_ptr pnode = (trienode_ptr) malloc(sizeof(trienode)*POOLPOSITIONSIZE);
-		if (pnode != NULL) {
-			nodepool[region] = pnode;
-		} else {
-			return -1;
-		}
+		if (pnode == NULL) return -1;
+		nodepool[region] = pnode;
 		memset(pnode, 0, sizeof(trienode)*POOLPOSITIONSIZE);
 	}
 #ifdef CHECK
-	if (nodepool[region][position].flag & 1) {
-		return -1;
-	} else {
-		nodepool[region][position].flag |= 1;
-	}
-#else
-	nodepool[region][position].flag |= 1;
+	if (nodepool[region][position].flag & 1) return -1;
 #endif
+	nodepool[region][position].flag |= 1;
 	return autoindex++;
 }
 
 static inline trienode_ptr getNode(size_t index)
 {
-	/*size_t region = index / POOLPOSITIONSIZE;
-	size_t position = index % POOLPOSITIONSIZE;*/
+	size_t region = index >> REGIONOFFSET;
+	size_t position = index & POSITIONMASK;
+#ifdef CHECK
+	if (region >= POOLREGIONSIZE || nodepool[region] == NULL
+			|| !(nodepool[region][position].flag & 1)) {
+		return NULL;
+	}
+#endif
+	return &nodepool[region][position];
+}
+
+trienode_ptr getTrieNode(size_t index)
+{
 	size_t region = index >> REGIONOFFSET;
 	size_t position = index & POSITIONMASK;
 #ifdef CHECK
@@ -99,25 +65,21 @@ static inline trienode_ptr getNode(size_t index)
 
 void initTrie()
 {
-	for (int i = 0; i < POOLREGIONSIZE; i++) {
-		nodepool[i] = NULL;
-	}
+	for (int i = 0; i < POOLREGIONSIZE; i++) nodepool[i] = NULL;
 	autoindex = 0;
-	root = getNode(allocNode());
+	trie_root = getNode(allocNode());
 }
 
 void closeTrie()
 {
 	for (int i = 0; i < POOLREGIONSIZE; i++) {
-		if (nodepool[i] != NULL) {
-			free(nodepool[i]);
-		}
+		if (nodepool[i] != NULL) free(nodepool[i]);
 	}
 }
 
 BOOL addKeyword(unsigned char *keyword)
 {
-	trienode_ptr pNode = root;
+	trienode_ptr pNode = trie_root;
 	size_t iNode = 0; // iParent保存pNode的index
 	for (int i = 0; keyword[i] != '\0'; i++) {
 		size_t iChild = pNode->child, iBrother; // iBrother跟踪iChild
@@ -125,9 +87,7 @@ BOOL addKeyword(unsigned char *keyword)
 		while (iChild != 0) {
 			// 从所有孩子中查找
 			pChild = getNode(iChild);
-			if (pChild->key == keyword[i]) {
-				break;
-			}
+			if (pChild->key == keyword[i]) break;
 			iBrother = iChild;
 			iChild = pChild->brother;
 		}
@@ -139,13 +99,9 @@ BOOL addKeyword(unsigned char *keyword)
 		} else {
 			// 没找到，创建
 			int index = allocNode();
-			if (index == -1) {
-				return FALSE;
-			}
+			if (index == -1) return FALSE;
 			trienode_ptr pc = getNode(index);
-			if (pc == NULL) {
-				return FALSE;
-			}
+			if (pc == NULL) return FALSE;
 			pc->key = keyword[i];
 			if (pChild == NULL) {
 				// 没有子节点
@@ -155,7 +111,7 @@ BOOL addKeyword(unsigned char *keyword)
 #endif
 #endif
 				pNode->child = index;
-				pc->parent = iNode;
+				pc->pd.parent = iNode;
 			} else {
 				// 尾插法，无法保证后无向前指针
 #ifdef LOWERUPPER
@@ -164,7 +120,7 @@ BOOL addKeyword(unsigned char *keyword)
 #endif
 #endif
 				pChild->brother = index;
-				pc->parent = iBrother;
+				pc->pd.parent = iBrother;
 			}
 			pNode->len++;
 			iNode = index;
@@ -180,8 +136,7 @@ size_t nextState(size_t iNode, unsigned char key)
 	size_t iChild = getNode(iNode)->child;
 	while (iChild != 0) {
 		trienode_ptr pChild = getNode(iChild);
-		if (pChild->key == key)
-			break;
+		if (pChild->key == key) break;
 		iChild = pChild->brother;
 	}
 	return iChild;
@@ -190,13 +145,11 @@ size_t nextState(size_t iNode, unsigned char key)
 trienode_ptr nextNode(trienode_ptr pNode, unsigned char key)
 {
 	trienode_ptr pChild = getNode(pNode->child);
-	while (pChild != root) {
-		if (pChild->key == key) {
-			return pChild;
-		}
+	while (pChild != trie_root) {
+		if (pChild->key == key) return pChild;
 		pChild = getNode(pChild->brother);
 	}
-	return root;
+	return trie_root;
 }
 
 size_t nextStateByBinary(size_t iNode, unsigned char key)
@@ -219,8 +172,7 @@ size_t nextStateByBinary(size_t iNode, unsigned char key)
 				right = middle;
 			}
 		}
-		if (rkey == key)
-			return right;
+		if (rkey == key) return right;
 #else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
@@ -248,11 +200,10 @@ trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 	if (pNode->len >= 1) {
 #endif
 #ifdef LOWERUPPER
-		if (key < pNode->lower || pNode->upper < key)
-			return root;
+		if (key < pNode->lower || pNode->upper < key) return trie_root;
 #else
 		if (key < getNode(pNode->child)->key || getNode(pNode->child+pNode->len-1)->key < key)
-			return root;
+			return trie_root;
 #endif
 #ifdef ADVBIN // 过度优化?
 		size_t left = pNode->child - 1;
@@ -268,8 +219,7 @@ trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 				right = middle;
 			}
 		}
-		if (rkey == key)
-			return getNode(right);
+		if (rkey == key) return getNode(right);
 #else
 		size_t left = pNode->child;
 		size_t right = left + pNode->len - 1;
@@ -288,44 +238,38 @@ trienode_ptr nextNodeByBinary(trienode_ptr pNode, unsigned char key)
 #ifndef ADVSCH
 	}
 #endif
-	return root;
+	return trie_root;
 }
 
 #ifdef ADVSCH
 trienode_ptr nextNodeByDouble(trienode_ptr pNode, unsigned char key)
 {
 #ifdef LOWERUPPER
-	if (pNode->lower == key)
-		return getNode(pNode->child);
-	if (pNode->upper == key)
-		return getNode(pNode->child+1);
+	if (pNode->lower == key) return getNode(pNode->child);
+	if (pNode->upper == key) return getNode(pNode->child+1);
 #else
 	trienode_ptr pChild = getNode(pNode->child);
-	if (pChild->key == key)
-		return pChild;
+	if (pChild->key == key) return pChild;
 	pChild = getNode(pChild->brother);
-	if (pChild->key == key)
-		return pChild;
+	if (pChild->key == key) return pChild;
 #endif
-	return root;
+	return trie_root;
 }
 
 trienode_ptr nextNodeBySingle(trienode_ptr pNode, unsigned char key)
 {
 #ifdef LOWERUPPER
-	if (pNode->lower == key)
-		return getNode(pNode->child);
+	if (pNode->lower == key) return getNode(pNode->child);
 #else
 	trienode_ptr pChild = getNode(pNode->child);
-	if (pChild->key == key)
-		return pChild;
+	if (pChild->key == key) return pChild;
 #endif
-	return root;
+	return trie_root;
 }
 
 trienode_ptr nextNodeByEmpty(trienode_ptr pNode, unsigned char key)
 {
-	return root;
+	return trie_root;
 }
 #endif
 
@@ -339,9 +283,9 @@ void swapNodeData(trienode_ptr pa, trienode_ptr pb)
 	pb->brother ^= pa->brother;
 	pa->brother ^= pb->brother;
 
-	pa->parent ^= pb->parent;
-	pb->parent ^= pa->parent;
-	pa->parent ^= pb->parent;
+	pa->pd.parent ^= pb->pd.parent;
+	pb->pd.parent ^= pa->pd.parent;
+	pa->pd.parent ^= pb->pd.parent;
 
 	pa->failed ^= pb->failed;
 	pb->failed ^= pa->failed;
@@ -379,11 +323,11 @@ size_t swapNode(size_t iChild, size_t iTarget)
 		trienode_ptr pTarget = getNode(iTarget);
 
 		// 常量
-		const size_t ipc = pChild->parent;
+		const size_t ipc = pChild->pd.parent;
 		const size_t icc = pChild->child;
 		const size_t ibc = pChild->brother;
 		const BOOL bcc = getNode(ipc)->child == iChild;
-		const size_t ipt = pTarget->parent;
+		const size_t ipt = pTarget->pd.parent;
 		const size_t ict = pTarget->child;
 		const size_t ibt = pTarget->brother;
 		const BOOL bct = getNode(ipt)->child == iTarget;
@@ -398,82 +342,65 @@ size_t swapNode(size_t iChild, size_t iTarget)
 		// 调整target的上级，child的下级
 		if (ipt == iChild) {
 			// target是child的下级，child是target的上级
-			pTarget->parent = iTarget;
+			pTarget->pd.parent = iTarget;
 			if (bct) {
 				pChild->child = iChild;
-				if (ibc != 0) {
-					getNode(ibc)->parent = iTarget;
-				}
+				if (ibc != 0) getNode(ibc)->pd.parent = iTarget;
 			} else {
 				pChild->brother = iChild;
-				if (icc != 0) {
-					getNode(icc)->parent = iTarget;
-				}
+				if (icc != 0) getNode(icc)->pd.parent = iTarget;
 			}
 		} else {
-			if (bct) {
+			if (bct)
 				getNode(ipt)->child = iChild;
-			} else {
+			else
 				getNode(ipt)->brother = iChild;
-			}
-			if (icc != 0) {
-				getNode(icc)->parent = iTarget;
-			}
-			if (ibc != 0) {
-				getNode(ibc)->parent = iTarget;
-			}
+			if (icc != 0) getNode(icc)->pd.parent = iTarget;
+			if (ibc != 0) getNode(ibc)->pd.parent = iTarget;
 		}
 
 		// 调整直接上级指针
-		if (bcc) {
+		if (bcc)
 			getNode(ipc)->child = iTarget;
-		} else {
+		else
 			getNode(ipc)->brother = iTarget;
-		}
 
 		// 调整下级指针
-		if (ict != 0) {
-			getNode(ict)->parent = iChild;
-		}
-		if (ibt != 0) {
-			getNode(ibt)->parent = iChild;
-		}
+		if (ict != 0) getNode(ict)->pd.parent = iChild;
+		if (ibt != 0) getNode(ibt)->pd.parent = iChild;
 	}
 	return pChild->brother;
 }
 
-void printKeywordByRecursion(trienode_ptr pNode)
+int printTrieKeywordByRecursion(trienode_ptr pNode)
 {
-	if (pNode == root) {
-		return;
-	}
+	if (pNode == trie_root) return 0;
 
-	printKeywordByRecursion(getNode(pNode->parent));
+	int pos = printTrieKeywordByRecursion(getNode(pNode->pd.parent)) + 1;
 	putc(pNode->key, stdout);
+	return pos;
 }
 
-void printKeyword(trienode_ptr pNode)
+void printTrieKeyword(trienode_ptr pNode)
 {
-	printKeywordByRecursion(pNode);
+	int len = printTrieKeywordByRecursion(pNode);
 	putc('\n', stdout);
 }
 
 void constructTrie(FILE *fp)
 {
-	int i = 0;
+	int count = 0;
 	unsigned char keyword[1000];
 	while (fscanf(fp, "%s", keyword) != EOF) {
 		//printf("%s\n", keyword);
-		if (!addKeyword(keyword)) {
-			break;
-		}
-		++i;
+		if (!addKeyword(keyword)) break;
+		++count;
 	}
-	fprintf(stderr, "pattern: %d, node: %d\n", i, autoindex);
+	fprintf(stderr, "pattern: %d, node: %d\n", count, autoindex);
 	fprintf(stderr, "constructTrie succeed!\n");
 }
 
-void sortForBFS()
+void sortTrieForBinarySearch()
 {
 	size_t iTarget = 1;
 	for (size_t i = 0; i < iTarget; i++) { // 隐式bfs队列
@@ -519,24 +446,18 @@ void sortForBFS()
 void setParentByDFS(size_t current, size_t parent)
 {
 	trienode_ptr pNode = getNode(current);
-	pNode->parent = parent;
-	if (pNode->child != 0) {
-		setParentByDFS(pNode->child, current);
-	}
-	if (pNode->brother != 0) {
-		setParentByDFS(pNode->brother, parent);
-	}
+	pNode->pd.parent = parent;
+	if (pNode->child != 0) setParentByDFS(pNode->child, current);
+	if (pNode->brother != 0) setParentByDFS(pNode->brother, parent);
 }
 
-void rebuildParentByDFS()
+void rebuildTrieParent()
 {
-	if (root->child != 0) {
-		setParentByDFS(root->child, 0);
-	}
+	if (trie_root->child != 0) setParentByDFS(trie_root->child, 0);
 	fprintf(stderr, "rebuild parent succeed!\n");
 }
 
-void constructAutomation()
+void constructTrieAutomation()
 {
 	for (size_t index = 1; index < autoindex; index++) { // bfs
 		trienode_ptr pNode = getNode(index);
@@ -567,9 +488,9 @@ void constructAutomation()
 	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-void match(unsigned char *content)
+void matchActrie(unsigned char *content)
 {
-	trienode_ptr pCursor = root;
+	trienode_ptr pCursor = trie_root;
 	while(*content != '\0') {
 #if defined ADVSCH
 		trienode_ptr pNext = pCursor->next(pCursor, *content);
@@ -578,7 +499,7 @@ void match(unsigned char *content)
 #else
 		trienode_ptr pNext = nextNode(pCursor, *content);
 #endif
-		while(pCursor != root && pNext == root) {
+		while(pCursor != trie_root && pNext == trie_root) {
 			pCursor = getNode(pCursor->failed);
 #if defined ADVSCH
 			pNext = pCursor->next(pCursor, *content);
@@ -590,53 +511,10 @@ void match(unsigned char *content)
 		}
 		pCursor = pNext;
 		content++;
-		while (pNext != root) {
-			if (pNext->flag & 2)
-				printKeyword(pNext);
+		while (pNext != trie_root) {
+			if (pNext->flag & 2) printTrieKeyword(pNext);
 			pNext = getNode(pNext->failed);
 		}
 	}
-}
-
-int main(int argc, char *argv[])
-{
-	FILE *fpdict, *fpcorpus;
-	initTrie();
-
-	time_t s0 = time(NULL);
-	// 建立字典树
-	fpdict = fopen("sdict", "rb");
-	if (fpdict == NULL) return -1;
-	constructTrie(fpdict);
-	fclose(fpdict);
-	time_t s1 = time(NULL);
-	fprintf(stderr, "s1: %ld\n", s1-s0);
-
-	// 按bfs顺序排序节点
-	sortForBFS();
-	time_t s2 = time(NULL);
-	fprintf(stderr, "s2: %ld\n", s2-s1);
-	
-	// 建立父指针关系
-	rebuildParentByDFS();
-	time_t s3 = time(NULL);
-	fprintf(stderr, "s3: %ld\n", s3-s2);
-	
-	// 构建自动机
-	constructAutomation();
-	time_t s4 = time(NULL);
-	fprintf(stderr, "s4: %ld\n", s4-s3);
-
-	fpcorpus = fopen("corpus", "rb");
-	unsigned char company[100000];
-	while(fscanf(fpcorpus, "%s", company) != EOF) {
-		match(company);
-	}
-	fclose(fpcorpus);
-	time_t s5 = time(NULL);
-	fprintf(stderr, "s5: %ld\n", s5-s4);
-
-	closeTrie();
-	return 0;
 }
 
