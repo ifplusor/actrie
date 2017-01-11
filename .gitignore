@@ -12,3 +12,6 @@ gmon.out
 
 *.swp
 
+.idea
+cmake-build-debug
+
