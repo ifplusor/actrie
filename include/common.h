@@ -24,15 +24,4 @@ extern const size_t POOLPOSITIONSIZE;
 long long getSystemTime();
 
 
-// some flag
-// ---------------------------
-//#define ADVSCH
-#define BINSCH
-//#define ADVBIN
-//#define LOWERUPPER
-#ifdef LOWERUPPER
-#define INBFS
-#endif
-
-
 #endif
