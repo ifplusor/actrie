@@ -1,10 +1,5 @@
-#include <memory.h>
-#include <string.h>
-
 #include "acdat.h"
 
-
-//extern trienode_ptr trie_root;
 
 // Trie 内部接口，仅限 Double-Array Trie 使用
 size_t getTrieSize(trie_ptr self);
@@ -19,7 +14,6 @@ size_t nextState(trie_ptr self, size_t iNode, unsigned char key);
 // Double-Array Trie
 // ========================================================
 
-//static datnode_ptr datnodepool[REGIONSIZE],datlead,datroot;
 const size_t datrootidx = 255;
 
 static inline datnode_ptr getDatNode(datrie_ptr self, size_t index)
@@ -195,21 +189,18 @@ void printDatKeyword(datrie_ptr self, datnode_ptr pNode)
 	putc('\n', stdout);
 }
 
-void matchDat(datrie_ptr self, unsigned char *content)
+void matchDat(datrie_ptr self, unsigned char content[], size_t len)
 {
-	size_t len = strlen(content);
 	for (size_t i = 0; i < len; ++i) {
-		unsigned char *cur = content + i;
 		size_t iCursor = datrootidx;
 		datnode_ptr pCursor = self->datroot;
-		while (*cur != '\0') {
-			size_t iNext = pCursor->base + *cur;
+		for (size_t j = i; j < len; ++j) {
+			size_t iNext = pCursor->base + content[i];
 			datnode_ptr pNext = getDatNode(self, iNext);
 			if (pNext->check != iCursor) break;
 			if (pNext->lf.f.flag & 2) printDatKeyword(self, pNext);
 			iCursor = iNext;
 			pCursor = pNext;
-			cur++;
 		}
 	}
 }
@@ -269,17 +260,17 @@ void constructDatAutomation(datrie_ptr self, trie_ptr origin)
 	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-void matchAcdat(datrie_ptr self, unsigned char *content)
+void matchAcdat(datrie_ptr self, unsigned char content[], size_t len)
 {
 	size_t iCursor = datrootidx;
 	datnode_ptr pCursor = self->datroot;
-	while(*content != '\0') {
-		size_t iNext = pCursor->base + *content;
+	for (size_t i = 0; i < len; ++i) {
+		size_t iNext = pCursor->base + content[i];
 		datnode_ptr pNext = getDatNode(self, iNext);
 		while (pCursor != self->datroot && pNext->check != iCursor) {
 			iCursor = pCursor->nf.failed;
 			pCursor = getDatNode(self, iCursor);
-			iNext = pCursor->base + *content;
+			iNext = pCursor->base + content[i];
 			pNext = getDatNode(self, iNext);
 		}
 		if (pNext->check == iCursor) {
@@ -295,7 +286,6 @@ void matchAcdat(datrie_ptr self, unsigned char *content)
 				pNext = getDatNode(self, pNext->nf.failed);
 			}
 		}
-		content++;
 	}
 }
 

@@ -3,6 +3,7 @@
 
 
 #include <stdio.h>
+#include <memory.h>
 
 #include "common.h"
 
@@ -37,11 +38,11 @@ typedef struct trie {
 
 void initTrie(trie_ptr self);
 void closeTrie(trie_ptr self);
-void constructTrie(trie_ptr self, FILE *fp);
+bool constructTrie(trie_ptr self, FILE *fp);
 void sortTrieForBinarySearch(trie_ptr self);
 void rebuildTrieParent(trie_ptr self);
 void constructTrieAutomation(trie_ptr self);
-void matchActrie(trie_ptr self, unsigned char *content);
+void matchActrie(trie_ptr self, unsigned char content[], size_t len);
 
 
 #endif

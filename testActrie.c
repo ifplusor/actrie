@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	FILE *fpcorpus = fopen("corpus", "rb");
 	if (fpcorpus != NULL) {
 		unsigned char company[100000];
-		while(fscanf(fpcorpus, "%s", company) != EOF) matchActrie(&dict, company);
+		while(fscanf(fpcorpus, "%s", company) != EOF) matchActrie(&dict, company, strlen(company));
 		time_t s5 = time(NULL);
 		fprintf(stderr, "s5: %lds\n", s5-s4);
 		fclose(fpcorpus);

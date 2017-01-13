@@ -3,12 +3,13 @@
 
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 
-#ifndef BOOL
-#define BOOL int
-#define TRUE 1
-#define FALSE 0
+#ifndef __bool_true_false_are_defined
+#define bool int
+#define true 1
+#define false 0
 #endif
 
 

@@ -28,9 +28,9 @@ typedef struct datrie {
 void initDat(datrie_ptr self);
 void closeDat(datrie_ptr self);
 void constructDat(datrie_ptr self, trie_ptr origin);
-void matchDat(datrie_ptr self, unsigned char *content);
+void matchDat(datrie_ptr self, unsigned char content[], size_t len);
 void constructDatAutomation(datrie_ptr self, trie_ptr origin);
-void matchAcdat(datrie_ptr self, unsigned char *content);
+void matchAcdat(datrie_ptr self, unsigned char content[], size_t len);
 
 
 #endif

@@ -1,4 +1,5 @@
 #include <time.h>
+#include <string.h>
 
 #include "acdat.h"
 
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 	if (fpcorpus != NULL) {
 		unsigned char company[100000];
 		long long s5 = getSystemTime();
-		while (fscanf(fpcorpus, "%s", company) != EOF) matchAcdat(&dat, company);
+		while (fscanf(fpcorpus, "%s", company) != EOF) matchAcdat(&dat, company, strlen(company));
 		long long s6 = getSystemTime();
 		fprintf(stderr, "s5: %lldms\n", s6-s5);
 		fclose(fpcorpus);
