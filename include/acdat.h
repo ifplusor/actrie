@@ -24,6 +24,7 @@ typedef struct datnode {
 typedef struct datrie {
 	datnode_ptr _datnodepool[REGIONSIZE], _datlead;
 	datnode_ptr datroot;
+	int depth;
 } datrie, *datrie_ptr;
 
 typedef struct datcontext {

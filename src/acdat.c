@@ -57,6 +57,8 @@ datnode_ptr getDatNodeWithAlloc(datrie_ptr self, size_t index)
 
 void initDat(datrie_ptr self)
 {
+	self->depth = 0;
+
 	for (int i = 0; i < POOLREGIONSIZE; ++i) self->_datnodepool[i] = NULL;
 	datnode_ptr pnode = (datnode_ptr) malloc(sizeof(datnode)*POOLPOSITIONSIZE);
 	if (pnode == NULL) {
@@ -98,7 +100,12 @@ void constructDatByDFS(datrie_ptr self, trie_ptr origin, trienode_ptr pNode, siz
 	pDatNode->lf.f.key = pNode->key;
 	pDatNode->lf.f.flag = pNode->flag;
 
-	if (pNode->flag & 2) count++;
+	if (pDatNode->lf.f.flag & 2) {
+		if (pDatNode->lf.f.depth > self->depth) {
+			self->depth = pDatNode->lf.f.depth;
+		}
+		count++;
+	}
 
 	if (pNode->child == 0) return;
 
