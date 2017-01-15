@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "s1: %lds\n", s1-s0);
 
 	// 按bfs顺序排序节点
-	sortTrieForBinarySearch(&dict);
+    sortTrieToLine(&dict);
 	time_t s2 = time(NULL);
 	fprintf(stderr, "s2: %lds\n", s2-s1);
 	

@@ -433,7 +433,7 @@ bool constructTrie(trie_ptr self, FILE *fp)
 	return true;
 }
 
-void sortTrieForBinarySearch(trie_ptr self)
+void sortTrieToLine(trie_ptr self)
 {
 	size_t iTarget = 1;
 	for (size_t i = 0; i < iTarget; i++) { // 隐式bfs队列

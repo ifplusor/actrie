@@ -39,7 +39,7 @@ typedef struct trie {
 void initTrie(trie_ptr self);
 void closeTrie(trie_ptr self);
 bool constructTrie(trie_ptr self, FILE *fp);
-void sortTrieForBinarySearch(trie_ptr self);
+void sortTrieToLine(trie_ptr self);
 void rebuildTrieParent(trie_ptr self);
 void constructTrieAutomation(trie_ptr self);
 void matchActrie(trie_ptr self, unsigned char content[], size_t len);

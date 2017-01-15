@@ -1,3 +1,4 @@
+#include <acdat.h>
 #include "acdat.h"
 
 
@@ -23,7 +24,7 @@ static inline datnode_ptr getDatNode(datrie_ptr self, size_t index)
 	return &self->_datnodepool[region][position];
 }
 
-void allocDatNodepool(datrie_ptr self, int region)
+void allocDatNodepool(datrie_ptr self, size_t region)
 {
 	datnode_ptr pnode = (datnode_ptr) malloc(sizeof(datnode)*POOLPOSITIONSIZE);
 	if (pnode == NULL) {
@@ -79,6 +80,8 @@ void initDat(datrie_ptr self)
 	self->_datlead->nf.next = datrootidx+1;
 	self->_datlead->lf.last = POOLPOSITIONSIZE-1;
 	self->_datlead->check = 1;
+
+	self->datroot->lf.f.depth = 0;
 }
 
 void closeDat(datrie_ptr self)
@@ -94,7 +97,7 @@ void constructDatByDFS(datrie_ptr self, trie_ptr origin, trienode_ptr pNode, siz
 	datnode_ptr pDatNode = getDatNode(self, datindex);
 	pDatNode->lf.f.key = pNode->key;
 	pDatNode->lf.f.flag = pNode->flag;
-		
+
 	if (pNode->flag & 2) count++;
 
 	if (pNode->child == 0) return;
@@ -110,7 +113,7 @@ void constructDatByDFS(datrie_ptr self, trie_ptr origin, trienode_ptr pNode, siz
 	while (1) {
 		if (pos == 0) {
 			// 扩容
-			int region = 1;
+			size_t region = 1;
 			while (region < POOLREGIONSIZE && self->_datnodepool[region]!=NULL) ++region;
 			if (region == POOLREGIONSIZE) {
 				fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
@@ -132,6 +135,8 @@ void constructDatByDFS(datrie_ptr self, trie_ptr origin, trienode_ptr pNode, siz
 			pDatChild->check = datindex;
 			getDatNode(self, pDatChild->nf.next)->lf.last = pDatChild->lf.last;
 			getDatNode(self, pDatChild->lf.last)->nf.next = pDatChild->nf.next;
+			// 对depth的改变要放在last指针改变之后
+			pDatChild->lf.f.depth = pDatNode->lf.f.depth + 1;
 		}
 		break;
 checkfailed:
@@ -238,7 +243,7 @@ void constructDatAutomation(datrie_ptr self, trie_ptr origin)
 #endif
 			}
 			pChild->failed = match;
-			
+
 			// 设置 DAT 的 failed 域
 #ifdef EXTFLAG
 			datnode_ptr pDatChild = getDatNode(pChild->pd.datidx);
@@ -287,5 +292,76 @@ void matchAcdat(datrie_ptr self, unsigned char content[], size_t len)
 			}
 		}
 	}
+}
+
+
+// Acdat Context
+// ===================================================
+
+void initAcdatContext(datcontext_ptr context, datrie_ptr trie, unsigned char content[], size_t len)
+{
+	context->trie = trie;
+	context->content = content;
+	context->len = len;
+
+	context->_i = 0;
+	context->_iCursor = datrootidx;
+	context->_pCursor = context->trie->datroot;
+	context->_pMatched = context->trie->datroot;
+}
+
+int getMatchedInAcdat(datcontext_ptr context, unsigned char buffer[], size_t size)
+{
+	int idx = context->_pMatched->lf.f.depth;
+	if (idx >= size) return -1;
+	buffer[idx--] = '\0';
+	for (datnode_ptr pNode = context->_pMatched; idx >= 0; pNode = getDatNode(context->trie, pNode->check)) {
+		buffer[idx--] = pNode->lf.f.key;
+	}
+	return context->_pMatched->lf.f.depth;
+}
+
+bool nextWithAcdat(datcontext_ptr context)
+{
+	// 检查当前匹配点向树根的路径上是否还有匹配的词
+#ifdef EXTFLAG
+	while (context->_pMatched->lf.f.flag & 6) {
+#else
+    while (context->_pMatched != context->trie->datroot) {
+#endif
+		context->_pMatched = getDatNode(context->trie, context->_pMatched->nf.failed);
+		if (context->_pMatched->lf.f.flag & 2) {
+			return true;
+		}
+	}
+
+	// 执行匹配
+	for (;context->_i < context->len; context->_i++) {
+		size_t iNext = context->_pCursor->base + context->content[context->_i];
+		datnode_ptr pNext = getDatNode(context->trie, iNext);
+		while (context->_pCursor != context->trie->datroot && pNext->check != context->_iCursor) {
+			context->_iCursor = context->_pCursor->nf.failed;
+			context->_pCursor = getDatNode(context->trie, context->_iCursor);
+			iNext = context->_pCursor->base + context->content[context->_i];
+			pNext = getDatNode(context->trie, iNext);
+		}
+		if (pNext->check == context->_iCursor) {
+			context->_iCursor = iNext;
+			context->_pCursor = pNext;
+#ifdef EXTFLAG
+			while (pNext->lf.f.flag & 6) {
+#else
+			while (pNext != context->trie->datroot) {
+#endif
+				if (pNext->lf.f.flag & 2) {
+					context->_pMatched = pNext;
+					context->_i++;
+					return true;
+				}
+				pNext = getDatNode(context->trie, pNext->nf.failed);
+			}
+		}
+	}
+	return false;
 }
 

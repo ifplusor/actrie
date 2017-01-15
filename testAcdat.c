@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 	fclose(fpdict);
 	
 	// 排序字典树节点
-	sortTrieForBinarySearch(&dict);
+	sortTrieToLine(&dict);
 	time_t s2 = time(NULL);
 	fprintf(stderr, "s2: %lds\n", s2 -s1);
 
@@ -42,9 +42,21 @@ int main(int argc, char *argv[])
 	// test match
 	FILE *fpcorpus = fopen("corpus", "rb");
 	if (fpcorpus != NULL) {
-		unsigned char company[100000];
+		unsigned char company[100000], buffer[1000];
+		datcontext context;
 		long long s5 = getSystemTime();
-		while (fscanf(fpcorpus, "%s", company) != EOF) matchAcdat(&dat, company, strlen(company));
+		while (fscanf(fpcorpus, "%s", company) != EOF) {
+			initAcdatContext(&context, &dat, company, strlen(company));
+			while (nextWithAcdat(&context)) {
+				int len = getMatchedInAcdat(&context, buffer, 1000);
+				if (len > 0) {
+					printf("%zu,%zu,%d: %s\n", context._i-len, context._i, len, buffer);
+				} else {
+					fprintf(stderr, "size is small.\n");
+				}
+			}
+			//matchAcdat(&dat, company, strlen(company));
+		}
 		long long s6 = getSystemTime();
 		fprintf(stderr, "s5: %lldms\n", s6-s5);
 		fclose(fpcorpus);
