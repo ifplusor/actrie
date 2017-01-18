@@ -1,216 +1,229 @@
-#include <acdat.h>
 #include "acdat.h"
 
 
 // Trie 内部接口，仅限 Double-Array Trie 使用
-size_t getTrieSize(trie_ptr self);
-trienode_ptr getTrieNode(trie_ptr self, size_t index);
-#ifdef BINSCH
-size_t nextStateByBinary(trie_ptr self, size_t iNode, unsigned char key);
-#else
-size_t nextState(trie_ptr self, size_t iNode, unsigned char key);
-#endif
+size_t trie_size(trie_ptr self);
+
+trie_node_ptr trie_access_node_export(trie_ptr self, size_t index);
+
+size_t trie_next_state_by_binary(trie_ptr self, size_t iNode,
+								 unsigned char key);
 
 
 // Double-Array Trie
 // ========================================================
 
-const size_t datrootidx = 255;
+const size_t DAT_ROOT_IDX = 255;
 
-static inline datnode_ptr getDatNode(datrie_ptr self, size_t index)
+static inline dat_node_ptr dat_access_node(dat_trie_ptr self, size_t index)
 {
-	size_t region = index >> REGIONOFFSET;
-	size_t position = index & POSITIONMASK;
-	return &self->_datnodepool[region][position];
+	size_t region = index >> REGION_OFFSET;
+	size_t position = index & POSITION_MASK;
+	return &self->_nodepool[region][position];
 }
 
-void allocDatNodepool(datrie_ptr self, size_t region)
+static void dat_alloc_nodepool(dat_trie_ptr self, size_t region)
 {
-	datnode_ptr pnode = (datnode_ptr) malloc(sizeof(datnode)*POOLPOSITIONSIZE);
+	dat_node_ptr pnode = (dat_node_ptr) malloc(
+			sizeof(dat_node) * POOL_POSITION_SIZE);
 	if (pnode == NULL) {
-		fprintf(stderr, "alloc datnodepool failed.\nexit.\n");
+		fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
 		exit(-1);
 	}
-	self->_datnodepool[region] = pnode;
+	self->_nodepool[region] = pnode;
 	// 节点初始化
-	memset(pnode, 0, sizeof(datnode)*POOLPOSITIONSIZE);
-	size_t offset = region << REGIONOFFSET;
-	for (int i = 0; i < POOLPOSITIONSIZE; ++i) {
-		pnode[i].nf.next = offset+i+1;
-		pnode[i].lf.last = offset+i-1;
+	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
+	size_t offset = region << REGION_OFFSET;
+	for (int i = 0; i < POOL_POSITION_SIZE; ++i) {
+		pnode[i].dat_next = offset + i + 1;
+		pnode[i].dat_last = offset + i - 1;
 	}
-	pnode[POOLPOSITIONSIZE-1].nf.next = 0;
+	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
 
-	pnode[0].lf.last = self->_datlead->lf.last;
-	getDatNode(self, self->_datlead->lf.last)->nf.next=offset;
-	self->_datlead->lf.last = offset+POOLPOSITIONSIZE-1;
+	pnode[0].dat_last = self->_lead->dat_last;
+	dat_access_node(self, self->_lead->dat_last)->dat_next = offset;
+	self->_lead->dat_last = offset + POOL_POSITION_SIZE - 1;
 }
 
-datnode_ptr getDatNodeWithAlloc(datrie_ptr self, size_t index)
+static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self, size_t index)
 {
-	size_t region = index >> REGIONOFFSET;
-	size_t position = index & POSITIONMASK;
-	if (region >= POOLREGIONSIZE) return NULL;
-	if (self->_datnodepool[region] == NULL) allocDatNodepool(self, region);
-	return &self->_datnodepool[region][position];
+	size_t region = index >> REGION_OFFSET;
+	size_t position = index & POSITION_MASK;
+	if (region >= POOL_REGION_SIZE) return NULL;
+	if (self->_nodepool[region] == NULL) dat_alloc_nodepool(self, region);
+	return &self->_nodepool[region][position];
 }
 
-void initDat(datrie_ptr self)
+void dat_init(dat_trie_ptr self, match_dict_ptr dict)
 {
-	self->depth = 0;
+	self->dict = dict;
 
-	for (int i = 0; i < POOLREGIONSIZE; ++i) self->_datnodepool[i] = NULL;
-	datnode_ptr pnode = (datnode_ptr) malloc(sizeof(datnode)*POOLPOSITIONSIZE);
+	for (int i = 0; i < POOL_REGION_SIZE; ++i) self->_nodepool[i] = NULL;
+	dat_node_ptr pnode = (dat_node_ptr) malloc(
+			sizeof(dat_node) * POOL_POSITION_SIZE);
 	if (pnode == NULL) {
-		fprintf(stderr, "alloc datnodepool failed.\nexit.\n");
+		fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
 		exit(-1);
 	}
-	memset(pnode, 0, sizeof(datnode)*POOLPOSITIONSIZE);
+	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
 
-	self->_datnodepool[0] = pnode;
-	self->_datlead = &self->_datnodepool[0][0];
-	self->datroot = &self->_datnodepool[0][datrootidx];
+	self->_nodepool[0] = pnode;
+	self->_lead = &self->_nodepool[0][0];
+	self->root = &self->_nodepool[0][DAT_ROOT_IDX];
 
 	// 节点初始化
-	for (size_t i = 1; i < POOLPOSITIONSIZE; ++i) {
-		pnode[i].nf.next = i+1;
-		pnode[i].lf.last = i-1;
+	for (size_t i = 1; i < POOL_POSITION_SIZE; ++i) {
+		pnode[i].dat_next = i + 1;
+		pnode[i].dat_last = i - 1;
 	}
-	pnode[POOLPOSITIONSIZE-1].nf.next = 0;
-	pnode[datrootidx+1].lf.last = 0;
+	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
+	pnode[DAT_ROOT_IDX + 1].dat_last = 0;
 
-	self->_datlead->nf.next = datrootidx+1;
-	self->_datlead->lf.last = POOLPOSITIONSIZE-1;
-	self->_datlead->check = 1;
+	self->_lead->dat_next = DAT_ROOT_IDX + 1;
+	self->_lead->dat_last = POOL_POSITION_SIZE - 1;
+	self->_lead->check = 1;
 
-	self->datroot->lf.f.depth = 0;
+	self->root->dat_depth = 0;
 }
 
-void closeDat(datrie_ptr self)
+void dat_close(dat_trie_ptr self)
 {
-	for (int i = 0; i < POOLREGIONSIZE; ++i) {
-		if (self->_datnodepool[i] != NULL) free(self->_datnodepool[i]);
+	for (int i = 0; i < POOL_REGION_SIZE; ++i) {
+		if (self->_nodepool[i] != NULL) free(self->_nodepool[i]);
 	}
+
+	dict_release(self->dict);
+	free(self->dict);
 }
 
-size_t count = 0;
-void constructDatByDFS(datrie_ptr self, trie_ptr origin, trienode_ptr pNode, size_t datindex)
-{
-	datnode_ptr pDatNode = getDatNode(self, datindex);
-	pDatNode->lf.f.key = pNode->key;
-	pDatNode->lf.f.flag = pNode->flag;
+//static size_t count = 0;
 
-	if (pDatNode->lf.f.flag & 2) {
-		if (pDatNode->lf.f.depth > self->depth) {
-			self->depth = pDatNode->lf.f.depth;
-		}
+static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
+								 trie_node_ptr pNode, size_t datindex)
+{
+	dat_node_ptr pDatNode = dat_access_node(self, datindex);
+	pDatNode->dat_keyword = pNode->trie_keyword;
+	pDatNode->dat_extra = pNode->trie_extra;
+	pDatNode->dat_key = pNode->key;
+	pDatNode->dat_flag = pNode->flag;
+
+	/*if (pDatNode->dat_flag & 2) {
 		count++;
-	}
+	}*/
 
 	if (pNode->child == 0) return;
 
 	unsigned char child[256];
 	int len = 0;
-	trienode_ptr pChild = getTrieNode(origin, pNode->child);
-	while (pChild != origin->trie_root) {
+	trie_node_ptr pChild = trie_access_node_export(origin, pNode->child);
+	while (pChild != origin->root) {
 		child[len++] = pChild->key;
-		pChild = getTrieNode(origin, pChild->brother);
+		pChild = trie_access_node_export(origin, pChild->brother);
 	}
-	size_t pos = self->_datlead->nf.next;
+	size_t pos = self->_lead->dat_next;
 	while (1) {
 		if (pos == 0) {
 			// 扩容
 			size_t region = 1;
-			while (region < POOLREGIONSIZE && self->_datnodepool[region]!=NULL) ++region;
-			if (region == POOLREGIONSIZE) {
-				fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
+			while (region < POOL_REGION_SIZE &&
+				   self->_nodepool[region] != NULL)
+				++region;
+			if (region == POOL_REGION_SIZE) {
+				fprintf(stderr,
+						"alloc datnodepool failed: region full.\nexit.\n");
 				exit(-1);
 			}
-			allocDatNodepool(self, region);
-			pos = (size_t)region<<REGIONOFFSET;
+			dat_alloc_nodepool(self, region);
+			pos = (size_t) region << REGION_OFFSET;
 		}
 		// 检查: pos容纳第一个子节点
 		size_t base = pos - child[0];
 		for (int i = 1; i < len; ++i) {
-			if (getDatNodeWithAlloc(self, base + child[i])->check != 0) goto checkfailed;
+			if (dat_access_node_with_alloc(self, base + child[i])->check != 0)
+				goto checkfailed;
 		}
 		// base 分配成功
 		pDatNode->base = base;
 		for (int i = 0; i < len; ++i) {
 			// 分配子节点
-			datnode_ptr pDatChild = getDatNode(self, base + child[i]);
+			dat_node_ptr pDatChild = dat_access_node(self, base + child[i]);
 			pDatChild->check = datindex;
-			getDatNode(self, pDatChild->nf.next)->lf.last = pDatChild->lf.last;
-			getDatNode(self, pDatChild->lf.last)->nf.next = pDatChild->nf.next;
+			dat_access_node(self, pDatChild->dat_next)->dat_last =
+					pDatChild->dat_last;
+			dat_access_node(self, pDatChild->dat_last)->dat_next =
+					pDatChild->dat_next;
 			// 对depth的改变要放在last指针改变之后
-			pDatChild->lf.f.depth = pDatNode->lf.f.depth + 1;
+			pDatChild->dat_depth = pDatNode->dat_depth + 1;
 		}
 		break;
-checkfailed:
-		pos = getDatNode(self, pos)->nf.next;
+		checkfailed:
+		pos = dat_access_node(self, pos)->dat_next;
 	}
 
 	// 构建子树
-	pChild = getTrieNode(origin, pNode->child);
-	while (pChild != origin->trie_root) {
-		pChild->pd.datidx = pDatNode->base + pChild->key;
-		constructDatByDFS(self, origin, pChild, pChild->pd.datidx);
-		pChild = getTrieNode(origin, pChild->brother);
+	pChild = trie_access_node_export(origin, pNode->child);
+	while (pChild != origin->root) {
+		pChild->trie_datidx = pDatNode->base + pChild->key;
+		dat_construct_by_dfs(self, origin, pChild, pChild->trie_datidx);
+		pChild = trie_access_node_export(origin, pChild->brother);
 	}
 }
 
-void afterDatConstructed(datrie_ptr self)
+static void dat_post_construct(dat_trie_ptr self)
 {
 	// 添加占位内存，防止匹配时出现非法访问
 	int region = 1;
-	while (region < POOLREGIONSIZE && self->_datnodepool[region]!=NULL) ++region;
-	if (region >= POOLREGIONSIZE) {
+	while (region < POOL_REGION_SIZE && self->_nodepool[region] != NULL)
+		++region;
+	if (region >= POOL_REGION_SIZE) {
 		fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
 		exit(-1);
 	} else {
-		datnode_ptr pnode = (datnode_ptr) malloc(sizeof(datnode) * 256);
+		dat_node_ptr pnode = (dat_node_ptr) malloc(sizeof(dat_node) * 256);
 		if (pnode == NULL) {
 			fprintf(stderr, "alloc datnodepool failed.\nexit.\n");
 			exit(-1);
 		}
-		self->_datnodepool[region] = pnode;
+		self->_nodepool[region] = pnode;
 		// 节点初始化
-		memset(pnode, 0, sizeof(datnode)*256);
+		memset(pnode, 0, sizeof(dat_node) * 256);
 	}
 }
 
-void constructDat(datrie_ptr self, trie_ptr origin)
+void dat_construct(dat_trie_ptr self, trie_ptr origin)
 {
-	constructDatByDFS(self, origin, origin->trie_root, datrootidx);
-	afterDatConstructed(self);
-	fprintf(stderr, "pattern: %zu\n", count);
+	dat_construct_by_dfs(self, origin, origin->root, DAT_ROOT_IDX);
+	dat_post_construct(self);
+	//fprintf(stderr, "pattern: %zu\n", count);
+	fprintf(stderr, "construct double-array trie succeed!\n");
 }
 
-int printDatKeywordByRecursion(datrie_ptr self, datnode_ptr pNode)
+int dat_print_keyword_by_recursion(dat_trie_ptr self, dat_node_ptr pNode)
 {
-	if (pNode == self->datroot) return 0;
+	if (pNode == self->root) return 0;
 
-	int pos = printDatKeywordByRecursion(self, getDatNode(self, pNode->check)) + 1;
-	putc(pNode->lf.f.key, stdout);
+	int pos = dat_print_keyword_by_recursion(
+			self, dat_access_node(self, pNode->check)) + 1;
+	putc(pNode->dat_key, stdout);
 	return pos;
 }
 
-void printDatKeyword(datrie_ptr self, datnode_ptr pNode)
+void dat_print_keyword(dat_trie_ptr self, dat_node_ptr pNode)
 {
-	int len = printDatKeywordByRecursion(self, pNode);
+	int len = dat_print_keyword_by_recursion(self, pNode);
 	putc('\n', stdout);
 }
 
-void matchDat(datrie_ptr self, unsigned char content[], size_t len)
+void dat_match(dat_trie_ptr self, unsigned char content[], size_t len)
 {
 	for (size_t i = 0; i < len; ++i) {
-		size_t iCursor = datrootidx;
-		datnode_ptr pCursor = self->datroot;
+		size_t iCursor = DAT_ROOT_IDX;
+		dat_node_ptr pCursor = self->root;
 		for (size_t j = i; j < len; ++j) {
 			size_t iNext = pCursor->base + content[i];
-			datnode_ptr pNext = getDatNode(self, iNext);
+			dat_node_ptr pNext = dat_access_node(self, iNext);
 			if (pNext->check != iCursor) break;
-			if (pNext->lf.f.flag & 2) printDatKeyword(self, pNext);
+			if (pNext->dat_flag & 2) dat_print_keyword(self, pNext);
 			iCursor = iNext;
 			pCursor = pNext;
 		}
@@ -218,84 +231,66 @@ void matchDat(datrie_ptr self, unsigned char content[], size_t len)
 }
 
 
-void constructDatAutomation(datrie_ptr self, trie_ptr origin)
+void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 {
-	trienode_ptr pNode = origin->trie_root;
+	trie_node_ptr pNode = origin->root;
 	size_t iChild = pNode->child;
 	while (iChild != 0) {
-		trienode_ptr pChild = getTrieNode(origin, iChild);
-		// 设置 DAT 的 failed 域
-		getDatNode(self, pChild->pd.datidx)->nf.failed = datrootidx;
+		trie_node_ptr pChild = trie_access_node_export(origin, iChild);
+
+		// 设置 failed 域
+		pChild->trie_failed = 0;
+		dat_access_node(self, pChild->trie_datidx)->dat_failed = DAT_ROOT_IDX;
+
 		iChild = pChild->brother;
 	}
-	for (size_t index = 1; index < getTrieSize(origin); index++) { // bfs
-		pNode = getTrieNode(origin, index);
+
+	for (size_t index = 1; index < trie_size(origin); index++) { // bfs
+		pNode = trie_access_node_export(origin, index);
 		iChild = pNode->child;
 		while (iChild != 0) {
-			trienode_ptr pChild = getTrieNode(origin, iChild);
+			trie_node_ptr pChild = trie_access_node_export(origin, iChild);
 			unsigned char key = pChild->key;
 
-			size_t iFailed = pNode->failed;
-#ifdef BINSCH
-			size_t match = nextStateByBinary(origin, iFailed, key);
-#else
-			size_t match = nextState(origin, iFailed, key);
-#endif
+			size_t iFailed = pNode->trie_failed;
+			size_t match = trie_next_state_by_binary(origin, iFailed, key);
 			while (iFailed != 0 && match == 0) {
-				iFailed = getTrieNode(origin, iFailed)->failed;
-#ifdef BINSCH
-				match = nextStateByBinary(origin, iFailed, key);
-#else
-				match = nextState(origin, iFailed, key);
-#endif
+				iFailed = trie_access_node_export(origin, iFailed)->trie_failed;
+				match = trie_next_state_by_binary(origin, iFailed, key);
 			}
-			pChild->failed = match;
+			pChild->trie_failed = match;
 
 			// 设置 DAT 的 failed 域
-#ifdef EXTFLAG
-			datnode_ptr pDatChild = getDatNode(pChild->pd.datidx);
-			if (match != 0) {
-				trienode_ptr pFailed = getTrieNode(match);
-				pDatChild->nf.failed = pFailed->pd.datidx;
-				datnode_ptr pDatFailed = getDatNode(pFailed->pd.datidx);
-				if (pDatFailed->lf.f.flag & 6) pDatFailed->lf.f.flag |= 4;
-			} else {
-				pDatChild->nf.failed = datrootidx;
-			}
-#else
-			getDatNode(self, pChild->pd.datidx)->nf.failed =
-				match!=0?getTrieNode(origin, match)->pd.datidx:datrootidx;
-#endif
+			dat_access_node(self, pChild->trie_datidx)->dat_failed =
+					match != 0 ?
+					trie_access_node_export(origin, match)->trie_datidx :
+					DAT_ROOT_IDX;
 			iChild = pChild->brother;
 		}
 	}
 	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-void matchAcdat(datrie_ptr self, unsigned char content[], size_t len)
+void dat_ac_match(dat_trie_ptr self, unsigned char content[], size_t len)
 {
-	size_t iCursor = datrootidx;
-	datnode_ptr pCursor = self->datroot;
+	size_t iCursor = DAT_ROOT_IDX;
+	dat_node_ptr pCursor = self->root;
 	for (size_t i = 0; i < len; ++i) {
 		size_t iNext = pCursor->base + content[i];
-		datnode_ptr pNext = getDatNode(self, iNext);
-		while (pCursor != self->datroot && pNext->check != iCursor) {
-			iCursor = pCursor->nf.failed;
-			pCursor = getDatNode(self, iCursor);
+		dat_node_ptr pNext = dat_access_node(self, iNext);
+		while (pCursor != self->root && pNext->check != iCursor) {
+			iCursor = pCursor->dat_failed;
+			pCursor = dat_access_node(self, iCursor);
 			iNext = pCursor->base + content[i];
-			pNext = getDatNode(self, iNext);
+			pNext = dat_access_node(self, iNext);
 		}
 		if (pNext->check == iCursor) {
 			iCursor = iNext;
 			pCursor = pNext;
-#ifdef EXTFLAG
-			while (pNext->lf.f.flag & 6) {
-#else
-			while (pNext != self->datroot) {
-#endif
-				if (pNext->lf.f.flag & 2)
-					printDatKeyword(self, pNext);
-				pNext = getDatNode(self, pNext->nf.failed);
+			while (pNext != self->root) {
+				if (pNext->dat_flag & 2)
+					dat_print_keyword(self, pNext);
+				pNext = dat_access_node(self, pNext->dat_failed);
 			}
 		}
 	}
@@ -305,67 +300,52 @@ void matchAcdat(datrie_ptr self, unsigned char content[], size_t len)
 // Acdat Context
 // ===================================================
 
-void initAcdatContext(datcontext_ptr context, datrie_ptr trie, unsigned char content[], size_t len)
+void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
+					  unsigned char content[], size_t len)
 {
 	context->trie = trie;
 	context->content = content;
 	context->len = len;
 
 	context->_i = 0;
-	context->_iCursor = datrootidx;
-	context->_pCursor = context->trie->datroot;
-	context->_pMatched = context->trie->datroot;
+	context->_iCursor = DAT_ROOT_IDX;
+	context->_pCursor = context->trie->root;
+	context->out_matched = context->trie->root;
 }
 
-int getMatchedInAcdat(datcontext_ptr context, unsigned char buffer[], size_t size)
-{
-	int idx = context->_pMatched->lf.f.depth;
-	if (idx >= size) return -1;
-	buffer[idx--] = '\0';
-	for (datnode_ptr pNode = context->_pMatched; idx >= 0; pNode = getDatNode(context->trie, pNode->check)) {
-		buffer[idx--] = pNode->lf.f.key;
-	}
-	return context->_pMatched->lf.f.depth;
-}
-
-bool nextWithAcdat(datcontext_ptr context)
+bool dat_ac_next(dat_context_ptr context)
 {
 	// 检查当前匹配点向树根的路径上是否还有匹配的词
-#ifdef EXTFLAG
-	while (context->_pMatched->lf.f.flag & 6) {
-#else
-    while (context->_pMatched != context->trie->datroot) {
-#endif
-		context->_pMatched = getDatNode(context->trie, context->_pMatched->nf.failed);
-		if (context->_pMatched->lf.f.flag & 2) {
+	while (context->out_matched != context->trie->root) {
+		context->out_matched = dat_access_node(context->trie,
+											 context->out_matched->dat_failed);
+		if (context->out_matched->dat_flag & 2) {
 			return true;
 		}
 	}
 
 	// 执行匹配
-	for (;context->_i < context->len; context->_i++) {
+	for (; context->_i < context->len; context->_i++) {
 		size_t iNext = context->_pCursor->base + context->content[context->_i];
-		datnode_ptr pNext = getDatNode(context->trie, iNext);
-		while (context->_pCursor != context->trie->datroot && pNext->check != context->_iCursor) {
-			context->_iCursor = context->_pCursor->nf.failed;
-			context->_pCursor = getDatNode(context->trie, context->_iCursor);
+		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
+		while (context->_pCursor != context->trie->root &&
+			   pNext->check != context->_iCursor) {
+			context->_iCursor = context->_pCursor->dat_failed;
+			context->_pCursor = dat_access_node(context->trie,
+												context->_iCursor);
 			iNext = context->_pCursor->base + context->content[context->_i];
-			pNext = getDatNode(context->trie, iNext);
+			pNext = dat_access_node(context->trie, iNext);
 		}
 		if (pNext->check == context->_iCursor) {
 			context->_iCursor = iNext;
 			context->_pCursor = pNext;
-#ifdef EXTFLAG
-			while (pNext->lf.f.flag & 6) {
-#else
-			while (pNext != context->trie->datroot) {
-#endif
-				if (pNext->lf.f.flag & 2) {
-					context->_pMatched = pNext;
+			while (pNext != context->trie->root) {
+				if (pNext->dat_flag & 2) {
+					context->out_matched = pNext;
 					context->_i++;
 					return true;
 				}
-				pNext = getDatNode(context->trie, pNext->nf.failed);
+				pNext = dat_access_node(context->trie, pNext->dat_failed);
 			}
 		}
 	}

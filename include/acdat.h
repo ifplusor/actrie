@@ -5,49 +5,64 @@
 #include "actrie.h"
 
 
-typedef struct datnode {
-	size_t base,check;
+typedef struct dat_node {
+	size_t base, check;
 	union {
 		size_t next;
 		size_t failed;
-	} nf;
+	} dat_nf;
+#define dat_next   dat_nf.next
+#define dat_failed dat_nf.failed
 	union {
 		size_t last;
-		struct {
-			int depth;
-			unsigned char flag;
-			unsigned char key;
-		} f;
-	} lf;
-} datnode, *datnode_ptr;
+		const char *extra;
+	} dat_lf;
+#define dat_last   dat_lf.last
+#define dat_extra  dat_lf.extra
+	const char *keyword;
+#define dat_keyword keyword
+	unsigned short depth;
+#define dat_depth  depth
+	unsigned char flag;
+	unsigned char key;
+#define dat_flag   flag
+#define dat_key    key
+} dat_node, *dat_node_ptr;
 
-typedef struct datrie {
-	datnode_ptr _datnodepool[REGIONSIZE], _datlead;
-	datnode_ptr datroot;
-	int depth;
-} datrie, *datrie_ptr;
+typedef struct dat_trie {
+	dat_node_ptr _nodepool[REGION_SIZE];
+	dat_node_ptr _lead;
+	dat_node_ptr root;
+	match_dict_ptr dict;
+} dat_trie, *dat_trie_ptr;
 
-typedef struct datcontext {
-	datrie_ptr trie;
+typedef struct dat_context {
+	dat_trie_ptr trie;
 	unsigned char *content;
 	size_t len;
 
-	datnode_ptr _pCursor;
-	datnode_ptr _pMatched;
+	dat_node_ptr out_matched;
+	dat_node_ptr _pCursor;
 	size_t _iCursor;
 	size_t _i;
-} datcontext, *datcontext_ptr;
+} dat_context, *dat_context_ptr;
 
-void initDat(datrie_ptr self);
-void closeDat(datrie_ptr self);
-void constructDat(datrie_ptr self, trie_ptr origin);
-void matchDat(datrie_ptr self, unsigned char content[], size_t len);
-void constructDatAutomation(datrie_ptr self, trie_ptr origin);
-void matchAcdat(datrie_ptr self, unsigned char content[], size_t len);
+void dat_init(dat_trie_ptr self, match_dict_ptr dict);
 
-void initAcdatContext(datcontext_ptr context, datrie_ptr trie, unsigned char content[], size_t len);
-bool nextWithAcdat(datcontext_ptr context);
-int getMatchedInAcdat(datcontext_ptr context, unsigned char buffer[], size_t size);
+void dat_close(dat_trie_ptr self);
+
+void dat_construct(dat_trie_ptr self, trie_ptr origin);
+
+void dat_match(dat_trie_ptr self, unsigned char content[], size_t len);
+
+void dat_construct_automation(dat_trie_ptr self, trie_ptr origin);
+
+void dat_ac_match(dat_trie_ptr self, unsigned char content[], size_t len);
+
+void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
+					  unsigned char content[], size_t len);
+
+bool dat_ac_next(dat_context_ptr context);
 
 
-#endif
+#endif // _MATCH_ACDAT_H_
