@@ -33,7 +33,7 @@ typedef struct dat_trie {
 	dat_node_ptr _nodepool[REGION_SIZE];
 	dat_node_ptr _lead;
 	dat_node_ptr root;
-	match_dict_ptr dict;
+	match_dict_ptr _dict;
 } dat_trie, *dat_trie_ptr;
 
 typedef struct dat_context {
@@ -47,11 +47,10 @@ typedef struct dat_context {
 	size_t _i;
 } dat_context, *dat_context_ptr;
 
-void dat_init(dat_trie_ptr self, match_dict_ptr dict);
 
-void dat_close(dat_trie_ptr self);
+dat_trie_ptr dat_construct(trie_ptr origin);
 
-void dat_construct(dat_trie_ptr self, trie_ptr origin);
+void dat_release(dat_trie_ptr p);
 
 void dat_match(dat_trie_ptr self, unsigned char content[], size_t len);
 

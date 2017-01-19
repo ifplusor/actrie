@@ -56,20 +56,6 @@ trie_node_ptr trie_access_node_export(trie_ptr self, size_t index)
 	return &self->_nodepool[region][position];
 }
 
-void trie_init(trie_ptr self)
-{
-	for (int i = 0; i < POOL_REGION_SIZE; i++) self->_nodepool[i] = NULL;
-	self->_autoindex = 0;
-	self->root = trie_access_node(self, trie_alloc_node(self));
-}
-
-void trie_close(trie_ptr self)
-{
-	for (int i = 0; i < POOL_REGION_SIZE; i++) {
-		if (self->_nodepool[i] != NULL) free(self->_nodepool[i]);
-	}
-}
-
 bool trie_add_keyword(trie_ptr self, const unsigned char keyword[],
 					  size_t len, const char extra[])
 {
@@ -330,15 +316,78 @@ bool trie_fetch_key(const char keyword[], const char extra[], void *argv[])
 	return true;
 }
 
-bool trie_construct(trie_ptr self, FILE *fp, match_dict_ptr dict)
+trie_ptr trie_alloc()
 {
-	void *argv[] = {self};
-	if (!dict_parser(fp, dict, trie_fetch_key, argv))
-		return false;
+	trie_ptr p = (trie_ptr)malloc(sizeof(trie));
+	if (p == NULL)
+		goto trie_alloc_failed;
+
+	for (int i = 0; i < POOL_REGION_SIZE; i++)
+		p->_nodepool[i] = NULL;
+	p->_autoindex = 0;
+
+	size_t root = trie_alloc_node(p);
+	if (root == (size_t)-1)
+		goto trie_alloc_failed;
+
+	p->root = trie_access_node(p, root);
+	if (p->root == NULL)
+		goto trie_alloc_failed;
+
+	p->_dict = dict_alloc();
+	if (p->_dict == NULL)
+		goto trie_alloc_failed;
+
+	return p;
+
+trie_alloc_failed:
+	trie_release(p);
+	return NULL;
+}
+
+void trie_release(trie_ptr p)
+{
+	if (p != NULL) {
+		dict_release(p->_dict);
+		for (int i = 0; i < POOL_REGION_SIZE; i++) {
+			if (p->_nodepool[i] != NULL)
+				free(p->_nodepool[i]);
+		}
+		free(p);
+	}
+}
+
+trie_ptr trie_construct_by_file(FILE *fp)
+{
+	trie_ptr p = trie_alloc();
+	if (p == NULL)
+		return NULL;
+
+	void *argv[] = {p};
+	if (!dict_parser_by_file(fp, p->_dict, trie_fetch_key, argv)) {
+		trie_release(p);
+		return NULL;
+	}
 
 	//fprintf(stderr, "pattern: %zu, node: %zu\n", count, self->_autoindex);
 	fprintf(stderr, "construct trie succeed!\n");
-	return true;
+	return p;
+}
+
+trie_ptr trie_construct_by_s(const char *s)
+{
+	trie_ptr prime_trie = trie_alloc();
+	if (prime_trie == NULL) return NULL;
+
+	void *argv[] = {prime_trie};
+	if (!dict_parser_by_s(s, prime_trie->_dict, trie_fetch_key, argv)) {
+		trie_release(prime_trie);
+		return NULL;
+	}
+
+	//fprintf(stderr, "pattern: %zu, node: %zu\n", count, self->_autoindex);
+	fprintf(stderr, "construct trie succeed!\n");
+	return prime_trie;
 }
 
 void trie_sort_to_line(trie_ptr self)

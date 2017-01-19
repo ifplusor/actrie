@@ -54,48 +54,6 @@ static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self, size_t index)
 	return &self->_nodepool[region][position];
 }
 
-void dat_init(dat_trie_ptr self, match_dict_ptr dict)
-{
-	self->dict = dict;
-
-	for (int i = 0; i < POOL_REGION_SIZE; ++i) self->_nodepool[i] = NULL;
-	dat_node_ptr pnode = (dat_node_ptr) malloc(
-			sizeof(dat_node) * POOL_POSITION_SIZE);
-	if (pnode == NULL) {
-		fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
-		exit(-1);
-	}
-	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
-
-	self->_nodepool[0] = pnode;
-	self->_lead = &self->_nodepool[0][0];
-	self->root = &self->_nodepool[0][DAT_ROOT_IDX];
-
-	// 节点初始化
-	for (size_t i = 1; i < POOL_POSITION_SIZE; ++i) {
-		pnode[i].dat_next = i + 1;
-		pnode[i].dat_last = i - 1;
-	}
-	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
-	pnode[DAT_ROOT_IDX + 1].dat_last = 0;
-
-	self->_lead->dat_next = DAT_ROOT_IDX + 1;
-	self->_lead->dat_last = POOL_POSITION_SIZE - 1;
-	self->_lead->check = 1;
-
-	self->root->dat_depth = 0;
-}
-
-void dat_close(dat_trie_ptr self)
-{
-	for (int i = 0; i < POOL_REGION_SIZE; ++i) {
-		if (self->_nodepool[i] != NULL) free(self->_nodepool[i]);
-	}
-
-	dict_release(self->dict);
-	free(self->dict);
-}
-
 //static size_t count = 0;
 
 static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
@@ -190,12 +148,71 @@ static void dat_post_construct(dat_trie_ptr self)
 	}
 }
 
-void dat_construct(dat_trie_ptr self, trie_ptr origin)
+dat_trie_ptr dat_alloc()
 {
-	dat_construct_by_dfs(self, origin, origin->root, DAT_ROOT_IDX);
-	dat_post_construct(self);
+	dat_node_ptr pnode = (dat_node_ptr) malloc(
+			sizeof(dat_node) * POOL_POSITION_SIZE);
+	if (pnode == NULL) {
+		fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
+		return NULL;
+	}
+	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
+
+	dat_trie_ptr p = (dat_trie_ptr)malloc(sizeof(dat_trie));
+	if (p == NULL) {
+		return NULL;
+	}
+
+	for (int i = 0; i < POOL_REGION_SIZE; ++i)
+		p->_nodepool[i] = NULL;
+
+	p->_nodepool[0] = pnode;
+	p->_lead = &p->_nodepool[0][0];
+	p->root = &p->_nodepool[0][DAT_ROOT_IDX];
+
+	// 节点初始化
+	for (size_t i = 1; i < POOL_POSITION_SIZE; ++i) {
+		pnode[i].dat_next = i + 1;
+		pnode[i].dat_last = i - 1;
+	}
+	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
+	pnode[DAT_ROOT_IDX + 1].dat_last = 0;
+
+	p->_lead->dat_next = DAT_ROOT_IDX + 1;
+	p->_lead->dat_last = POOL_POSITION_SIZE - 1;
+	p->_lead->check = 1;
+
+	p->root->dat_depth = 0;
+
+	return p;
+}
+
+void dat_release(dat_trie_ptr p)
+{
+	if (p != NULL) {
+		dict_release(p->_dict);
+		for (int i = 0; i < POOL_REGION_SIZE; ++i) {
+			if (p->_nodepool[i] != NULL)
+				free(p->_nodepool[i]);
+		}
+		free(p);
+	}
+}
+
+dat_trie_ptr dat_construct(trie_ptr origin)
+{
+	dat_trie_ptr p = dat_alloc();
+	if (p == NULL)
+		return NULL;
+
+	p->_dict = dict_assign(origin->_dict);
+
+	dat_construct_by_dfs(p, origin, origin->root, DAT_ROOT_IDX);
+	dat_post_construct(p);
+
 	//fprintf(stderr, "pattern: %zu\n", count);
 	fprintf(stderr, "construct double-array trie succeed!\n");
+	return p;
 }
 
 int dat_print_keyword_by_recursion(dat_trie_ptr self, dat_node_ptr pNode)

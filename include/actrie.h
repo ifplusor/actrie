@@ -40,13 +40,15 @@ typedef struct trie {
 	trie_node_ptr _nodepool[REGION_SIZE];
 	size_t _autoindex;
 	trie_node_ptr root;
+	match_dict_ptr _dict;
 } trie;
 
-void trie_init(trie_ptr self);
 
-void trie_close(trie_ptr self);
+trie_ptr trie_construct_by_file(FILE *fp);
 
-bool trie_construct(trie_ptr self, FILE *fp, match_dict_ptr dict);
+trie_ptr trie_construct_by_s(const char *s);
+
+void trie_release(trie_ptr p);
 
 void trie_sort_to_line(trie_ptr self);
 

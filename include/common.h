@@ -29,7 +29,8 @@ typedef struct match_dict {
 	char *buff;
 	size_t size;
 	size_t _cursor;
-	size_t out_key_cur, out_extra_cur;
+	size_t _out_key_cur, _out_extra_cur;
+	int _ref_count;
 } match_dict, *match_dict_ptr;
 
 
@@ -40,10 +41,16 @@ extern const char *ALLOCATED_FLAG;
 
 long long system_millisecond();
 
+match_dict_ptr dict_alloc();
+
+match_dict_ptr dict_assign(match_dict_ptr dict);
+
 void dict_release(match_dict_ptr dict);
 
-bool dict_parser(FILE *fp, match_dict_ptr dict, dict_parser_callback callback,
-				 void *argv[]);
+bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
+						 dict_parser_callback callback, void *argv[]);
 
+bool dict_parser_by_s(const char *s, match_dict_ptr dict,
+					  dict_parser_callback callback, void *argv[]);
 
 #endif // _MATCH_COMMON_H_
