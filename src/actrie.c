@@ -12,9 +12,10 @@ size_t trie_size(trie_ptr self)
 static size_t trie_alloc_node(trie_ptr self)
 {
 	size_t region = self->_autoindex >> REGION_OFFSET;
-	size_t position = self->_autoindex & POSITION_MASK;
+//	size_t position = self->_autoindex & POSITION_MASK;
 #ifdef CHECK
-	if (region >= POOLREGIONSIZE) return (size_t)-1;
+	if (region >= POOL_REGION_SIZE)
+		return (size_t)-1;
 #endif // CHECK
 	if (self->_nodepool[region] == NULL) {
 		trie_node_ptr pnode =
@@ -24,9 +25,9 @@ static size_t trie_alloc_node(trie_ptr self)
 		memset(pnode, 0, sizeof(trie_node) * POOL_POSITION_SIZE);
 	}
 #ifdef CHECK
-	if (self->_nodepool[region][position].flag & 1) return (size_t)-1;
+	if (self->_autoindex == (size_t)-1)
+		return (size_t)-1;
 #endif // CHECK
-	self->_nodepool[region][position].flag |= 1;
 	return self->_autoindex++;
 }
 
@@ -35,8 +36,8 @@ static inline trie_node_ptr trie_access_node(trie_ptr self, size_t index)
 	size_t region = index >> REGION_OFFSET;
 	size_t position = index & POSITION_MASK;
 #ifdef CHECK
-	if (region >= POOLREGIONSIZE || self->_nodepool[region] == NULL
-			|| !(self->_nodepool[region][position].flag & 1)) {
+	if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
+			|| index >= self->_autoindex) {
 		return NULL;
 	}
 #endif // CHECK
@@ -48,8 +49,8 @@ trie_node_ptr trie_access_node_export(trie_ptr self, size_t index)
 	size_t region = index >> REGION_OFFSET;
 	size_t position = index & POSITION_MASK;
 #ifdef CHECK
-	if (region >= POOLREGIONSIZE || self->_nodepool[region] == NULL
-			|| !(self->_nodepool[region][position].flag & 1)) {
+	if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
+			|| index >= self->_autoindex) {
 		return NULL;
 	}
 #endif // CHECK
@@ -117,7 +118,6 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[],
 	}
 	pNode->trie_keyword = keyword;
 	pNode->trie_extra = extra;
-	pNode->flag |= 2;
 	return true;
 }
 
@@ -223,10 +223,6 @@ void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb)
 	pa->key ^= pb->key;
 	pb->key ^= pa->key;
 	pa->key ^= pb->key;
-
-	pa->flag ^= pb->flag;
-	pb->flag ^= pa->flag;
-	pa->flag ^= pb->flag;
 }
 
 size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
@@ -285,22 +281,6 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 		if (ibt != 0) trie_access_node(self, ibt)->trie_parent = iChild;
 	}
 	return pChild->brother;
-}
-
-int trie_print_keyword_by_recursion(trie_ptr self, trie_node_ptr pNode)
-{
-	if (pNode == self->root) return 0;
-
-	int pos = trie_print_keyword_by_recursion(
-			self, trie_access_node(self, pNode->trie_parent)) + 1;
-	putc(pNode->key, stdout);
-	return pos;
-}
-
-void trie_print_keyword(trie_ptr self, trie_node_ptr pNode)
-{
-	int len = trie_print_keyword_by_recursion(self, pNode);
-	putc('\n', stdout);
 }
 
 //static size_t count = 0;
@@ -394,7 +374,6 @@ void trie_sort_to_line(trie_ptr self)
 {
 	size_t iTarget = 1;
 	for (size_t i = 0; i < iTarget; i++) { // 隐式bfs队列
-		//printf("sort process: %d\n", i);
 		trie_node_ptr pNode = trie_access_node(self, i);
 		// 将pNode的子节点调整到iTarget位置（加入队列）
 		size_t iChild = pNode->child;
@@ -412,7 +391,8 @@ void trie_set_parent_by_dfs(trie_ptr self, size_t current, size_t parent)
 {
 	trie_node_ptr pNode = trie_access_node(self, current);
 	pNode->trie_parent = parent;
-	if (pNode->child != 0) trie_set_parent_by_dfs(self, pNode->child, current);
+	if (pNode->child != 0)
+		trie_set_parent_by_dfs(self, pNode->child, current);
 	if (pNode->brother != 0)
 		trie_set_parent_by_dfs(self, pNode->brother, parent);
 }
@@ -467,7 +447,8 @@ void trie_ac_match(trie_ptr self, unsigned char content[], size_t len)
 		}
 		pCursor = pNext;
 		while (pNext != self->root) {
-			if (pNext->flag & 2) trie_print_keyword(self, pNext);
+			if (pNext->trie_keyword != NULL)
+				printf("%s\n", pNext->trie_keyword);
 			pNext = trie_access_node(self, pNext->trie_failed);
 		}
 	}

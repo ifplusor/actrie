@@ -33,7 +33,6 @@ typedef struct trie_node { // 十字链表实现字典树
 #define trie_p0      trie_kp.placeholder
 	unsigned char len;  // 一个结点只存储 1 byte 数据
 	unsigned char key;
-	unsigned char flag;
 } trie_node;
 
 typedef struct trie {

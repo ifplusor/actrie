@@ -35,14 +35,14 @@ static void dat_alloc_nodepool(dat_trie_ptr self, size_t region)
 	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
 	size_t offset = region << REGION_OFFSET;
 	for (int i = 0; i < POOL_POSITION_SIZE; ++i) {
-		pnode[i].dat_next = offset + i + 1;
-		pnode[i].dat_last = offset + i - 1;
+		pnode[i].dat_free_next = offset + i + 1;
+		pnode[i].dat_free_last = offset + i - 1;
 	}
-	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
+	pnode[POOL_POSITION_SIZE - 1].dat_free_next = 0;
 
-	pnode[0].dat_last = self->_lead->dat_last;
-	dat_access_node(self, self->_lead->dat_last)->dat_next = offset;
-	self->_lead->dat_last = offset + POOL_POSITION_SIZE - 1;
+	pnode[0].dat_free_last = self->_lead->dat_free_last;
+	dat_access_node(self, self->_lead->dat_free_last)->dat_free_next = offset;
+	self->_lead->dat_free_last = offset + POOL_POSITION_SIZE - 1;
 }
 
 static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self, size_t index)
@@ -62,8 +62,6 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 	dat_node_ptr pDatNode = dat_access_node(self, datindex);
 	pDatNode->dat_keyword = pNode->trie_keyword;
 	pDatNode->dat_extra = pNode->trie_extra;
-	pDatNode->dat_key = pNode->key;
-	pDatNode->dat_flag = pNode->flag;
 
 	/*if (pDatNode->dat_flag & 2) {
 		count++;
@@ -78,7 +76,7 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 		child[len++] = pChild->key;
 		pChild = trie_access_node_export(origin, pChild->brother);
 	}
-	size_t pos = self->_lead->dat_next;
+	size_t pos = self->_lead->dat_free_next;
 	while (1) {
 		if (pos == 0) {
 			// 扩容
@@ -106,16 +104,15 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 			// 分配子节点
 			dat_node_ptr pDatChild = dat_access_node(self, base + child[i]);
 			pDatChild->check = datindex;
-			dat_access_node(self, pDatChild->dat_next)->dat_last =
-					pDatChild->dat_last;
-			dat_access_node(self, pDatChild->dat_last)->dat_next =
-					pDatChild->dat_next;
-			// 对depth的改变要放在last指针改变之后
+			dat_access_node(self, pDatChild->dat_free_next)->dat_free_last =
+					pDatChild->dat_free_last;
+			dat_access_node(self, pDatChild->dat_free_last)->dat_free_next =
+					pDatChild->dat_free_next;
 			pDatChild->dat_depth = pDatNode->dat_depth + 1;
 		}
 		break;
 		checkfailed:
-		pos = dat_access_node(self, pos)->dat_next;
+		pos = dat_access_node(self, pos)->dat_free_next;
 	}
 
 	// 构建子树
@@ -158,7 +155,7 @@ dat_trie_ptr dat_alloc()
 	}
 	memset(pnode, 0, sizeof(dat_node) * POOL_POSITION_SIZE);
 
-	dat_trie_ptr p = (dat_trie_ptr)malloc(sizeof(dat_trie));
+	dat_trie_ptr p = (dat_trie_ptr) malloc(sizeof(dat_trie));
 	if (p == NULL) {
 		return NULL;
 	}
@@ -172,14 +169,14 @@ dat_trie_ptr dat_alloc()
 
 	// 节点初始化
 	for (size_t i = 1; i < POOL_POSITION_SIZE; ++i) {
-		pnode[i].dat_next = i + 1;
-		pnode[i].dat_last = i - 1;
+		pnode[i].dat_free_next = i + 1;
+		pnode[i].dat_free_last = i - 1;
 	}
-	pnode[POOL_POSITION_SIZE - 1].dat_next = 0;
-	pnode[DAT_ROOT_IDX + 1].dat_last = 0;
+	pnode[POOL_POSITION_SIZE - 1].dat_free_next = 0;
+	pnode[DAT_ROOT_IDX + 1].dat_free_last = 0;
 
-	p->_lead->dat_next = DAT_ROOT_IDX + 1;
-	p->_lead->dat_last = POOL_POSITION_SIZE - 1;
+	p->_lead->dat_free_next = DAT_ROOT_IDX + 1;
+	p->_lead->dat_free_last = POOL_POSITION_SIZE - 1;
 	p->_lead->check = 1;
 
 	p->root->dat_depth = 0;
@@ -215,39 +212,6 @@ dat_trie_ptr dat_construct(trie_ptr origin)
 	return p;
 }
 
-int dat_print_keyword_by_recursion(dat_trie_ptr self, dat_node_ptr pNode)
-{
-	if (pNode == self->root) return 0;
-
-	int pos = dat_print_keyword_by_recursion(
-			self, dat_access_node(self, pNode->check)) + 1;
-	putc(pNode->dat_key, stdout);
-	return pos;
-}
-
-void dat_print_keyword(dat_trie_ptr self, dat_node_ptr pNode)
-{
-	int len = dat_print_keyword_by_recursion(self, pNode);
-	putc('\n', stdout);
-}
-
-void dat_match(dat_trie_ptr self, unsigned char content[], size_t len)
-{
-	for (size_t i = 0; i < len; ++i) {
-		size_t iCursor = DAT_ROOT_IDX;
-		dat_node_ptr pCursor = self->root;
-		for (size_t j = i; j < len; ++j) {
-			size_t iNext = pCursor->base + content[i];
-			dat_node_ptr pNext = dat_access_node(self, iNext);
-			if (pNext->check != iCursor) break;
-			if (pNext->dat_flag & 2) dat_print_keyword(self, pNext);
-			iCursor = iNext;
-			pCursor = pNext;
-		}
-	}
-}
-
-
 void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 {
 	trie_node_ptr pNode = origin->root;
@@ -272,7 +236,8 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 			size_t iFailed = pNode->trie_failed;
 			size_t match = trie_next_state_by_binary(origin, iFailed, key);
 			while (iFailed != 0 && match == 0) {
-				iFailed = trie_access_node_export(origin, iFailed)->trie_failed;
+				iFailed = trie_access_node_export(origin,
+												  iFailed)->trie_failed;
 				match = trie_next_state_by_binary(origin, iFailed, key);
 			}
 			pChild->trie_failed = match;
@@ -288,33 +253,8 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-void dat_ac_match(dat_trie_ptr self, unsigned char content[], size_t len)
-{
-	size_t iCursor = DAT_ROOT_IDX;
-	dat_node_ptr pCursor = self->root;
-	for (size_t i = 0; i < len; ++i) {
-		size_t iNext = pCursor->base + content[i];
-		dat_node_ptr pNext = dat_access_node(self, iNext);
-		while (pCursor != self->root && pNext->check != iCursor) {
-			iCursor = pCursor->dat_failed;
-			pCursor = dat_access_node(self, iCursor);
-			iNext = pCursor->base + content[i];
-			pNext = dat_access_node(self, iNext);
-		}
-		if (pNext->check == iCursor) {
-			iCursor = iNext;
-			pCursor = pNext;
-			while (pNext != self->root) {
-				if (pNext->dat_flag & 2)
-					dat_print_keyword(self, pNext);
-				pNext = dat_access_node(self, pNext->dat_failed);
-			}
-		}
-	}
-}
 
-
-// Acdat Context
+// dat Context
 // ===================================================
 
 void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
@@ -324,42 +264,81 @@ void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
 	context->content = content;
 	context->len = len;
 
+	context->out_e = 0;
 	context->_i = 0;
 	context->_iCursor = DAT_ROOT_IDX;
 	context->_pCursor = context->trie->root;
 	context->out_matched = context->trie->root;
 }
 
-bool dat_ac_next(dat_context_ptr context)
+bool dat_next(dat_context_ptr context)
 {
-	// 检查当前匹配点向树根的路径上是否还有匹配的词
-	while (context->out_matched != context->trie->root) {
-		context->out_matched = dat_access_node(context->trie,
-											 context->out_matched->dat_failed);
-		if (context->out_matched->dat_flag & 2) {
+	for (; context->out_e < context->len; context->out_e++) {
+		size_t iNext = context->_pCursor->base + context->content[context->out_e];
+		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
+		if (pNext->check != context->_iCursor)
+			break;
+		context->_iCursor = iNext;
+		context->_pCursor = pNext;
+		if (pNext->dat_keyword != NULL){
+			context->out_matched = pNext;
+			context->out_e++;
 			return true;
 		}
 	}
 
+	for (context->_i++; context->_i < context->len; context->_i++) {
+		context->_iCursor = DAT_ROOT_IDX;
+		context->_pCursor = context->trie->root;
+		for (context->out_e = context->_i; context->out_e < context->len;
+			 context->out_e++) {
+			size_t iNext =
+					context->_pCursor->base + context->content[context->out_e];
+			dat_node_ptr pNext = dat_access_node(context->trie, iNext);
+			if (pNext->check != context->_iCursor)
+				break;
+			context->_iCursor = iNext;
+			context->_pCursor = pNext;
+			if (pNext->dat_keyword != NULL){
+				context->out_matched = pNext;
+				context->out_e++;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool dat_ac_next(dat_context_ptr context)
+{
+	// 检查当前匹配点向树根的路径上是否还有匹配的词
+	while (context->out_matched != context->trie->root) {
+		context->out_matched =
+				dat_access_node(context->trie,
+								context->out_matched->dat_failed);
+		if (context->out_matched->dat_keyword != NULL)
+			return true;
+	}
+
 	// 执行匹配
-	for (; context->_i < context->len; context->_i++) {
-		size_t iNext = context->_pCursor->base + context->content[context->_i];
+	for (; context->out_e < context->len; context->out_e++) {
+		size_t iNext = context->_pCursor->base + context->content[context->out_e];
 		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
 		while (context->_pCursor != context->trie->root &&
 			   pNext->check != context->_iCursor) {
 			context->_iCursor = context->_pCursor->dat_failed;
 			context->_pCursor = dat_access_node(context->trie,
 												context->_iCursor);
-			iNext = context->_pCursor->base + context->content[context->_i];
+			iNext = context->_pCursor->base + context->content[context->out_e];
 			pNext = dat_access_node(context->trie, iNext);
 		}
 		if (pNext->check == context->_iCursor) {
 			context->_iCursor = iNext;
 			context->_pCursor = pNext;
 			while (pNext != context->trie->root) {
-				if (pNext->dat_flag & 2) {
+				if (pNext->dat_keyword != NULL) {
 					context->out_matched = pNext;
-					context->_i++;
+					context->out_e++;
 					return true;
 				}
 				pNext = dat_access_node(context->trie, pNext->dat_failed);
