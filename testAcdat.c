@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 				int len = context.out_matched->dat_depth;
 				if (len > 0) {
 					printf("%zu,%zu,%d: %s\n", context.out_e-len, context.out_e, len,
-						   context.out_matched->dat_keyword);
+						   context.out_matched_index->keyword);
 				} else {
 					fprintf(stderr, "size is small.\n");
 				}

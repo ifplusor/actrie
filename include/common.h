@@ -22,14 +22,23 @@
 #define MAX_LINE_SIZE 1024*1024
 
 
-typedef bool (*dict_parser_callback)(const char keyword[], const char extra[],
-									 void *argv[]);
+typedef struct match_dict_index {
+	const char *keyword;
+	const char *extra;
+	struct match_dict_index *next;
+} match_dict_index, *match_dict_index_ptr;
+
+typedef bool (*dict_parser_callback)(match_dict_index_ptr index, void *argv[]);
 
 typedef struct match_dict {
+	match_dict_index_ptr index;
+	size_t count;
+
 	char *buff;
 	size_t size;
 	size_t _cursor;
 	size_t _out_key_cur, _out_extra_cur;
+
 	int _ref_count;
 } match_dict, *match_dict_ptr;
 

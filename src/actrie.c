@@ -57,8 +57,8 @@ trie_node_ptr trie_access_node_export(trie_ptr self, size_t index)
 	return &self->_nodepool[region][position];
 }
 
-bool trie_add_keyword(trie_ptr self, const unsigned char keyword[],
-					  size_t len, const char extra[])
+bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
+					  match_dict_index_ptr index)
 {
 	trie_node_ptr pNode = self->root;
 	size_t iNode = 0; // iParent保存pNode的index
@@ -116,8 +116,9 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[],
 			pNode = pc;
 		}
 	}
-	pNode->trie_keyword = keyword;
-	pNode->trie_extra = extra;
+	if (pNode->trie_dictidx != NULL)
+		index->next = pNode->trie_dictidx;
+	pNode->trie_dictidx = index;
 	return true;
 }
 
@@ -184,15 +185,10 @@ void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb)
 	pb->trie_parent ^= pa->trie_parent;
 	pa->trie_parent ^= pb->trie_parent;
 
-	// keyword
+	// dict index
 	pa->trie_p0 ^= pb->trie_p0;
 	pb->trie_p0 ^= pa->trie_p0;
 	pa->trie_p0 ^= pb->trie_p0;
-
-	// extra
-	pa->trie_p1 ^= pb->trie_p1;
-	pb->trie_p1 ^= pa->trie_p1;
-	pa->trie_p1 ^= pb->trie_p1;
 
 	pa->len ^= pb->len;
 	pb->len ^= pa->len;
@@ -263,10 +259,11 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 
 //static size_t count = 0;
 
-bool trie_fetch_key(const char keyword[], const char extra[], void *argv[])
+bool trie_fetch_key(match_dict_index_ptr index, void *argv[])
 {
 	trie_ptr trie = argv[0];
-	if (!trie_add_keyword(trie, keyword, strlen(keyword), extra)) {
+	if (!trie_add_keyword(trie, index->keyword, strlen(index->keyword),
+						  index)) {
 		fprintf(stderr, "fatal: encounter error when add keywords.\n");
 		return false;
 	}
@@ -424,8 +421,8 @@ void trie_ac_match(trie_ptr self, unsigned char content[], size_t len)
 		}
 		pCursor = pNext;
 		while (pNext != self->root) {
-			if (pNext->trie_keyword != NULL)
-				printf("%s\n", pNext->trie_keyword);
+			if (pNext->trie_dictidx != NULL)
+				printf("%s\n", pNext->trie_dictidx->keyword);
 			pNext = trie_access_node(self, pNext->trie_failed);
 		}
 	}

@@ -29,17 +29,11 @@ typedef struct trie_node { // 十字链表实现字典树
 #define trie_parent   trie_pd.parent
 #define trie_datidx   trie_pd.datidx
 	union {
-		const char *keyword;
+		match_dict_index_ptr dictidx;
 		size_t placeholder;
-	} trie_kp;
-#define trie_keyword  trie_kp.keyword
-#define trie_p0       trie_kp.placeholder
-	union {
-		const char *extra;
-		size_t placeholder;
-	} trie_ep;
-#define trie_extra    trie_ep.extra
-#define trie_p1       trie_ep.placeholder
+	} trie_dp;
+#define trie_dictidx  trie_dp.dictidx
+#define trie_p0       trie_dp.placeholder
 	unsigned char len;  // 一个结点只存储 1 byte 数据
 	unsigned char key;
 } trie_node;

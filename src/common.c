@@ -46,15 +46,24 @@ void dict_release(match_dict_ptr dict)
 	}
 }
 
-bool dict_reset(match_dict_ptr dict, size_t size)
+bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
 {
 	if (dict->buff != NULL)
 		free(dict->buff);
 
-	dict->size = size;
-	dict->buff = malloc(sizeof(char) * dict->size);
-	if (dict->buff == NULL)
+	dict->count = index_count;
+	dict->index = malloc(sizeof(match_dict_index) * dict->count);
+	if (dict->index == NULL)
 		return false;
+
+	dict->size = buffer_size;
+	dict->buff = malloc(sizeof(char) * dict->size);
+	if (dict->buff == NULL) {
+		free(dict->index);
+		return false;
+	}
+
+	memset(dict->index, 0, sizeof(match_dict_index) * dict->count);
 	memset(dict->buff, 0, sizeof(char) * dict->size);
 	dict->_cursor = 1;
 	return true;
@@ -94,8 +103,15 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 		return false;
 	}
 
+	// 计算词典条目数
+	size_t count = 0;
+	fseek(fp, 0, SEEK_SET);
+	while (fgets(line_buf, MAX_LINE_SIZE, fp) != NULL) {
+		count++;
+	}
+
 	fseek(fp, 0, SEEK_END);
-	if (!dict_reset(dict, (size_t)ftell(fp) + 5))
+	if (!dict_reset(dict, count, (size_t)ftell(fp) + 5))
 		return false;
 
 	size_t i = 0;
@@ -145,10 +161,10 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 
 		// 将 keyword 和 extra 加入 match_dict
 		dict_add_keyword_and_extra(dict, keyword, extra);
-		/*printf("%s : %s\n", keyword, extra);*/
+		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
+		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
 
-		if (!callback(dict->buff + dict->_out_key_cur,
-					  dict->buff + dict->_out_extra_cur, argv))
+		if (!callback(dict->index + i, argv))
 			return false;
 
 		i++;
@@ -171,10 +187,17 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 		return false;
 	}
 
-	if (!dict_reset(dict, strlen(s))) return false;
+	// 计算词典条目数
+	size_t count = 0;
+	char *work_s = strdup(s);
+	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
+		count++;
+	}
+
+	if (!dict_reset(dict, count, strlen(s)))
+		return false;
 
 	size_t i = 0;
-	char *work_s = strdup(s);
 	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
 		int ret;
 		if (!i
@@ -220,10 +243,10 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 
 		// 将 keyword 和 extra 加入 match_dict
 		dict_add_keyword_and_extra(dict, keyword, extra);
-		/*printf("%s : %s\n", keyword, extra);*/
+		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
+		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
 
-		if (!callback(dict->buff + dict->_out_key_cur,
-					  dict->buff + dict->_out_extra_cur, argv))
+		if (!callback(dict->index + i, argv))
 			return false;
 
 		i++;

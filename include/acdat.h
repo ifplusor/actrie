@@ -16,13 +16,11 @@ typedef struct dat_node {
 #define dat_failed      dat_nf.failed
 	union {
 		size_t last;
-		const char *keyword;
-	} dat_lk;
-#define dat_free_last   dat_lk.last
-#define dat_keyword     dat_lk.keyword
-	const char *extra;
-#define dat_extra       extra
-	int depth;
+		match_dict_index_ptr dictidx;  // out 表
+	} dat_ld;
+#define dat_free_last   dat_ld.last
+#define dat_dictidx     dat_ld.dictidx
+	int depth;  // 可以从 strlen(dictidx.keyword) 导出
 #define dat_depth       depth
 } dat_node, *dat_node_ptr;
 
@@ -37,6 +35,8 @@ typedef struct dat_context {
 	dat_trie_ptr    trie;
 	unsigned char   *content;
 	size_t          len;
+
+	match_dict_index_ptr out_matched_index;
 
 	dat_node_ptr    out_matched;
 	dat_node_ptr    _pCursor;

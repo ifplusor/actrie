@@ -60,8 +60,7 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 								 trie_node_ptr pNode, size_t datindex)
 {
 	dat_node_ptr pDatNode = dat_access_node(self, datindex);
-	pDatNode->dat_keyword = pNode->trie_keyword;
-	pDatNode->dat_extra = pNode->trie_extra;
+	pDatNode->dat_dictidx = pNode->trie_dictidx;
 
 	/*if (pDatNode->dat_flag & 2) {
 		count++;
@@ -268,10 +267,18 @@ void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
 	context->_iCursor = DAT_ROOT_IDX;
 	context->_pCursor = context->trie->root;
 	context->out_matched = context->trie->root;
+
+	context->out_matched_index = NULL;
 }
 
 bool dat_next(dat_context_ptr context)
 {
+	if (context->out_matched_index != NULL) {
+		context->out_matched_index = context->out_matched_index->next;
+		if (context->out_matched_index != NULL)
+			return true;
+	}
+
 	for (; context->out_e < context->len; context->out_e++) {
 		size_t iNext =
 				context->_pCursor->base + context->content[context->out_e];
@@ -280,8 +287,9 @@ bool dat_next(dat_context_ptr context)
 			break;
 		context->_iCursor = iNext;
 		context->_pCursor = pNext;
-		if (pNext->dat_keyword != NULL) {
+		if (pNext->dat_dictidx != NULL) {
 			context->out_matched = pNext;
+			context->out_matched_index = context->out_matched->dat_dictidx;
 			context->out_e++;
 			return true;
 		}
@@ -299,8 +307,9 @@ bool dat_next(dat_context_ptr context)
 				break;
 			context->_iCursor = iNext;
 			context->_pCursor = pNext;
-			if (pNext->dat_keyword != NULL) {
+			if (pNext->dat_dictidx != NULL) {
 				context->out_matched = pNext;
+				context->out_matched_index = context->out_matched->dat_dictidx;
 				context->out_e++;
 				return true;
 			}
@@ -311,13 +320,21 @@ bool dat_next(dat_context_ptr context)
 
 bool dat_ac_next(dat_context_ptr context)
 {
+	if (context->out_matched_index != NULL) {
+		context->out_matched_index = context->out_matched_index->next;
+		if (context->out_matched_index != NULL)
+			return true;
+	}
+
 	// 检查当前匹配点向树根的路径上是否还有匹配的词
 	while (context->out_matched != context->trie->root) {
 		context->out_matched =
 				dat_access_node(context->trie,
 								context->out_matched->dat_failed);
-		if (context->out_matched->dat_keyword != NULL)
+		if (context->out_matched->dat_dictidx != NULL) {
+			context->out_matched_index = context->out_matched->dat_dictidx;
 			return true;
+		}
 	}
 
 	// 执行匹配
@@ -337,8 +354,10 @@ bool dat_ac_next(dat_context_ptr context)
 			context->_iCursor = iNext;
 			context->_pCursor = pNext;
 			while (pNext != context->trie->root) {
-				if (pNext->dat_keyword != NULL) {
+				if (pNext->dat_dictidx != NULL) {
 					context->out_matched = pNext;
+					context->out_matched_index =
+							context->out_matched->dat_dictidx;
 					context->out_e++;
 					return true;
 				}
