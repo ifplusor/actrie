@@ -6,42 +6,43 @@
 
 
 typedef struct dat_node {
-	size_t base, check;
+	size_t base;
+	size_t check;
 	union {
 		size_t next;
 		size_t failed;
 	} dat_nf;
 #define dat_free_next   dat_nf.next
-#define dat_failed dat_nf.failed
+#define dat_failed      dat_nf.failed
 	union {
 		size_t last;
-		const char *extra;
-	} dat_lf;
-#define dat_free_last   dat_lf.last
-#define dat_extra  dat_lf.extra
-	const char *keyword;
-#define dat_keyword keyword
+		const char *keyword;
+	} dat_lk;
+#define dat_free_last   dat_lk.last
+#define dat_keyword     dat_lk.keyword
+	const char *extra;
+#define dat_extra       extra
 	int depth;
-#define dat_depth  depth
+#define dat_depth       depth
 } dat_node, *dat_node_ptr;
 
 typedef struct dat_trie {
-	dat_node_ptr _nodepool[REGION_SIZE];
-	dat_node_ptr _lead;
-	dat_node_ptr root;
-	match_dict_ptr _dict;
+	dat_node_ptr    _nodepool[REGION_SIZE];
+	dat_node_ptr    _lead;
+	dat_node_ptr    root;
+	match_dict_ptr  _dict;
 } dat_trie, *dat_trie_ptr;
 
 typedef struct dat_context {
-	dat_trie_ptr trie;
-	unsigned char *content;
-	size_t len;
+	dat_trie_ptr    trie;
+	unsigned char   *content;
+	size_t          len;
 
-	dat_node_ptr out_matched;
-	dat_node_ptr _pCursor;
-	size_t _iCursor;
-	size_t _i;
-	size_t out_e;
+	dat_node_ptr    out_matched;
+	dat_node_ptr    _pCursor;
+	size_t          _iCursor;
+	size_t          _i;
+	size_t          out_e;
 } dat_context, *dat_context_ptr;
 
 

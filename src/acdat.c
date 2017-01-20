@@ -67,14 +67,14 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 		count++;
 	}*/
 
-	if (pNode->child == 0) return;
+	if (pNode->trie_child == 0) return;
 
 	unsigned char child[256];
 	int len = 0;
-	trie_node_ptr pChild = trie_access_node_export(origin, pNode->child);
+	trie_node_ptr pChild = trie_access_node_export(origin, pNode->trie_child);
 	while (pChild != origin->root) {
 		child[len++] = pChild->key;
-		pChild = trie_access_node_export(origin, pChild->brother);
+		pChild = trie_access_node_export(origin, pChild->trie_brother);
 	}
 	size_t pos = self->_lead->dat_free_next;
 	while (1) {
@@ -116,11 +116,11 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 	}
 
 	// 构建子树
-	pChild = trie_access_node_export(origin, pNode->child);
+	pChild = trie_access_node_export(origin, pNode->trie_child);
 	while (pChild != origin->root) {
 		pChild->trie_datidx = pDatNode->base + pChild->key;
 		dat_construct_by_dfs(self, origin, pChild, pChild->trie_datidx);
-		pChild = trie_access_node_export(origin, pChild->brother);
+		pChild = trie_access_node_export(origin, pChild->trie_brother);
 	}
 }
 
@@ -215,20 +215,19 @@ dat_trie_ptr dat_construct(trie_ptr origin)
 void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 {
 	trie_node_ptr pNode = origin->root;
-	size_t iChild = pNode->child;
+	size_t iChild = pNode->trie_child;
 	while (iChild != 0) {
 		trie_node_ptr pChild = trie_access_node_export(origin, iChild);
 
 		// 设置 failed 域
+		iChild = pChild->trie_brother;
 		pChild->trie_failed = 0;
 		dat_access_node(self, pChild->trie_datidx)->dat_failed = DAT_ROOT_IDX;
-
-		iChild = pChild->brother;
 	}
 
 	for (size_t index = 1; index < trie_size(origin); index++) { // bfs
 		pNode = trie_access_node_export(origin, index);
-		iChild = pNode->child;
+		iChild = pNode->trie_child;
 		while (iChild != 0) {
 			trie_node_ptr pChild = trie_access_node_export(origin, iChild);
 			unsigned char key = pChild->key;
@@ -240,6 +239,7 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 												  iFailed)->trie_failed;
 				match = trie_next_state_by_binary(origin, iFailed, key);
 			}
+			iChild = pChild->trie_brother;
 			pChild->trie_failed = match;
 
 			// 设置 DAT 的 failed 域
@@ -247,7 +247,6 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 					match != 0 ?
 					trie_access_node_export(origin, match)->trie_datidx :
 					DAT_ROOT_IDX;
-			iChild = pChild->brother;
 		}
 	}
 	fprintf(stderr, "construct AC automation succeed!\n");
@@ -274,13 +273,14 @@ void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
 bool dat_next(dat_context_ptr context)
 {
 	for (; context->out_e < context->len; context->out_e++) {
-		size_t iNext = context->_pCursor->base + context->content[context->out_e];
+		size_t iNext =
+				context->_pCursor->base + context->content[context->out_e];
 		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
 		if (pNext->check != context->_iCursor)
 			break;
 		context->_iCursor = iNext;
 		context->_pCursor = pNext;
-		if (pNext->dat_keyword != NULL){
+		if (pNext->dat_keyword != NULL) {
 			context->out_matched = pNext;
 			context->out_e++;
 			return true;
@@ -299,7 +299,7 @@ bool dat_next(dat_context_ptr context)
 				break;
 			context->_iCursor = iNext;
 			context->_pCursor = pNext;
-			if (pNext->dat_keyword != NULL){
+			if (pNext->dat_keyword != NULL) {
 				context->out_matched = pNext;
 				context->out_e++;
 				return true;
@@ -322,7 +322,8 @@ bool dat_ac_next(dat_context_ptr context)
 
 	// 执行匹配
 	for (; context->out_e < context->len; context->out_e++) {
-		size_t iNext = context->_pCursor->base + context->content[context->out_e];
+		size_t iNext =
+				context->_pCursor->base + context->content[context->out_e];
 		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
 		while (context->_pCursor != context->trie->root &&
 			   pNext->check != context->_iCursor) {
