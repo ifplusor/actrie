@@ -8,6 +8,63 @@ const size_t POOL_POSITION_SIZE = POSITION_MASK + 1;
 
 const char *ALLOCATED_FLAG = "";
 
+const bool alpha_number_bitmap[256] = {
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
+		0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+		0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+const bool alpha_bitmap[256] = {
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+		0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+const bool number_bitmap[256] = {
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
 long long system_millisecond()
 {
 	struct timeb t;
@@ -75,10 +132,20 @@ bool dict_add_keyword_and_extra(match_dict_ptr dict, char keyword[],
 	if (keyword == NULL || keyword[0] == '\0') {
 		dict->_out_key_cur = 0;
 		dict->_out_extra_cur = 0;
+		dict->_out_type = match_dict_keyword_type_empty;
 	} else {
+		enum match_dict_keyword_type type = match_dict_keyword_type_alpha_number;
+		for (int i = 0; i < strlen(keyword); i++) {
+			if (!alpha_number_bitmap[(unsigned char)keyword[i]]) {
+				type = match_dict_keyword_type_normal;
+				break;
+			}
+		}
+
 		strcpy(dict->buff + dict->_cursor, keyword);
 		dict->_out_key_cur = dict->_cursor;
 		dict->_cursor += strlen(keyword) + 1;
+		dict->_out_type = type;
 
 		if (extra == NULL || extra[0] == '\0') {
 			dict->_out_extra_cur = 0;
@@ -163,6 +230,7 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 		dict_add_keyword_and_extra(dict, keyword, extra);
 		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
 		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
+		dict->index[i].type = dict->_out_type;
 
 		if (!callback(dict->index + i, argv))
 			return false;
@@ -245,6 +313,7 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 		dict_add_keyword_and_extra(dict, keyword, extra);
 		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
 		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
+		dict->index[i].type = dict->_out_type;
 
 		if (!callback(dict->index + i, argv))
 			return false;

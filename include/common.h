@@ -22,10 +22,17 @@
 #define MAX_LINE_SIZE 1024*1024
 
 
+enum match_dict_keyword_type {
+	match_dict_keyword_type_normal = 0,
+	match_dict_keyword_type_alpha_number = 1,
+	match_dict_keyword_type_empty = 2
+};
+
 typedef struct match_dict_index {
+	struct match_dict_index *next;
 	const char *keyword;
 	const char *extra;
-	struct match_dict_index *next;
+	enum match_dict_keyword_type type;
 } match_dict_index, *match_dict_index_ptr;
 
 typedef bool (*dict_parser_callback)(match_dict_index_ptr index, void *argv[]);
@@ -38,6 +45,7 @@ typedef struct match_dict {
 	size_t size;
 	size_t _cursor;
 	size_t _out_key_cur, _out_extra_cur;
+	enum match_dict_keyword_type _out_type;
 
 	int _ref_count;
 } match_dict, *match_dict_ptr;
@@ -47,6 +55,9 @@ extern const size_t POOL_REGION_SIZE;
 extern const size_t POOL_POSITION_SIZE;
 
 extern const char *ALLOCATED_FLAG;
+
+extern const bool alpha_number_bitmap[256];
+
 
 long long system_millisecond();
 
