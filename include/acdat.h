@@ -57,7 +57,9 @@ void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
 
 bool dat_next(dat_context_ptr context);
 
-bool dat_ac_next(dat_context_ptr context);
+bool dat_ac_next_on_node(dat_context_ptr context);
+
+bool dat_ac_next_on_index(dat_context_ptr context);
 
 
 #endif // _MATCH_ACDAT_H_

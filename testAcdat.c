@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		long long s5 = system_millisecond();
 		while (fgets(company, 100000, fpcorpus) != NULL) {
 			dat_init_context(&context, dat, company, strlen(company));
-			while (dat_ac_next(&context)) {
+			while (dat_ac_next_on_index(&context)) {
 				int len = context.out_matched->dat_depth;
 				if (len > 0) {
 					printf("%zu,%zu,%d: %s\n", context.out_e-len, context.out_e, len,

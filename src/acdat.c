@@ -318,8 +318,53 @@ bool dat_next(dat_context_ptr context)
 	return false;
 }
 
-bool dat_ac_next(dat_context_ptr context)
+bool dat_ac_next_on_node(dat_context_ptr context)
 {
+	// 检查当前匹配点向树根的路径上是否还有匹配的词
+	while (context->out_matched != context->trie->root) {
+		context->out_matched =
+				dat_access_node(context->trie,
+								context->out_matched->dat_failed);
+		if (context->out_matched->dat_dictidx != NULL) {
+			context->out_matched_index = context->out_matched->dat_dictidx;
+			return true;
+		}
+	}
+
+	// 执行匹配
+	for (; context->out_e < context->len; context->out_e++) {
+		size_t iNext =
+				context->_pCursor->base + context->content[context->out_e];
+		dat_node_ptr pNext = dat_access_node(context->trie, iNext);
+		while (context->_pCursor != context->trie->root &&
+			   pNext->check != context->_iCursor) {
+			context->_iCursor = context->_pCursor->dat_failed;
+			context->_pCursor = dat_access_node(context->trie,
+												context->_iCursor);
+			iNext = context->_pCursor->base + context->content[context->out_e];
+			pNext = dat_access_node(context->trie, iNext);
+		}
+		if (pNext->check == context->_iCursor) {
+			context->_iCursor = iNext;
+			context->_pCursor = pNext;
+			while (pNext != context->trie->root) {
+				if (pNext->dat_dictidx != NULL) {
+					context->out_matched = pNext;
+					context->out_matched_index =
+							context->out_matched->dat_dictidx;
+					context->out_e++;
+					return true;
+				}
+				pNext = dat_access_node(context->trie, pNext->dat_failed);
+			}
+		}
+	}
+	return false;
+}
+
+bool dat_ac_next_on_index(dat_context_ptr context)
+{
+	// 检查 index 列表
 	if (context->out_matched_index != NULL) {
 		context->out_matched_index = context->out_matched_index->next;
 		if (context->out_matched_index != NULL)

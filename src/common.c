@@ -261,11 +261,13 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
 		count++;
 	}
+	free(work_s);
 
 	if (!dict_reset(dict, count, strlen(s)))
 		return false;
 
 	size_t i = 0;
+	work_s = strdup(s);
 	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
 		int ret;
 		if (!i
