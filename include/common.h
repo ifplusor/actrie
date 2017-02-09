@@ -4,15 +4,21 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <stdbool.h>
+#endif
 #include <string.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #ifndef __bool_true_false_are_defined
 #define bool int
 #define true 1
 #define false 0
-#endif // __bool_true_false_are_defined
+#endif /* __bool_true_false_are_defined */
 
 
 #define REGION_SIZE 0x00001000
@@ -73,4 +79,9 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 					  dict_parser_callback callback, void *argv[]);
 
-#endif // _MATCH_COMMON_H_
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* _MATCH_COMMON_H_ */

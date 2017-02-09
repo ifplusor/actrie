@@ -31,6 +31,10 @@ static size_t trie_alloc_node(trie_ptr self)
 	return self->_autoindex++;
 }
 
+#if defined(_WIN32) && !defined(__cplusplus)
+#define inline __inline
+#endif
+
 static inline trie_node_ptr trie_access_node(trie_ptr self, size_t index)
 {
 	size_t region = index >> REGION_OFFSET;
@@ -61,13 +65,15 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
 					  match_dict_index_ptr index)
 {
 	trie_node_ptr pNode = self->root;
-	size_t iNode = 0; // iParent保存pNode的index
-	for (size_t i = 0; i < len; ++i) {
-		// 当创建时，使用插入排序的方法，以保证子节点链接关系有序
+	size_t iNode = 0; /* iParent保存pNode的index */
+	size_t i = 0;
+
+	for (i = 0; i < len; ++i) {
+		/* 当创建时，使用插入排序的方法，以保证子节点链接关系有序 */
 		size_t iChild = pNode->trie_child, iBrother = 0; // iBrother跟踪iChild
 		trie_node_ptr pChild = NULL;
 		while (iChild != 0) {
-			// 从所有孩子中查找
+			/* 从所有孩子中查找 */
 			pChild = trie_access_node(self, iChild);
 			if (pChild->key >= keyword[i]) break;
 			iBrother = iChild;
@@ -75,31 +81,33 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
 		}
 
 		if (iChild != 0 && pChild->key == keyword[i]) {
-			// 找到
+			/* 找到 */
 			iNode = iChild;
 			pNode = pChild;
 		} else {
-			// 没找到, 创建.
+			/* 没找到, 创建. */
 			size_t index = trie_alloc_node(self);
+			trie_node_ptr pc = NULL;
+
 			if (index == -1) return false;
 
-			trie_node_ptr pc = trie_access_node(self, index);
+			pc = trie_access_node(self, index);
 			if (pc == NULL) return false;
 			pc->key = keyword[i];
 
 			if (pChild == NULL) {
-				// 没有子节点
+				/* 没有子节点 */
 				pNode->trie_child = index;
 				pc->trie_parent = iNode;
 			} else {
 				if (iBrother == 0) {
-					// 插入链表头
+					/* 插入链表头 */
 					pc->trie_parent = iNode;
 					pc->trie_brother = pNode->trie_child;
 					pNode->trie_child = index;
 					pChild->trie_parent = index;
 				} else if (pChild->key < keyword[i]) {
-					// 插入链表尾
+					/* 插入链表尾 */
 					pc->trie_parent = iBrother;
 					pChild->trie_brother = index;
 				} else {
@@ -149,12 +157,13 @@ size_t trie_next_state_by_binary(trie_ptr self, size_t iNode, unsigned char key)
 trie_node_ptr trie_next_node_by_binary(trie_ptr self, trie_node_ptr pNode,
 									   unsigned char key)
 {
+	size_t left, right;
 	if (key < trie_access_node(self, pNode->trie_child)->key ||
 		trie_access_node(self, pNode->trie_child + pNode->len - 1)->key < key)
 		return self->root;
 
-	size_t left = pNode->trie_child;
-	size_t right = left + pNode->len - 1;
+	left = pNode->trie_child;
+	right = left + pNode->len - 1;
 	while (left <= right) {
 		size_t middle = (left + right) >> 1;
 		trie_node_ptr pMiddle = trie_access_node(self, middle);
@@ -203,9 +212,9 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 {
 	trie_node_ptr pChild = trie_access_node(self, iChild);
 	if (iChild != iTarget) {
-		trie_node_ptr pTarget = trie_access_node(self, iTarget);
+		trie_node_ptr ptmp, pTarget = trie_access_node(self, iTarget);
 
-		// 常量
+		/* 常量 */
 		const size_t ipc = pChild->trie_parent;
 		const size_t icc = pChild->trie_child;
 		const size_t ibc = pChild->trie_brother;
@@ -215,16 +224,17 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 		const size_t ibt = pTarget->trie_brother;
 		const bool bct = trie_access_node(self, ipt)->trie_child == iTarget;
 
-		// 交换节点内容
+		/* 交换节点内容 */
 		trie_swap_node_data(pChild, pTarget);
-		trie_node_ptr ptmp = pChild;
+		ptmp = pChild;
 		pChild = pTarget;
 		pTarget = ptmp;
 
-		// 考虑上下级节点交换
-		// 调整target的上级，child的下级
+		/* 考虑上下级节点交换
+		 * 调整target的上级，child的下级
+		 */
 		if (ipt == iChild) {
-			// target是child的下级，child是target的上级
+			/* target是child的下级，child是target的上级 */
 			pTarget->trie_parent = iTarget;
 			if (bct) {
 				pChild->trie_child = iChild;
@@ -244,13 +254,13 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 			if (ibc != 0) trie_access_node(self, ibc)->trie_parent = iTarget;
 		}
 
-		// 调整直接上级指针
+		/* 调整直接上级指针 */
 		if (bcc)
 			trie_access_node(self, ipc)->trie_child = iTarget;
 		else
 			trie_access_node(self, ipc)->trie_brother = iTarget;
 
-		// 调整下级指针
+		/* 调整下级指针 */
 		if (ict != 0) trie_access_node(self, ict)->trie_parent = iChild;
 		if (ibt != 0) trie_access_node(self, ibt)->trie_parent = iChild;
 	}
@@ -273,15 +283,18 @@ bool trie_fetch_key(match_dict_index_ptr index, void *argv[])
 
 trie_ptr trie_alloc()
 {
+	size_t root;
+	int i;
+
 	trie_ptr p = (trie_ptr)malloc(sizeof(trie));
 	if (p == NULL)
 		goto trie_alloc_failed;
 
-	for (int i = 0; i < POOL_REGION_SIZE; i++)
+	for (i = 0; i < POOL_REGION_SIZE; i++)
 		p->_nodepool[i] = NULL;
 	p->_autoindex = 0;
 
-	size_t root = trie_alloc_node(p);
+	root = trie_alloc_node(p);
 	if (root == (size_t)-1)
 		goto trie_alloc_failed;
 
@@ -303,8 +316,9 @@ trie_alloc_failed:
 void trie_release(trie_ptr p)
 {
 	if (p != NULL) {
+		int i;
 		dict_release(p->_dict);
-		for (int i = 0; i < POOL_REGION_SIZE; i++) {
+		for (i = 0; i < POOL_REGION_SIZE; i++) {
 			if (p->_nodepool[i] != NULL)
 				free(p->_nodepool[i]);
 		}
@@ -315,10 +329,11 @@ void trie_release(trie_ptr p)
 trie_ptr trie_construct_by_file(FILE *fp)
 {
 	trie_ptr p = trie_alloc();
+	void *argv[] = {p};
+
 	if (p == NULL)
 		return NULL;
 
-	void *argv[] = {p};
 	if (!dict_parser_by_file(fp, p->_dict, trie_fetch_key, argv)) {
 		trie_release(p);
 		return NULL;
@@ -332,9 +347,10 @@ trie_ptr trie_construct_by_file(FILE *fp)
 trie_ptr trie_construct_by_s(const char *s)
 {
 	trie_ptr prime_trie = trie_alloc();
+	void *argv[] = {prime_trie};
+
 	if (prime_trie == NULL) return NULL;
 
-	void *argv[] = {prime_trie};
 	if (!dict_parser_by_s(s, prime_trie->_dict, trie_fetch_key, argv)) {
 		trie_release(prime_trie);
 		return NULL;
@@ -347,14 +363,15 @@ trie_ptr trie_construct_by_s(const char *s)
 
 void trie_sort_to_line(trie_ptr self)
 {
-	size_t iTarget = 1;
-	for (size_t i = 0; i < iTarget; i++) { // 隐式bfs队列
+	size_t i, iTarget = 1;
+	for (i = 0; i < iTarget; i++) { /* 隐式bfs队列 */
 		trie_node_ptr pNode = trie_access_node(self, i);
-		// 将pNode的子节点调整到iTarget位置（加入队列）
+		/* 将pNode的子节点调整到iTarget位置（加入队列） */
 		size_t iChild = pNode->trie_child;
 		while (iChild != 0) {
-			// swap iChild与iTarget
-			// 建树时的尾插法担保兄弟节点不会交换，且在重排后是稳定的
+			/* swap iChild与iTarget
+			 * 建树时的尾插法担保兄弟节点不会交换，且在重排后是稳定的
+			 */
 			iChild = trie_swap_node(self, iChild, iTarget);
 			iTarget++;
 		}
@@ -381,15 +398,16 @@ void trie_rebuild_parent_relation(trie_ptr self)
 
 void trie_construct_automation(trie_ptr self)
 {
+	size_t index;
 	trie_node_ptr pNode = self->root;
 	size_t iChild = pNode->trie_child;
 	while (iChild != 0) {
 		trie_node_ptr pChild = trie_access_node_export(self, iChild);
 		iChild = pChild->trie_brother;
-		pChild->trie_failed = 0; // 设置 failed 域
+		pChild->trie_failed = 0; /* 设置 failed 域 */
 	}
 
-	for (size_t index = 1; index < self->_autoindex; index++) { // bfs
+	for (index = 1; index < self->_autoindex; index++) { // bfs
 		pNode = trie_access_node(self, index);
 		iChild = pNode->trie_child;
 		while (iChild != 0) {
@@ -411,8 +429,9 @@ void trie_construct_automation(trie_ptr self)
 
 void trie_ac_match(trie_ptr self, unsigned char content[], size_t len)
 {
+	size_t i;
 	trie_node_ptr pCursor = self->root;
-	for (size_t i = 0; i < len; ++i) {
+	for (i = 0; i < len; ++i) {
 		trie_node_ptr pNext =
 				trie_next_node_by_binary(self, pCursor, content[i]);
 		while (pCursor != self->root && pNext == self->root) {

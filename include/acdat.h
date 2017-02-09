@@ -5,6 +5,10 @@
 #include "actrie.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 typedef struct dat_node {
 	size_t base;
 	size_t check;
@@ -16,11 +20,11 @@ typedef struct dat_node {
 #define dat_failed      dat_nf.failed
 	union {
 		size_t last;
-		match_dict_index_ptr dictidx;  // out 表
+		match_dict_index_ptr dictidx;  /* out 表 */
 	} dat_ld;
 #define dat_free_last   dat_ld.last
 #define dat_dictidx     dat_ld.dictidx
-	int depth;  // 可以从 strlen(dictidx.keyword) 导出
+	int depth;  /* 可以从 strlen(dictidx.keyword) 导出 */
 #define dat_depth       depth
 } dat_node, *dat_node_ptr;
 
@@ -62,4 +66,8 @@ bool dat_ac_next_on_node(dat_context_ptr context);
 bool dat_ac_next_on_index(dat_context_ptr context);
 
 
-#endif // _MATCH_ACDAT_H_
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* _MATCH_ACDAT_H_ */

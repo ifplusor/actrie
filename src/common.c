@@ -108,13 +108,13 @@ bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
 	if (dict->buff != NULL)
 		free(dict->buff);
 
-	dict->count = index_count;
-	dict->index = malloc(sizeof(match_dict_index) * dict->count);
+	dict->count = index_count + 1;
+	dict->index = (match_dict_index_ptr)malloc(sizeof(match_dict_index) * dict->count);
 	if (dict->index == NULL)
 		return false;
 
-	dict->size = buffer_size;
-	dict->buff = malloc(sizeof(char) * dict->size);
+	dict->size = buffer_size + 3; /* 增加缓存大小, 防止溢出 */
+	dict->buff = (char*)malloc(sizeof(char) * dict->size);
 	if (dict->buff == NULL) {
 		free(dict->index);
 		return false;
@@ -122,7 +122,7 @@ bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
 
 	memset(dict->index, 0, sizeof(match_dict_index) * dict->count);
 	memset(dict->buff, 0, sizeof(char) * dict->size);
-	dict->_cursor = 1;
+	dict->_cursor = 1; /* 逻辑上 dict->buff[0] 是 "" */
 	return true;
 }
 
@@ -135,7 +135,8 @@ bool dict_add_keyword_and_extra(match_dict_ptr dict, char keyword[],
 		dict->_out_type = match_dict_keyword_type_empty;
 	} else {
 		enum match_dict_keyword_type type = match_dict_keyword_type_alpha_number;
-		for (int i = 0; i < strlen(keyword); i++) {
+		size_t i;
+		for (i = 0; i < strlen(keyword); i++) {
 			if (!alpha_number_bitmap[(unsigned char)keyword[i]]) {
 				type = match_dict_keyword_type_normal;
 				break;
@@ -161,17 +162,19 @@ bool dict_add_keyword_and_extra(match_dict_ptr dict, char keyword[],
 bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 						 dict_parser_callback callback, void *argv[])
 {
-	// 静态化以后，不支持多线程
+	/* 静态化以后，不支持多线程 */
 	static char line_buf[MAX_LINE_SIZE];
 	static char keyword[MAX_LINE_SIZE];
 	static char extra[MAX_LINE_SIZE];
+
+	size_t count = 0;
+	size_t i = 0;
 
 	if (fp == NULL || dict == NULL) {
 		return false;
 	}
 
-	// 计算词典条目数
-	size_t count = 0;
+	/* 计算词典条目数 */
 	fseek(fp, 0, SEEK_SET);
 	while (fgets(line_buf, MAX_LINE_SIZE, fp) != NULL) {
 		count++;
@@ -181,7 +184,6 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 	if (!dict_reset(dict, count, (size_t)ftell(fp) + 5))
 		return false;
 
-	size_t i = 0;
 	fseek(fp, 0, SEEK_SET);
 	while (fgets(line_buf, MAX_LINE_SIZE, fp) != NULL) {
 		int ret;
@@ -193,40 +195,40 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 		} else {
 			ret = sscanf(line_buf, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
 		}
-		//如果sscanf未读取key 则不用处理 直接continue
+		/* 如果sscanf未读取key 则不用处理 直接continue */
 		if (ret <= 0) {
 			keyword[0] = 0;
 			continue;
 		}
 
-		//回车换行符此处特殊处理 \r \n \r\n
+		/* 回车换行符此处特殊处理 \r \n \r\n */
 		if (keyword[0] == '\\') {
-			// \r \r\n
+			/* \r \r\n */
 			if (keyword[1] == 'r') {
-				// \r\n
+				/* \r\n */
 				if (keyword[2] == '\\' && keyword[3] == 'n' &&
 					keyword[4] == '0') {
 					keyword[0] = '\r';
 					keyword[1] = '\n';
 					keyword[2] = 0;
-					// \r
+					/* \r */
 				} else if (keyword[2] == 0) {
 					keyword[0] = '\r';
 					keyword[1] = 0;
 				}
-				// \n
+				/* \n */
 			} else if (keyword[1] == 'n' && keyword[2] == 0) {
 				keyword[0] = '\n';
 				keyword[1] = 0;
 			}
 		}
 
-		//如果不置0 会有上次scanf残留数据
+		/* 如果不置0 会有上次scanf残留数据 */
 		if (ret <= 1) {
 			extra[0] = 0;
 		}
 
-		// 将 keyword 和 extra 加入 match_dict
+		/* 将 keyword 和 extra 加入 match_dict */
 		dict_add_keyword_and_extra(dict, keyword, extra);
 		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
 		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
@@ -246,27 +248,29 @@ const char *split = "\n";
 bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 					  dict_parser_callback callback, void *argv[])
 {
-	// 静态化以后，不支持多线程
+	/* 静态化以后，不支持多线程 */
 	char *line_buf;
 	static char keyword[MAX_LINE_SIZE];
 	static char extra[MAX_LINE_SIZE];
+
+	size_t count = 0;
+	size_t i = 0;
+	char *work_s;
 
 	if (s == NULL || dict == NULL) {
 		return false;
 	}
 
-	// 计算词典条目数
-	size_t count = 0;
-	char *work_s = strdup(s);
+	/* 计算词典条目数 */
+	work_s = strdup(s);
 	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
 		count++;
 	}
 	free(work_s);
 
-	if (!dict_reset(dict, count, strlen(s)))
+	if (!dict_reset(dict, count, strlen(s) + 1))
 		return false;
 
-	size_t i = 0;
 	work_s = strdup(s);
 	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
 		int ret;
@@ -278,40 +282,40 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 		} else {
 			ret = sscanf(line_buf, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
 		}
-		//如果sscanf未读取key 则不用处理 直接continue
+		/* 如果sscanf未读取key 则不用处理 直接continue */
 		if (ret <= 0) {
 			keyword[0] = 0;
 			continue;
 		}
 
-		//回车换行符此处特殊处理 \r \n \r\n
+		/* 回车换行符此处特殊处理 \r \n \r\n */
 		if (keyword[0] == '\\') {
-			// \r \r\n
+			/* \r \r\n */
 			if (keyword[1] == 'r') {
-				// \r\n
+				/* \r\n */
 				if (keyword[2] == '\\' && keyword[3] == 'n' &&
 					keyword[4] == '0') {
 					keyword[0] = '\r';
 					keyword[1] = '\n';
 					keyword[2] = 0;
-					// \r
+					/* \r */
 				} else if (keyword[2] == 0) {
 					keyword[0] = '\r';
 					keyword[1] = 0;
 				}
-				// \n
+				/* \n */
 			} else if (keyword[1] == 'n' && keyword[2] == 0) {
 				keyword[0] = '\n';
 				keyword[1] = 0;
 			}
 		}
 
-		//如果不置0 会有上次scanf残留数据
+		/* 如果不置0 会有上次scanf残留数据 */
 		if (ret <= 1) {
 			extra[0] = 0;
 		}
 
-		// 将 keyword 和 extra 加入 match_dict
+		/* 将 keyword 和 extra 加入 match_dict */
 		dict_add_keyword_and_extra(dict, keyword, extra);
 		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
 		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
