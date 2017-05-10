@@ -1,5 +1,5 @@
-#ifndef _MATCH_COMMON_H_
-#define _MATCH_COMMON_H_
+#ifndef _MATCH_DICT_H_
+#define _MATCH_DICT_H_
 
 
 #include <stdio.h>
@@ -27,6 +27,8 @@ extern "C" {
 
 #define MAX_LINE_SIZE 1024*1024
 
+#define SEPARATOR_ID "###"
+
 
 enum match_dict_keyword_type {
 	match_dict_keyword_type_normal = 0,
@@ -38,6 +40,7 @@ typedef struct match_dict_index {
 	struct match_dict_index *next;
 	const char *keyword;
 	const char *extra;
+	const char *tag;
 	enum match_dict_keyword_type type;
 } match_dict_index, *match_dict_index_ptr;
 
@@ -49,11 +52,12 @@ typedef struct match_dict {
 
 	char *buff;
 	size_t size;
+	size_t max_key_length, max_extra_length;
 	size_t _cursor;
-	size_t _out_key_cur, _out_extra_cur;
+	size_t _out_key_cur, _out_extra_cur, _out_tag_cur;
 	enum match_dict_keyword_type _out_type;
 
-	int _ref_count;
+	int _ref_count; /* 引用计数器 */
 } match_dict, *match_dict_ptr;
 
 
@@ -84,4 +88,4 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_COMMON_H_ */
+#endif /* _MATCH_DICT_H_ */

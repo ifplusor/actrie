@@ -1,6 +1,6 @@
 #include <sys/timeb.h>
 
-#include "common.h"
+#include "dict.h"
 
 
 const size_t POOL_REGION_SIZE = REGION_SIZE;
@@ -123,6 +123,8 @@ bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
 	memset(dict->index, 0, sizeof(match_dict_index) * dict->count);
 	memset(dict->buff, 0, sizeof(char) * dict->size);
 	dict->_cursor = 1; /* 逻辑上 dict->buff[0] 是 "" */
+	dict->max_key_length = 0;
+	dict->max_extra_length = 0;
 	return true;
 }
 
@@ -135,25 +137,44 @@ bool dict_add_keyword_and_extra(match_dict_ptr dict, char keyword[],
 		dict->_out_type = match_dict_keyword_type_empty;
 	} else {
 		enum match_dict_keyword_type type = match_dict_keyword_type_alpha_number;
-		size_t i;
+		size_t i, key_length;
 		for (i = 0; i < strlen(keyword); i++) {
-			if (!alpha_number_bitmap[(unsigned char)keyword[i]]) {
+			if (!alpha_number_bitmap[(unsigned char)keyword[i]] &&
+					keyword[i] != ' ') {
 				type = match_dict_keyword_type_normal;
 				break;
 			}
 		}
+		dict->_out_type = type;
 
+		key_length = strlen(keyword);
 		strcpy(dict->buff + dict->_cursor, keyword);
 		dict->_out_key_cur = dict->_cursor;
-		dict->_cursor += strlen(keyword) + 1;
-		dict->_out_type = type;
+		dict->_cursor += key_length + 1;
+
+		if (key_length > dict->max_key_length)
+			dict->max_key_length = key_length;
 
 		if (extra == NULL || extra[0] == '\0') {
 			dict->_out_extra_cur = 0;
 		} else {
+			char *t;
+			size_t extra_length = strlen(extra);
 			strcpy(dict->buff + dict->_cursor, extra);
 			dict->_out_extra_cur = dict->_cursor;
-			dict->_cursor += strlen(extra) + 1;
+			dict->_cursor += extra_length + 1;
+
+			t = strstr(extra, SEPARATOR_ID);
+			if (t != NULL) {
+				extra_length = t - extra;
+				dict->_out_tag_cur = dict->_out_extra_cur + extra_length + sizeof(SEPARATOR_ID) - 1;
+				dict->buff[dict->_out_extra_cur + extra_length] = '\0';
+			} else {
+				dict->_out_tag_cur = 0;
+			}
+
+			if (extra_length > dict->max_extra_length)
+				dict->max_extra_length = extra_length;
 		}
 	}
 	return true;
@@ -232,6 +253,7 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 		dict_add_keyword_and_extra(dict, keyword, extra);
 		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
 		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
+		dict->index[i].tag = dict->buff + dict->_out_tag_cur;
 		dict->index[i].type = dict->_out_type;
 
 		if (!callback(dict->index + i, argv))

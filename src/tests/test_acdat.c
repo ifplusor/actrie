@@ -1,6 +1,5 @@
 #include <time.h>
-
-#include "acdat.h"
+#include <acdat.h>
 
 
 int main(int argc, char *argv[])

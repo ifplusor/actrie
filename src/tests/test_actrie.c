@@ -1,6 +1,5 @@
 #include <time.h>
-
-#include "actrie.h"
+#include <actrie.h>
 
 
 int main(int argc, char *argv[])

@@ -2,7 +2,7 @@
 #define _MATCH_ACTRIE_H_
 
 
-#include "common.h"
+#include "dict.h"
 
 
 #ifdef __cplusplus
