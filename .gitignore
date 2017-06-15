@@ -15,3 +15,7 @@ gmon.out
 .idea
 cmake-build-debug
 
+.vs
+
+build
+
