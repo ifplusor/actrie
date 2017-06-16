@@ -18,4 +18,5 @@ cmake-build-debug
 .vs
 
 build
+lib
 

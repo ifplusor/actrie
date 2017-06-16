@@ -86,41 +86,41 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
 			pNode = pChild;
 		} else {
 			/* 没找到, 创建. */
-			size_t index = trie_alloc_node(self);
+			size_t idx = trie_alloc_node(self);
 			trie_node_ptr pc = NULL;
 
-			if (index == -1) return false;
+			if (idx == -1) return false;
 
-			pc = trie_access_node(self, index);
+			pc = trie_access_node(self, idx);
 			if (pc == NULL) return false;
 			pc->key = keyword[i];
 
 			if (pChild == NULL) {
 				/* 没有子节点 */
-				pNode->trie_child = index;
+				pNode->trie_child = idx;
 				pc->trie_parent = iNode;
 			} else {
 				if (iBrother == 0) {
 					/* 插入链表头 */
 					pc->trie_parent = iNode;
 					pc->trie_brother = pNode->trie_child;
-					pNode->trie_child = index;
-					pChild->trie_parent = index;
+					pNode->trie_child = idx;
+					pChild->trie_parent = idx;
 				} else if (pChild->key < keyword[i]) {
 					/* 插入链表尾 */
 					pc->trie_parent = iBrother;
-					pChild->trie_brother = index;
+					pChild->trie_brother = idx;
 				} else {
 					trie_node_ptr pBrother = trie_access_node(self, iBrother);
 					pc->trie_parent = iBrother;
 					pc->trie_brother = iChild;
-					pBrother->trie_brother = index;
-					pChild->trie_parent = index;
+					pBrother->trie_brother = idx;
+					pChild->trie_parent = idx;
 				}
 			}
 
 			pNode->len++;
-			iNode = index;
+			iNode = idx;
 			pNode = pc;
 		}
 	}
@@ -267,20 +267,6 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 	return pChild->trie_brother;
 }
 
-//static size_t count = 0;
-
-bool trie_fetch_key(match_dict_index_ptr index, void *argv[])
-{
-	trie_ptr trie = argv[0];
-	if (!trie_add_keyword(trie, index->keyword, strlen(index->keyword),
-						  index)) {
-		fprintf(stderr, "fatal: encounter error when add keywords.\n");
-		return false;
-	}
-	//++count;
-	return true;
-}
-
 trie_ptr trie_alloc()
 {
 	size_t root;
@@ -290,6 +276,7 @@ trie_ptr trie_alloc()
 	if (p == NULL)
 		goto trie_alloc_failed;
 
+	p->_dict = NULL;
 	for (i = 0; i < POOL_REGION_SIZE; i++)
 		p->_nodepool[i] = NULL;
 	p->_autoindex = 0;
@@ -300,10 +287,6 @@ trie_ptr trie_alloc()
 
 	p->root = trie_access_node(p, root);
 	if (p->root == NULL)
-		goto trie_alloc_failed;
-
-	p->_dict = dict_alloc();
-	if (p->_dict == NULL)
 		goto trie_alloc_failed;
 
 	return p;
@@ -326,38 +309,51 @@ void trie_release(trie_ptr p)
 	}
 }
 
+trie_ptr trie_construct(match_dict_ptr dict)
+{
+	trie_ptr prime_trie = trie_alloc();
+	prime_trie->_dict = dict_assign(dict);
+	for (size_t i = 0; i < dict->idx_count; i++) {
+		match_dict_index_ptr index = &dict->index[i];
+		if (!trie_add_keyword(prime_trie, (const unsigned char *) index->keyword, index->length, index)) {
+			fprintf(stderr, "fatal: encounter error when add keywords.\n");
+			trie_release(prime_trie);
+			prime_trie = NULL;
+			break;
+		}
+	}
+	return prime_trie;
+}
+
 trie_ptr trie_construct_by_file(FILE *fp)
 {
-	trie_ptr p = trie_alloc();
-	void *argv[] = {p};
+	trie_ptr prime_trie = NULL;
+	match_dict_ptr dict = dict_alloc();
 
-	if (p == NULL)
-		return NULL;
-
-	if (!dict_parser_by_file(fp, p->_dict, trie_fetch_key, argv)) {
-		trie_release(p);
-		return NULL;
+	if (dict_parser_by_file(dict, fp)) {
+		prime_trie = trie_construct(dict);
 	}
 
-	//fprintf(stderr, "pattern: %zu, node: %zu\n", count, self->_autoindex);
-	fprintf(stderr, "construct trie succeed!\n");
-	return p;
+	dict_release(dict);
+
+	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
+
+	return prime_trie;
 }
 
 trie_ptr trie_construct_by_s(const char *s)
 {
-	trie_ptr prime_trie = trie_alloc();
-	void *argv[] = {prime_trie};
+	trie_ptr prime_trie = NULL;
+	match_dict_ptr dict = dict_alloc();
 
-	if (prime_trie == NULL) return NULL;
-
-	if (!dict_parser_by_s(s, prime_trie->_dict, trie_fetch_key, argv)) {
-		trie_release(prime_trie);
-		return NULL;
+	if (dict_parser_by_s(dict, s)) {
+		prime_trie = trie_construct(dict);
 	}
 
-	//fprintf(stderr, "pattern: %zu, node: %zu\n", count, self->_autoindex);
-	fprintf(stderr, "construct trie succeed!\n");
+	dict_release(dict);
+
+	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
+
 	return prime_trie;
 }
 

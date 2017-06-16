@@ -3,6 +3,7 @@
 
 
 #include "actrie.h"
+#include "matcher.h"
 
 
 #ifdef __cplusplus
@@ -29,6 +30,8 @@ typedef struct dat_node {
 } dat_node, *dat_node_ptr;
 
 typedef struct dat_trie {
+	struct _matcher header;
+
 	dat_node_ptr    _nodepool[REGION_SIZE];
 	dat_node_ptr    _lead;
 	dat_node_ptr    root;
@@ -36,28 +39,26 @@ typedef struct dat_trie {
 } dat_trie, *dat_trie_ptr;
 
 typedef struct dat_context {
-	dat_trie_ptr    trie;
-	unsigned char   *content;
-	size_t          len;
+	struct _context header;
 
-	match_dict_index_ptr out_matched_index;
+	dat_trie_ptr    trie;
 
 	dat_node_ptr    out_matched;
 	dat_node_ptr    _pCursor;
 	size_t          _iCursor;
 	size_t          _i;
-	size_t          out_e;
+
 } dat_context, *dat_context_ptr;
 
 
-dat_trie_ptr dat_construct(trie_ptr origin);
+dat_trie_ptr dat_construct_by_file(const char *path);
+dat_trie_ptr dat_construct_by_string(const char *string);
 
-void dat_release(dat_trie_ptr p);
+void dat_destruct(dat_trie_ptr p);
 
-void dat_construct_automation(dat_trie_ptr self, trie_ptr origin);
-
-void dat_init_context(dat_context_ptr context, dat_trie_ptr trie,
-					  unsigned char content[], size_t len);
+dat_context_ptr dat_alloc_context(dat_trie_ptr matcher);
+bool dat_free_context(dat_context_ptr context);
+bool dat_reset_context(dat_context_ptr context, unsigned char content[], size_t len);
 
 bool dat_next(dat_context_ptr context);
 

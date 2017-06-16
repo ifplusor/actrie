@@ -1,12 +1,5 @@
-#include <sys/timeb.h>
-
 #include "dict.h"
 
-
-const size_t POOL_REGION_SIZE = REGION_SIZE;
-const size_t POOL_POSITION_SIZE = POSITION_MASK + 1;
-
-const char *ALLOCATED_FLAG = "";
 
 const bool alpha_number_bitmap[256] = {
 		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -65,20 +58,20 @@ const bool number_bitmap[256] = {
 		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-long long system_millisecond()
-{
-	struct timeb t;
-	ftime(&t);
-	return t.time * 1000 + t.millitm;
-}
+
+bool dict_default_add_keyword_and_extra(match_dict_ptr dict, char keyword[], char extra[]);
 
 match_dict_ptr dict_alloc()
 {
 	match_dict_ptr p = (match_dict_ptr) malloc(sizeof(match_dict));
 	if (p == NULL) return NULL;
 
-	p->buff = NULL;
+	p->index = NULL;
+	p->buffer = NULL;
 	p->_ref_count = 1;
+
+	p->add_keyword_and_extra = dict_default_add_keyword_and_extra;
+
 	return p;
 }
 
@@ -96,8 +89,10 @@ void dict_release(match_dict_ptr dict)
 	if (dict != NULL) {
 		dict->_ref_count--;
 		if (dict->_ref_count == 0) {
-			if (dict->buff != NULL)
-				free(dict->buff);
+			if (dict->index != NULL)
+				free(dict->index);
+			if (dict->buffer != NULL)
+				free(dict->buffer);
 			free(dict);
 		}
 	}
@@ -105,91 +100,144 @@ void dict_release(match_dict_ptr dict)
 
 bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
 {
-	if (dict->buff != NULL)
-		free(dict->buff);
+	if (dict->buffer != NULL)
+		free(dict->buffer);
 
-	dict->count = index_count + 1;
-	dict->index = (match_dict_index_ptr)malloc(sizeof(match_dict_index) * dict->count);
+	dict->idx_count = 0;
+	dict->idx_size = index_count + 1;
+	dict->index = (match_dict_index_ptr)malloc(sizeof(match_dict_index) * dict->idx_size);
 	if (dict->index == NULL)
 		return false;
 
-	dict->size = buffer_size + 3; /* 增加缓存大小, 防止溢出 */
-	dict->buff = (char*)malloc(sizeof(char) * dict->size);
-	if (dict->buff == NULL) {
+	dict->buf_size = buffer_size + 3; /* 增加缓存大小, 防止溢出 */
+	dict->buffer = (char*)malloc(sizeof(char) * dict->buf_size);
+	if (dict->buffer == NULL) {
 		free(dict->index);
 		return false;
 	}
 
-	memset(dict->index, 0, sizeof(match_dict_index) * dict->count);
-	memset(dict->buff, 0, sizeof(char) * dict->size);
+	memset(dict->index, 0, sizeof(match_dict_index) * dict->idx_size);
+	memset(dict->buffer, 0, sizeof(char) * dict->buf_size);
 	dict->_cursor = 1; /* 逻辑上 dict->buff[0] 是 "" */
 	dict->max_key_length = 0;
 	dict->max_extra_length = 0;
 	return true;
 }
 
-bool dict_add_keyword_and_extra(match_dict_ptr dict, char keyword[],
-								char extra[])
+bool dict_default_add_keyword_and_extra(match_dict_ptr dict, char keyword[], char extra[])
 {
+	enum match_dict_keyword_type type;
+	size_t key_cur, extra_cur, tag_cur;
+	size_t i, key_length;
+
 	if (keyword == NULL || keyword[0] == '\0') {
-		dict->_out_key_cur = 0;
-		dict->_out_extra_cur = 0;
-		dict->_out_type = match_dict_keyword_type_empty;
+		key_length = 0;
+		key_cur = 0;
+		extra_cur = 0;
+		tag_cur = 0;
+		type = match_dict_keyword_type_empty;
 	} else {
-		enum match_dict_keyword_type type = match_dict_keyword_type_alpha_number;
-		size_t i, key_length;
-		for (i = 0; i < strlen(keyword); i++) {
+		type = match_dict_keyword_type_alpha_number;
+
+		key_length = strlen(keyword);
+		for (i = 0; i < key_length; i++) {
 			if (!alpha_number_bitmap[(unsigned char)keyword[i]] &&
 					keyword[i] != ' ') {
 				type = match_dict_keyword_type_normal;
 				break;
 			}
 		}
-		dict->_out_type = type;
 
-		key_length = strlen(keyword);
-		strcpy(dict->buff + dict->_cursor, keyword);
-		dict->_out_key_cur = dict->_cursor;
+		strcpy(dict->buffer + dict->_cursor, keyword);
+		key_cur = dict->_cursor;
 		dict->_cursor += key_length + 1;
 
 		if (key_length > dict->max_key_length)
 			dict->max_key_length = key_length;
 
 		if (extra == NULL || extra[0] == '\0') {
-			dict->_out_extra_cur = 0;
+			extra_cur = 0;
+			tag_cur = 0;
 		} else {
 			char *t;
 			size_t extra_length = strlen(extra);
-			strcpy(dict->buff + dict->_cursor, extra);
-			dict->_out_extra_cur = dict->_cursor;
+			strcpy(dict->buffer + dict->_cursor, extra);
+			extra_cur = dict->_cursor;
 			dict->_cursor += extra_length + 1;
 
 			t = strstr(extra, SEPARATOR_ID);
 			if (t != NULL) {
 				extra_length = t - extra;
-				dict->_out_tag_cur = dict->_out_extra_cur + extra_length + sizeof(SEPARATOR_ID) - 1;
-				dict->buff[dict->_out_extra_cur + extra_length] = '\0';
+				tag_cur = extra_cur + extra_length + sizeof(SEPARATOR_ID) - 1;
+				dict->buffer[extra_cur + extra_length] = '\0';
 			} else {
-				dict->_out_tag_cur = 0;
+				tag_cur = 0;
 			}
 
 			if (extra_length > dict->max_extra_length)
 				dict->max_extra_length = extra_length;
 		}
 	}
+
+	dict->index[dict->idx_count].length = key_length;
+	dict->index[dict->idx_count].keyword = dict->buffer + key_cur;
+	dict->index[dict->idx_count].extra = dict->buffer + extra_cur;
+	dict->index[dict->idx_count].tag = dict->buffer + tag_cur;
+	dict->index[dict->idx_count].type = type;
+	dict->idx_count++;
+
 	return true;
 }
 
-bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
-						 dict_parser_callback callback, void *argv[])
+void dict_parser_line(match_dict_ptr dict, const char *line_buf)
 {
-	/* 静态化以后，不支持多线程 */
-	static char line_buf[MAX_LINE_SIZE];
 	static char keyword[MAX_LINE_SIZE];
 	static char extra[MAX_LINE_SIZE];
 
+	int ret = sscanf(line_buf, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
+
+	/* 如果sscanf未读取key 则不用处理 直接continue */
+	if (ret <= 0) {
+		keyword[0] = 0;
+		return;
+	}
+
+	/* 回车换行符此处特殊处理 \r \n \r\n */
+	if (keyword[0] == '\\') {
+		/* \r \r\n */
+		if (keyword[1] == 'r') {
+			/* \r\n */
+			if (keyword[2] == '\\' && keyword[3] == 'n' &&
+				keyword[4] == '0') {
+				keyword[0] = '\r';
+				keyword[1] = '\n';
+				keyword[2] = 0;
+				/* \r */
+			} else if (keyword[2] == 0) {
+				keyword[0] = '\r';
+				keyword[1] = 0;
+			}
+			/* \n */
+		} else if (keyword[1] == 'n' && keyword[2] == 0) {
+			keyword[0] = '\n';
+			keyword[1] = 0;
+		}
+	}
+
+	/* 如果不置0 会有上次scanf残留数据 */
+	if (ret <= 1) {
+		extra[0] = 0;
+	}
+
+	/* 将 keyword 和 extra 加入 match_dict */
+	dict->add_keyword_and_extra(dict, keyword, extra);
+}
+
+bool dict_parser_by_file(match_dict_ptr dict, FILE *fp)
+{
+	/* 静态化以后，不支持多线程 */
+	static char line_buf[MAX_LINE_SIZE];
 	size_t count = 0;
-	size_t i = 0;
 
 	if (fp == NULL || dict == NULL) {
 		return false;
@@ -206,60 +254,21 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 		return false;
 
 	fseek(fp, 0, SEEK_SET);
+
+	/* 处理 BOM */
+	line_buf[0] = (char) fgetc(fp);
+	line_buf[1] = (char) fgetc(fp);
+	line_buf[2] = (char) fgetc(fp);
+	if ((unsigned char) line_buf[0] != 0xef ||
+			(unsigned char) line_buf[1] != 0xbb ||
+			(unsigned char) line_buf[2] != 0xbf) {
+		ungetc(line_buf[2], fp);
+		ungetc(line_buf[1], fp);
+		ungetc(line_buf[0], fp);
+	}
+
 	while (fgets(line_buf, MAX_LINE_SIZE, fp) != NULL) {
-		int ret;
-		if (!i
-			&& (unsigned char) line_buf[0] == 0xef
-			&& (unsigned char) line_buf[1] == 0xbb
-			&& (unsigned char) line_buf[2] == 0xbf) {
-			ret = sscanf(line_buf + 3, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
-		} else {
-			ret = sscanf(line_buf, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
-		}
-		/* 如果sscanf未读取key 则不用处理 直接continue */
-		if (ret <= 0) {
-			keyword[0] = 0;
-			continue;
-		}
-
-		/* 回车换行符此处特殊处理 \r \n \r\n */
-		if (keyword[0] == '\\') {
-			/* \r \r\n */
-			if (keyword[1] == 'r') {
-				/* \r\n */
-				if (keyword[2] == '\\' && keyword[3] == 'n' &&
-					keyword[4] == '0') {
-					keyword[0] = '\r';
-					keyword[1] = '\n';
-					keyword[2] = 0;
-					/* \r */
-				} else if (keyword[2] == 0) {
-					keyword[0] = '\r';
-					keyword[1] = 0;
-				}
-				/* \n */
-			} else if (keyword[1] == 'n' && keyword[2] == 0) {
-				keyword[0] = '\n';
-				keyword[1] = 0;
-			}
-		}
-
-		/* 如果不置0 会有上次scanf残留数据 */
-		if (ret <= 1) {
-			extra[0] = 0;
-		}
-
-		/* 将 keyword 和 extra 加入 match_dict */
-		dict_add_keyword_and_extra(dict, keyword, extra);
-		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
-		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
-		dict->index[i].tag = dict->buff + dict->_out_tag_cur;
-		dict->index[i].type = dict->_out_type;
-
-		if (!callback(dict->index + i, argv))
-			return false;
-
-		i++;
+		dict_parser_line(dict, line_buf);
 	}
 
 	return true;
@@ -267,17 +276,11 @@ bool dict_parser_by_file(FILE *fp, match_dict_ptr dict,
 
 const char *split = "\n";
 
-bool dict_parser_by_s(const char *s, match_dict_ptr dict,
-					  dict_parser_callback callback, void *argv[])
+bool dict_parser_by_s(match_dict_ptr dict, const char *s)
 {
-	/* 静态化以后，不支持多线程 */
 	char *line_buf;
-	static char keyword[MAX_LINE_SIZE];
-	static char extra[MAX_LINE_SIZE];
-
 	size_t count = 0;
-	size_t i = 0;
-	char *work_s;
+	char *work_s, *t_s;
 
 	if (s == NULL || dict == NULL) {
 		return false;
@@ -294,59 +297,19 @@ bool dict_parser_by_s(const char *s, match_dict_ptr dict,
 		return false;
 
 	work_s = strdup(s);
-	for(line_buf = strtok(work_s, split); line_buf; line_buf = strtok(NULL, split)) {
-		int ret;
-		if (!i
-			&& (unsigned char) line_buf[0] == 0xef
-			&& (unsigned char) line_buf[1] == 0xbb
-			&& (unsigned char) line_buf[2] == 0xbf) {
-			ret = sscanf(line_buf + 3, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
-		} else {
-			ret = sscanf(line_buf, "%[^\t\r\n]\t%[^\r\n]", keyword, extra);
-		}
-		/* 如果sscanf未读取key 则不用处理 直接continue */
-		if (ret <= 0) {
-			keyword[0] = 0;
-			continue;
-		}
 
-		/* 回车换行符此处特殊处理 \r \n \r\n */
-		if (keyword[0] == '\\') {
-			/* \r \r\n */
-			if (keyword[1] == 'r') {
-				/* \r\n */
-				if (keyword[2] == '\\' && keyword[3] == 'n' &&
-					keyword[4] == '0') {
-					keyword[0] = '\r';
-					keyword[1] = '\n';
-					keyword[2] = 0;
-					/* \r */
-				} else if (keyword[2] == 0) {
-					keyword[0] = '\r';
-					keyword[1] = 0;
-				}
-				/* \n */
-			} else if (keyword[1] == 'n' && keyword[2] == 0) {
-				keyword[0] = '\n';
-				keyword[1] = 0;
-			}
-		}
+	/* 处理 BOM */
+	if ((unsigned char) work_s[0] == 0xef &&
+		(unsigned char) work_s[1] == 0xbb &&
+		(unsigned char) work_s[2] == 0xbf) {
+		t_s = work_s + 3;
+	} else {
+		t_s = work_s;
+	}
 
-		/* 如果不置0 会有上次scanf残留数据 */
-		if (ret <= 1) {
-			extra[0] = 0;
-		}
-
-		/* 将 keyword 和 extra 加入 match_dict */
-		dict_add_keyword_and_extra(dict, keyword, extra);
-		dict->index[i].keyword = dict->buff + dict->_out_key_cur;
-		dict->index[i].extra = dict->buff + dict->_out_extra_cur;
-		dict->index[i].type = dict->_out_type;
-
-		if (!callback(dict->index + i, argv))
-			return false;
-
-		i++;
+	dict->idx_count = 0;
+	for(line_buf = strtok(t_s, split); line_buf; line_buf = strtok(NULL, split)) {
+		dict_parser_line(dict, line_buf);
 	}
 	free(work_s);
 

@@ -6,7 +6,9 @@ target_link_libraries(testactrie
         PRIVATE actrie)
 
 
-add_executable(testacdat test_acdat.c)
-target_link_libraries(testacdat
-        PRIVATE actrie)
+add_executable(testa test.c)
+target_link_libraries(testa
+        PUBLIC actrie)
+target_compile_options(testa
+        PRIVATE -O2)
 
