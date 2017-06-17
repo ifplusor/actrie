@@ -208,6 +208,7 @@ void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb)
 	pa->key ^= pb->key;
 }
 
+// swap and return iChild's brother node
 size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
 {
 	trie_node_ptr pChild = trie_access_node(self, iChild);
@@ -292,69 +293,8 @@ trie_ptr trie_alloc()
 	return p;
 
 trie_alloc_failed:
-	trie_release(p);
+	trie_destruct(p);
 	return NULL;
-}
-
-void trie_release(trie_ptr p)
-{
-	if (p != NULL) {
-		int i;
-		dict_release(p->_dict);
-		for (i = 0; i < POOL_REGION_SIZE; i++) {
-			if (p->_nodepool[i] != NULL)
-				free(p->_nodepool[i]);
-		}
-		free(p);
-	}
-}
-
-trie_ptr trie_construct(match_dict_ptr dict)
-{
-	trie_ptr prime_trie = trie_alloc();
-	prime_trie->_dict = dict_assign(dict);
-	for (size_t i = 0; i < dict->idx_count; i++) {
-		match_dict_index_ptr index = &dict->index[i];
-		if (!trie_add_keyword(prime_trie, (const unsigned char *) index->keyword, index->length, index)) {
-			fprintf(stderr, "fatal: encounter error when add keywords.\n");
-			trie_release(prime_trie);
-			prime_trie = NULL;
-			break;
-		}
-	}
-	return prime_trie;
-}
-
-trie_ptr trie_construct_by_file(FILE *fp)
-{
-	trie_ptr prime_trie = NULL;
-	match_dict_ptr dict = dict_alloc();
-
-	if (dict_parser_by_file(dict, fp)) {
-		prime_trie = trie_construct(dict);
-	}
-
-	dict_release(dict);
-
-	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
-
-	return prime_trie;
-}
-
-trie_ptr trie_construct_by_s(const char *s)
-{
-	trie_ptr prime_trie = NULL;
-	match_dict_ptr dict = dict_alloc();
-
-	if (dict_parser_by_s(dict, s)) {
-		prime_trie = trie_construct(dict);
-	}
-
-	dict_release(dict);
-
-	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
-
-	return prime_trie;
 }
 
 void trie_sort_to_line(trie_ptr self)
@@ -366,8 +306,8 @@ void trie_sort_to_line(trie_ptr self)
 		size_t iChild = pNode->trie_child;
 		while (iChild != 0) {
 			/* swap iChild与iTarget
-			 * 建树时的尾插法担保兄弟节点不会交换，且在重排后是稳定的
-			 */
+			* 建树时的尾插法担保兄弟节点不会交换，且在重排后是稳定的
+			*/
 			iChild = trie_swap_node(self, iChild, iTarget);
 			iTarget++;
 		}
@@ -421,6 +361,96 @@ void trie_construct_automation(trie_ptr self)
 		}
 	}
 	fprintf(stderr, "construct AC automation succeed!\n");
+}
+
+void trie_destruct(trie_ptr p)
+{
+	if (p != NULL) {
+		int i;
+		dict_release(p->_dict);
+		for (i = 0; i < POOL_REGION_SIZE; i++) {
+			if (p->_nodepool[i] != NULL)
+				free(p->_nodepool[i]);
+		}
+		free(p);
+	}
+}
+
+trie_ptr trie_construct(match_dict_ptr dict, bool enable_automation)
+{
+#ifdef DEBUG
+	long long t0, t1, t2, t3, t4;
+#endif
+	trie_ptr prime_trie = trie_alloc();
+	prime_trie->_dict = dict_assign(dict);
+#ifdef DEBUG
+	t0 = system_millisecond();
+#endif
+	for (size_t i = 0; i < dict->idx_count; i++) {
+		match_dict_index_ptr index = &dict->index[i];
+		if (!trie_add_keyword(prime_trie, (const unsigned char *) index->keyword, index->length, index)) {
+			fprintf(stderr, "fatal: encounter error when add keywords.\n");
+			trie_destruct(prime_trie);
+			prime_trie = NULL;
+			break;
+		}
+	}
+#ifdef DEBUG
+	t1 = system_millisecond();
+	fprintf(stderr, "s1: %ld ms\n", t1 - t0);
+#endif
+	if (prime_trie != NULL) {
+		trie_sort_to_line(prime_trie);  /* 排序字典树节点 for bfs and binary-search */
+#ifdef DEBUG
+		t2 = system_millisecond();
+		fprintf(stderr, "s2: %ld ms\n", t2 - t1);
+#endif
+		if (enable_automation) {
+			trie_construct_automation(prime_trie);		/* 构建自动机 */
+#ifdef DEBUG
+			t3 = system_millisecond();
+			fprintf(stderr, "s3: %ld ms\n", t3 - t2);
+#endif
+		}
+	}
+	return prime_trie;
+}
+
+trie_ptr trie_construct_by_file(const char *path, bool enable_automation)
+{
+	trie_ptr prime_trie = NULL;
+	match_dict_ptr dict = NULL;
+
+	FILE *fp = fopen(path, "rb");
+	if (fp == NULL) return NULL;
+		
+	dict = dict_alloc();
+	if (dict == NULL) return NULL;
+
+	if (dict_parser_by_file(dict, fp)) {
+		prime_trie = trie_construct(dict, enable_automation);
+	}
+
+	fclose(fp);
+	dict_release(dict);
+
+	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
+	return prime_trie;
+}
+
+trie_ptr trie_construct_by_s(const char *s, bool enable_automation)
+{
+	trie_ptr prime_trie = NULL;
+	match_dict_ptr dict = dict_alloc();
+
+	if (dict_parser_by_s(dict, s)) {
+		prime_trie = trie_construct(dict, enable_automation);
+	}
+
+	dict_release(dict);
+
+	fprintf(stderr, "construct trie %s!\n", prime_trie != NULL ? "success" : "failed");
+	return prime_trie;
 }
 
 void trie_ac_match(trie_ptr self, unsigned char content[], size_t len)

@@ -13,7 +13,7 @@ matcher_t matcher_construct_by_file(matcher_type type, const char *path)
 	switch (type) {
 		case matcher_type_dat:
 		case matcher_type_acdat: {
-			dat_trie_ptr p = dat_construct_by_file(path);
+			dat_trie_ptr p = dat_construct_by_file(path, true);
 			if (p != NULL) {
 				matcher = &p->header;
 				matcher->_type = matcher_type_acdat;
@@ -30,7 +30,7 @@ matcher_t matcher_construct_by_string(matcher_type type, const char *string)
 	switch (type) {
 		case matcher_type_dat:
 		case matcher_type_acdat: {
-			dat_trie_ptr p = dat_construct_by_string(string);
+			dat_trie_ptr p = dat_construct_by_string(string, true);
 			if (p != NULL) {
 				matcher = &p->header;
 				matcher->_type = matcher_type_acdat;

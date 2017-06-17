@@ -9,6 +9,8 @@ target_link_libraries(testactrie
 add_executable(testa test.c)
 target_link_libraries(testa
         PUBLIC actrie)
-target_compile_options(testa
-        PRIVATE -O2)
+IF (MY_COMPILE_OPTIONS)
+target_compile_options(actrie
+        PRIVATE ${MY_COMPILE_OPTIONS})
+ENDIF ()
 

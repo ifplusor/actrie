@@ -50,17 +50,13 @@ typedef struct trie {
 } trie, *trie_ptr;
 
 
-trie_ptr trie_construct_by_file(FILE *fp);
+trie_ptr trie_construct_by_file(const char *path, bool enable_automation);
 
-trie_ptr trie_construct_by_s(const char *s);
+trie_ptr trie_construct_by_s(const char *s, bool enable_automation);
 
-void trie_release(trie_ptr p);
-
-void trie_sort_to_line(trie_ptr self);
+void trie_destruct(trie_ptr p);
 
 void trie_rebuild_parent_relation(trie_ptr self);
-
-void trie_construct_automation(trie_ptr self);
 
 void trie_ac_match(trie_ptr self, unsigned char content[], size_t len);
 

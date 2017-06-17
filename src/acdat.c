@@ -93,12 +93,10 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
 		if (pos == 0) {
 			/* 扩容 */
 			size_t region = 1;
-			while (region < POOL_REGION_SIZE &&
-				   self->_nodepool[region] != NULL)
+			while (region < POOL_REGION_SIZE && self->_nodepool[region] != NULL)
 				++region;
 			if (region == POOL_REGION_SIZE) {
-				fprintf(stderr,
-						"alloc datnodepool failed: region full.\nexit.\n");
+				fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
 				exit(-1);
 			}
 			dat_alloc_nodepool(self, region);
@@ -202,34 +200,6 @@ dat_trie_ptr dat_alloc()
 	return p;
 }
 
-void dat_destruct(dat_trie_ptr p)
-{
-	if (p != NULL) {
-		int i;
-		dict_release(p->_dict);
-		for (i = 0; i < POOL_REGION_SIZE; ++i) {
-			if (p->_nodepool[i] != NULL)
-				free(p->_nodepool[i]);
-		}
-		free(p);
-	}
-}
-
-dat_trie_ptr dat_construct(trie_ptr origin)
-{
-	dat_trie_ptr p = dat_alloc();
-	if (p == NULL)
-		return NULL;
-
-	p->_dict = dict_assign(origin->_dict);
-
-	dat_construct_by_dfs(p, origin, origin->root, DAT_ROOT_IDX);
-	dat_post_construct(p);
-
-	fprintf(stderr, "construct double-array trie succeed!\n");
-	return p;
-}
-
 void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 {
 	size_t index;
@@ -255,7 +225,7 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 			size_t match = trie_next_state_by_binary(origin, iFailed, key);
 			while (iFailed != 0 && match == 0) {
 				iFailed = trie_access_node_export(origin,
-												  iFailed)->trie_failed;
+					iFailed)->trie_failed;
 				match = trie_next_state_by_binary(origin, iFailed, key);
 			}
 			iChild = pChild->trie_brother;
@@ -263,15 +233,44 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
 
 			/* 设置 DAT 的 failed 域 */
 			dat_access_node(self, pChild->trie_datidx)->dat_failed =
-					match != 0 ?
-					trie_access_node_export(origin, match)->trie_datidx :
-					DAT_ROOT_IDX;
+				match == 0 ? DAT_ROOT_IDX:
+				trie_access_node_export(origin, match)->trie_datidx;
 		}
 	}
 	fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-dat_trie_ptr dat_construct_by_file(const char *path)
+void dat_destruct(dat_trie_ptr p)
+{
+	if (p != NULL) {
+		int i;
+		dict_release(p->_dict);
+		for (i = 0; i < POOL_REGION_SIZE; ++i) {
+			if (p->_nodepool[i] != NULL)
+				free(p->_nodepool[i]);
+		}
+		free(p);
+	}
+}
+
+dat_trie_ptr dat_construct(trie_ptr origin, bool enable_automation)
+{
+	dat_trie_ptr p = dat_alloc();
+	if (p == NULL)
+		return NULL;
+
+	p->_dict = dict_assign(origin->_dict);
+
+	dat_construct_by_dfs(p, origin, origin->root, DAT_ROOT_IDX);
+	dat_post_construct(p);
+	if (enable_automation)
+		dat_construct_automation(p, origin);	/* 建立 AC 自动机 */
+
+	fprintf(stderr, "construct double-array trie succeed!\n");
+	return p;
+}
+
+dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation)
 {
 	FILE *fpdict;
 	trie_ptr prime_trie;
@@ -281,22 +280,15 @@ dat_trie_ptr dat_construct_by_file(const char *path)
 		return NULL;
 	}
 
-	fpdict = fopen(path, "rb");
-	if (fpdict == NULL) {
-		return NULL;
-	}
-
-	prime_trie = trie_construct_by_file(fpdict);         /* 建立字典树 */
-	fclose(fpdict);
-	trie_sort_to_line(prime_trie);                       /* 排序字典树节点 */
-	pdat = dat_construct(prime_trie);            /* 建立 Double-Array Trie */
-	dat_construct_automation(pdat, prime_trie);          /* 建立 AC 自动机 */
-	trie_release(prime_trie);                            /* 释放字典树 */
+	prime_trie = trie_construct_by_file(path, false);		/* 建立字典树 */
+	if (prime_trie == NULL) return NULL;
+	pdat = dat_construct(prime_trie, enable_automation);	/* 建立 Double-Array Trie */
+	trie_destruct(prime_trie);							/* 释放字典树 */
 
 	return pdat;
 }
 
-dat_trie_ptr dat_construct_by_string(const char *string)
+dat_trie_ptr dat_construct_by_string(const char *string, bool enable_automation)
 {
 	trie_ptr prime_trie;
 	dat_trie_ptr pdat;
@@ -305,11 +297,10 @@ dat_trie_ptr dat_construct_by_string(const char *string)
 		return NULL;
 	}
 
-	prime_trie = trie_construct_by_s(string);          /* 建立字典树 */
-	trie_sort_to_line(prime_trie);                       /* 排序字典树节点 */
-	pdat = dat_construct(prime_trie);            /* 建立 Double-Array Trie */
-	dat_construct_automation(pdat, prime_trie);          /* 建立 AC 自动机 */
-	trie_release(prime_trie);                            /* 释放字典树 */
+	prime_trie = trie_construct_by_s(string, false);		/* 建立字典树 */
+	if (prime_trie == NULL) return NULL;
+	pdat = dat_construct(prime_trie, enable_automation);	/* 建立 Double-Array Trie */
+	trie_destruct(prime_trie);							/* 释放字典树 */
 
 	return pdat;
 }
@@ -356,7 +347,7 @@ bool dat_reset_context(dat_context_ptr context, unsigned char content[], size_t 
 	return true;
 }
 
-bool dat_next(dat_context_ptr context)
+bool dat_next_on_index(dat_context_ptr context)
 {
 	if (context->header.out_matched_index != NULL) {
 		context->header.out_matched_index = context->header.out_matched_index->next;

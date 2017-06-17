@@ -5,12 +5,13 @@
 #include <matcher.h>
 
 
-const int HISTORY_SIZE = 5000;
+//const int HISTORY_SIZE = 5000;
+#define HISTORY_SIZE 5000
 
 
 int main()
 {
-	struct _context history[HISTORY_SIZE];  // 循环表
+	struct _context history[HISTORY_SIZE];  /* 循环表 */
 	int hcount = 0, hidx = 0;
 
 	matcher_t pdat1, pdat2;
@@ -110,6 +111,8 @@ next_round:;
 
 	fclose(fin);
 	fclose(fout);
+
+	getchar();
 
 	return 0;
 }

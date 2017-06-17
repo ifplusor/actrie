@@ -51,8 +51,8 @@ typedef struct dat_context {
 } dat_context, *dat_context_ptr;
 
 
-dat_trie_ptr dat_construct_by_file(const char *path);
-dat_trie_ptr dat_construct_by_string(const char *string);
+dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation);
+dat_trie_ptr dat_construct_by_string(const char *string, bool enable_automation);
 
 void dat_destruct(dat_trie_ptr p);
 
@@ -60,7 +60,7 @@ dat_context_ptr dat_alloc_context(dat_trie_ptr matcher);
 bool dat_free_context(dat_context_ptr context);
 bool dat_reset_context(dat_context_ptr context, unsigned char content[], size_t len);
 
-bool dat_next(dat_context_ptr context);
+bool dat_next_on_index(dat_context_ptr context);
 
 bool dat_ac_next_on_node(dat_context_ptr context);
 
