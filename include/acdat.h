@@ -51,6 +51,11 @@ typedef struct dat_context {
 } dat_context, *dat_context_ptr;
 
 
+extern const matcher_func dat_matcher_func;
+extern const context_func dat_context_func;
+extern const context_func acdat_context_func;
+
+
 dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation);
 dat_trie_ptr dat_construct_by_string(const char *string, bool enable_automation);
 

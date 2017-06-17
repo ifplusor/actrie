@@ -13,11 +13,26 @@ size_t trie_next_state_by_binary(trie_ptr self, size_t iNode,
 // Double-Array Trie
 // ========================================================
 
+const matcher_func dat_matcher_func = {
+	.destruct = dat_destruct,
+	.alloc_context = dat_alloc_context
+};
+
+const context_func dat_context_func = {
+	.free_context = dat_free_context,
+	.reset_context = dat_reset_context,
+	.next = dat_next_on_index
+};
+
+const context_func acdat_context_func = {
+	.free_context = dat_free_context,
+	.reset_context = dat_reset_context,
+	.next = dat_ac_next_on_index
+};
+
+
 const size_t DAT_ROOT_IDX = 255;
 
-#if defined(_WIN32) && !defined(__cplusplus)
-#define inline __inline
-#endif
 
 static inline dat_node_ptr dat_access_node(dat_trie_ptr self, size_t index)
 {
@@ -174,8 +189,6 @@ dat_trie_ptr dat_alloc()
 		return NULL;
 	}
 
-	p->header._self = p;
-
 	for (i = 0; i < POOL_REGION_SIZE; ++i)
 		p->_nodepool[i] = NULL;
 
@@ -316,7 +329,6 @@ dat_context_ptr dat_alloc_context(dat_trie_ptr matcher)
 		return NULL;
 	}
 
-	ctx->header._self = ctx;
 	ctx->trie = matcher;
 
 	return ctx;

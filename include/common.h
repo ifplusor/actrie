@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #endif
 
+//#define DEBUG 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +25,9 @@ extern "C" {
 #define false 0
 #endif /* __bool_true_false_are_defined */
 
+#if defined(_WIN32) && !defined(__cplusplus)
+#define inline __inline
+#endif
 
 #define MAX_LINE_SIZE 1024*1024
 
@@ -36,6 +40,12 @@ extern const size_t POOL_POSITION_SIZE;
 
 
 long long system_millisecond();
+
+#define offset_of(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+
+#define container_of(ptr, type, member) ({ \
+            const typeof(((type *)0)->member) *__mptr = (ptr); \
+            (type *)((char*)__mptr - offset_of(type, member)); }) 
 
 
 #ifdef __cplusplus
