@@ -58,7 +58,7 @@ struct _context {
   unsigned char *content;
   size_t len;
 
-  match_dict_index_ptr out_matched_index;
+  match_dict_index_ptr out_matched_index;  /* volatile, need deep copy */
   size_t out_e;
 };
 

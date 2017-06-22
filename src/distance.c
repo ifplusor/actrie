@@ -310,7 +310,7 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   matcher_reset_context(context->_tail_context, (char *) content, len);
 
   context->_hcnt = 0;
-  context->_hidx = 0;
+  context->_htidx = 0;
   context->_state = dist_match_state_new_round;
 
   return false;
@@ -318,6 +318,7 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
 
 inline bool dist_construct_out(dist_context_t ctx, size_t _e)
 {
+  // alias
   unsigned char *content = ctx->header.content;
   context_t hctx = ctx->_head_context;
 
@@ -335,12 +336,13 @@ inline bool dist_construct_out(dist_context_t ctx, size_t _e)
 
 bool dist_next_on_index(dist_context_t ctx)
 {
+  // alias
   unsigned char *content = ctx->header.content;
   context_t hist = ctx->_history_context;
   context_t hctx = ctx->_head_context;
   context_t tctx = ctx->_tail_context;
 
-  content[ctx->header.out_e] = ctx->_c;
+  content[ctx->header.out_e] = ctx->_c;  // recover content
 
   switch (ctx->_state) {
     case dist_match_state_new_round: break;
@@ -350,14 +352,14 @@ bool dist_next_on_index(dist_context_t ctx)
 
   while (dat_ac_next_on_index((dat_context_ptr) hctx)) {
     ctx->_state = dist_match_state_check_history;
-    for (ctx->_i = (HISTORY_SIZE + ctx->_hidx - ctx->_hcnt) % HISTORY_SIZE;
-         ctx->_i != ctx->_hidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
+    for (ctx->_i = (HISTORY_SIZE + ctx->_htidx - ctx->_hcnt) % HISTORY_SIZE;
+         ctx->_i != ctx->_htidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
       if (hist[ctx->_i].out_e > hctx->out_e) break;
       ctx->_hcnt--;
     }
     ctx->_i--;
 check_history:
-    for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_hidx;
+    for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_htidx;
          ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
       long diff_pos = (long) hist[ctx->_i].out_e - hctx->out_e;
       long distance = (long) diff_pos - hist[ctx->_i].out_matched_index->length;
@@ -388,8 +390,8 @@ check_tail:
       if (distance < 0) continue;
 
       // record history
-      hist[ctx->_hidx] = *tctx;
-      ctx->_hidx = (ctx->_hidx + 1) % HISTORY_SIZE;
+      hist[ctx->_htidx] = *tctx;
+      ctx->_htidx = (ctx->_htidx + 1) % HISTORY_SIZE;
       ctx->_hcnt++;
 
       if (distance > 45) {

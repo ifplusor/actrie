@@ -27,15 +27,15 @@ typedef enum dist_match_state {
 } dist_match_state;
 
 typedef struct dist_context {
-  struct _context header;
+  struct _context header; /* 'header.out_matched_index' point 'out_index' */
 
   dist_matcher_t _matcher;
 
-  match_dict_index out_index;
+  match_dict_index out_index;             /* will change when call 'next' */
   unsigned char _c;
 
-  struct _context _history_context[HISTORY_SIZE];  /* 循环表 */
-  size_t _hcnt, _hidx, _i;
+  struct _context _history_context[HISTORY_SIZE];          /* cycle queue */
+  size_t _hcnt, _htidx, _i;             /* count, tail, index for history */
 
   context_t _head_context, _tail_context;
   dist_match_state _state;
