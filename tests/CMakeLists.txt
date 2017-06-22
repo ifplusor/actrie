@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 
 
+link_libraries(actrie)
+
 add_executable(testa test.c)
-target_link_libraries(testa
-        PUBLIC actrie)
+add_executable(testb test_dist.c)
 

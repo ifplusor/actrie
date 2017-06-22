@@ -316,6 +316,23 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   return false;
 }
 
+inline bool dist_construct_out(dist_context_t ctx, size_t _e)
+{
+  unsigned char *content = ctx->header.content;
+  context_t hctx = ctx->_head_context;
+
+  ctx->header.out_e = _e;
+  ctx->out_index.length = ctx->header.out_e - hctx->out_e
+      + hctx->out_matched_index->length;
+  ctx->_c = content[ctx->header.out_e];
+  content[ctx->header.out_e] = '\0';
+  ctx->out_index.keyword = (const char *)
+      &content[hctx->out_e - hctx->out_matched_index->length];
+  ctx->out_index.extra = hctx->out_matched_index->extra;
+
+  return true;
+}
+
 bool dist_next_on_index(dist_context_t ctx)
 {
   unsigned char *content = ctx->header.content;
@@ -331,7 +348,7 @@ bool dist_next_on_index(dist_context_t ctx)
     case dist_match_state_check_tail: goto check_tail;
   }
 
-  while (matcher_next(hctx)) {
+  while (dat_ac_next_on_index((dat_context_ptr) hctx)) {
     ctx->_state = dist_match_state_check_history;
     for (ctx->_i = (HISTORY_SIZE + ctx->_hidx - ctx->_hcnt) % HISTORY_SIZE;
          ctx->_i != ctx->_hidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
@@ -350,25 +367,22 @@ check_history:
         continue;
       }
 
-      bool matched =
-          (hist[ctx->_i].out_matched_index->tag == hctx->out_matched_index->tag)
-              && (distance <= (size_t) hist[ctx->_i].out_matched_index->extra);
-      if (matched) {
-        ctx->header.out_e = hist[ctx->_i].out_e;
-        ctx->out_index.length = ctx->header.out_e - hctx->out_e
-            + hctx->out_matched_index->length;
-        ctx->_c = content[ctx->header.out_e];
-        content[ctx->header.out_e] = '\0';
-        ctx->out_index.keyword = (const char *)
-            &content[hctx->out_e - hctx->out_matched_index->length];
-        ctx->out_index.extra = hctx->out_matched_index->extra;
-        return true;
+      match_dict_index_ptr matched_index = hist[ctx->_i].out_matched_index;
+      for (; matched_index != NULL; matched_index = matched_index->next) {
+        if (matched_index->tag <= hctx->out_matched_index->tag) break;
+      }
+      if (matched_index != NULL
+          && matched_index->tag == hctx->out_matched_index->tag) {
+        if (distance <= (size_t) matched_index->extra)
+          return dist_construct_out(ctx, hist[ctx->_i].out_e);
+        break;
       }
     }
 
     ctx->_state = dist_match_state_check_tail;
 check_tail:
-    while (matcher_next(tctx)) {
+    // one node will match the tag only once.
+    while (dat_ac_next_on_node((dat_context_ptr) tctx)) {
       long diff_pos = (long) (tctx->out_e - hctx->out_e);
       long distance = (long) (diff_pos - tctx->out_matched_index->length);
       if (distance < 0) continue;
@@ -384,19 +398,16 @@ check_tail:
         continue;
       }
 
-      bool matched =
-          tctx->out_matched_index->tag == hctx->out_matched_index->tag
-              && distance <= (size_t) tctx->out_matched_index->extra;
-      if (matched) {
-        ctx->header.out_e = tctx->out_e;
-        ctx->out_index.length = ctx->header.out_e - hctx->out_e
-            + hctx->out_matched_index->length;
-        ctx->_c = content[ctx->header.out_e];
-        content[ctx->header.out_e] = '\0';
-        ctx->out_index.keyword = (const char *)
-            &content[hctx->out_e - hctx->out_matched_index->length];
-        ctx->out_index.extra = hctx->out_matched_index->extra;
-        return true;
+      match_dict_index_ptr matched_index = tctx->out_matched_index;
+      for (; matched_index != NULL; matched_index = matched_index->next) {
+        // link table's tag is descending order
+        if (matched_index->tag <= hctx->out_matched_index->tag) break;
+      }
+      if (matched_index != NULL
+          && matched_index->tag == hctx->out_matched_index->tag) {
+        if (distance <= (size_t) matched_index->extra)
+          return dist_construct_out(ctx, tctx->out_e);
+        break;
       }
     }
 next_round:;
@@ -404,60 +415,4 @@ next_round:;
   }
 
   return false;
-}
-
-int main()
-{
-  struct _context history[HISTORY_SIZE];  /* 循环表 */
-  int hcount = 0, hidx = 0;
-
-  matcher_t pdat1, pdat2;
-  context_t ctx1, ctx2;
-
-  char content[150000] = "发货，您验货，满意 满意 发货，您验货，满意";
-
-  dist_matcher_t dist_matcher = dist_construct_by_file("t3.txt", true);
-  dist_context_t dist_context = dist_alloc_context(dist_matcher);
-
-  pdat1 = dist_matcher->_head_matcher;
-  pdat2 = dist_matcher->_tail_matcher;
-
-  ctx1 = matcher_alloc_context(pdat1);
-  ctx2 = matcher_alloc_context(pdat2);
-
-  FILE *fin = fopen("corpus.txt", "r");
-  FILE *fout = fopen("match.out", "w");
-  FILE *cpy = stdout;
-  stdout = fout;
-
-  int count = 0;
-
-  long long start = system_millisecond();
-  while (fscanf(fin, "%[^\n]\n", content) != EOF) {
-    count++;
-
-    dist_reset_context(dist_context, content, strlen(content));
-    while (dist_next_on_index(dist_context)) {
-      printf("%s\n", dist_context->header.out_matched_index->keyword);
-    };
-
-//        if (count % 100 == 0) {
-//            printf("p: %d\n", count);
-//        }
-  }
-
-  stdout = cpy;
-
-  long long end = system_millisecond();
-  double time = (double) (end - start) / 1000;
-  printf("time: %lfs\n", time);
-  printf("line: %d\n", count);
-
-  dist_free_context(dist_context);
-  dist_destruct(dist_matcher);
-
-  fclose(fin);
-  fclose(fout);
-
-//	getchar();
 }

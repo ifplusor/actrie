@@ -19,14 +19,10 @@ set(CMAKE_C_STANDARD 99)
 
 
 add_library(actrie STATIC
-        src/common.c src/dict.c src/actrie.c src/acdat.c src/matcher.c)
+        src/common.c src/dict.c src/actrie.c src/acdat.c src/distance.c
+        src/matcher.c)
 target_include_directories(actrie
         PUBLIC include)
-
-
-add_executable(testb src/distance.c)
-target_link_libraries(testb
-        PUBLIC actrie)
 
 
 add_subdirectory(tests)

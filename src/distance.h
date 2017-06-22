@@ -7,7 +7,7 @@
 
 #include "matcher.h"
 
-#define HISTORY_SIZE 50000
+#define HISTORY_SIZE 50
 
 #ifdef __cplusplus
 extern "C" {

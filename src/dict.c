@@ -144,6 +144,7 @@ void dict_add_index(match_dict_ptr dict,
     memset(dict->index + dict->idx_count, 0, sizeof(match_dict) * 100);
   }
 
+  dict->index[dict->idx_count].next = NULL;
   dict->index[dict->idx_count].length = length;
   dict->index[dict->idx_count].keyword = keyword;
   dict->index[dict->idx_count].extra = extra;
