@@ -12,6 +12,8 @@ gmon.out
 
 *.swp
 
+!dict.[hc]
+
 .idea
 cmake-build-debug
 
