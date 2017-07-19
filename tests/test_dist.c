@@ -22,7 +22,8 @@ int main()
 
     matcher_reset_context(context, content, strlen(content));
     while (matcher_next(context)) {
-      fprintf(fout, "%s\n", context->out_matched_index->keyword);
+      fprintf(fout, "%s - %zu\n", context->out_matched_index->keyword,
+              context->out_matched_index->wlen);
     };
 
 //        if (count % 100 == 0) {

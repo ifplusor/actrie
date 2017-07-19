@@ -19,8 +19,8 @@ set(CMAKE_C_STANDARD 99)
 
 
 add_library(actrie STATIC
-        src/common.c src/dict.c src/actrie.c src/acdat.c src/distance.c
-        src/matcher.c)
+        src/common.c src/utf8.c src/dict.c src/actrie.c src/acdat.c
+        src/distance.c src/matcher.c)
 target_include_directories(actrie
         PUBLIC include)
 

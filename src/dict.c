@@ -1,4 +1,5 @@
 #include "dict.h"
+#include "utf8.h"
 
 const bool alpha_number_bitmap[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -146,6 +147,7 @@ void dict_add_index(match_dict_ptr dict,
 
   dict->index[dict->idx_count].next = NULL;
   dict->index[dict->idx_count].length = length;
+  dict->index[dict->idx_count].wlen = utf8_word_length(keyword, length);
   dict->index[dict->idx_count].keyword = keyword;
   dict->index[dict->idx_count].extra = extra;
   dict->index[dict->idx_count].tag = tag;

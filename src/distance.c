@@ -3,6 +3,7 @@
 //
 
 #include <regex.h>
+#include "utf8.h"
 #include "distance.h"
 #include "acdat.h"
 
@@ -78,7 +79,7 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
 
     if (pmatch[3].rm_so == -1) {
       // .*?
-      distance = 15 * 3;
+      distance = 15;
     } else {
       // +++++
       // 连用需要多条 index
@@ -90,7 +91,7 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
         dist[1] = keyword[pmatch[3].rm_eo];
         dist[2] = '\0';
       }
-      distance = (size_t) atoi(dist) * 3;
+      distance = (size_t) atoi(dist);
     }
 
     strcpy(dict->buffer + dict->_cursor, keyword);
@@ -163,8 +164,6 @@ trie_ptr dist_trie_filter_construct(match_dict_ptr dict,
       prime_trie = NULL;
       break;
     }
-
-    if (prime_trie == NULL) break;
   }
 
   if (prime_trie != NULL) {
@@ -276,6 +275,7 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher)
   ctx->_tail_context = matcher_alloc_context(matcher->_tail_matcher);
   if (ctx->_tail_context == NULL) goto dist_alloc_context_failed;
   ctx->header.out_matched_index = &ctx->out_index;
+  ctx->_utf8_pos = NULL;
   return ctx;
 
 dist_alloc_context_failed:
@@ -288,6 +288,7 @@ dist_alloc_context_failed:
 bool dist_free_context(dist_context_t ctx)
 {
   if (ctx != NULL) {
+    if (ctx->_utf8_pos != NULL) free(ctx->_utf8_pos);
     if (ctx->_tail_context != NULL) matcher_free_context(ctx->_tail_context);
     if (ctx->_head_context != NULL) matcher_free_context(ctx->_head_context);
     free(ctx);
@@ -306,6 +307,16 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   context->header.out_e = 0;
   context->_c = content[0];
 
+  if (context->_utf8_pos != NULL) {
+    free(context->_utf8_pos);
+    context->_utf8_pos = NULL;
+  }
+  context->_utf8_pos = malloc((len + 1) * sizeof(size_t));
+  if (context->_utf8_pos == NULL) {
+    fprintf(stderr, "error when malloc.\n");
+  }
+  utf8_word_position((const char *) content, len, context->_utf8_pos);
+
   matcher_reset_context(context->_head_context, (char *) content, len);
   matcher_reset_context(context->_tail_context, (char *) content, len);
 
@@ -316,7 +327,7 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   return false;
 }
 
-inline bool dist_construct_out(dist_context_t ctx, size_t _e)
+bool dist_construct_out(dist_context_t ctx, size_t _e)
 {
   // alias
   unsigned char *content = ctx->header.content;
@@ -325,6 +336,10 @@ inline bool dist_construct_out(dist_context_t ctx, size_t _e)
   ctx->header.out_e = _e;
   ctx->out_index.length = ctx->header.out_e - hctx->out_e
       + hctx->out_matched_index->length;
+  ctx->out_index.wlen =
+      utf8_word_distance(ctx->_utf8_pos,
+                         hctx->out_e - hctx->out_matched_index->length,
+                         ctx->header.out_e);
   ctx->_c = content[ctx->header.out_e];
   content[ctx->header.out_e] = '\0';
   ctx->out_index.keyword = (const char *)
@@ -361,10 +376,12 @@ bool dist_next_on_index(dist_context_t ctx)
 check_history:
     for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_htidx;
          ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
-      long diff_pos = (long) hist[ctx->_i].out_e - hctx->out_e;
-      long distance = (long) diff_pos - hist[ctx->_i].out_matched_index->length;
-      if (distance > 45) {
-        if (diff_pos > 45 + ctx->_matcher->_dict->max_extra_length)
+      long diff_pos =
+          utf8_word_distance(ctx->_utf8_pos, hctx->out_e, hist[ctx->_i].out_e);
+      long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
+      if (distance > 15) {  // max distance is 15
+        if (hist[ctx->_i].out_e - hctx->out_e >
+            45 + ctx->_matcher->_dict->max_extra_length)
           goto next_round;
         continue;
       }
@@ -385,8 +402,9 @@ check_history:
 check_tail:
     // one node will match the tag only once.
     while (dat_ac_next_on_node((dat_context_ptr) tctx)) {
-      long diff_pos = (long) (tctx->out_e - hctx->out_e);
-      long distance = (long) (diff_pos - tctx->out_matched_index->length);
+      long diff_pos =
+          utf8_word_distance(ctx->_utf8_pos, hctx->out_e, tctx->out_e);
+      long distance = (long) (diff_pos - tctx->out_matched_index->wlen);
       if (distance < 0) continue;
 
       // record history
@@ -394,8 +412,9 @@ check_tail:
       ctx->_htidx = (ctx->_htidx + 1) % HISTORY_SIZE;
       ctx->_hcnt++;
 
-      if (distance > 45) {
-        if (diff_pos > 45 + ctx->_matcher->_dict->max_extra_length)
+      if (distance > 15) {  // max distance is 15
+        if (tctx->out_e - hctx->out_e >
+            45 + ctx->_matcher->_dict->max_extra_length)
           goto next_round;
         continue;
       }

@@ -7,6 +7,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
+
+// dictionary API
+// ==============
+
 #define SEPARATOR_ID "###"
 
 typedef enum match_dict_keyword_type {
@@ -22,7 +26,7 @@ typedef struct match_dict_index {
   const char *keyword;
   const char *extra;
   const char *tag;
-  size_t length;
+  size_t length, wlen;
   match_dict_keyword_type type;
 } match_dict_index, *match_dict_index_ptr;
 

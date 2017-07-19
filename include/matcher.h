@@ -12,7 +12,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 
-// API
+// matcher API
 // ==============
 
 typedef enum matcher_type {
@@ -31,9 +31,10 @@ typedef struct _context *context_t;
 typedef bool(*matcher_destruct_func)(matcher_t);
 typedef context_t(*matcher_alloc_context_func)(matcher_t);
 
+/* matcher 成员函数 */
 typedef struct _matcher_func {
-  matcher_destruct_func destruct;
-  matcher_alloc_context_func alloc_context;
+  matcher_destruct_func destruct;  /* 销毁 */
+  matcher_alloc_context_func alloc_context;  /* 构造 context */
 } matcher_func;
 
 struct _matcher {
@@ -45,10 +46,11 @@ typedef bool(*matcher_free_context_func)(context_t);
 typedef bool(*matcher_reset_context_func)(context_t, char[], size_t);
 typedef bool(*matcher_next_func)(context_t);
 
+/* context 成员函数 */
 typedef struct _context_func {
-  matcher_free_context_func free_context;
-  matcher_reset_context_func reset_context;
-  matcher_next_func next;
+  matcher_free_context_func free_context;  /* 销毁 */
+  matcher_reset_context_func reset_context;  /* 初始化 */
+  matcher_next_func next;  /* 迭代匹配 */
 } context_func;
 
 struct _context {

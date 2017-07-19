@@ -34,6 +34,8 @@ typedef struct dist_context {
   match_dict_index out_index;             /* will change when call 'next' */
   unsigned char _c;
 
+  size_t *_utf8_pos;
+
   struct _context _history_context[HISTORY_SIZE];          /* cycle queue */
   size_t _hcnt, _htidx, _i;             /* count, tail, index for history */
 
