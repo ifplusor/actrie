@@ -25,8 +25,7 @@ unsigned char utf8_size_table[256] =
     };
 #define UTF8_WORD_SIZE(s) (utf8_size_table[(unsigned char)*(s)])
 
-size_t utf8_word_length(const char *s, size_t slen)
-{
+size_t utf8_word_length(const char *s, size_t slen) {
   size_t wlen = 0;
   size_t i = 0;
   while (i < slen) {
@@ -44,8 +43,7 @@ size_t utf8_word_length(const char *s, size_t slen)
  * @param slen 	length of string in buffer s
  * @return
  */
-int utf8_word_position(const char *in_s, size_t in_slen, size_t *out_wp)
-{
+int utf8_word_position(const char *in_s, size_t in_slen, size_t *out_wp) {
   size_t wlen = 0;
   size_t i = 0;
   while (i < in_slen) {

@@ -62,8 +62,7 @@ bool dict_default_add_keyword_and_extra(match_dict_ptr dict,
                                         char keyword[],
                                         char extra[]);
 
-match_dict_ptr dict_alloc()
-{
+match_dict_ptr dict_alloc() {
   match_dict_ptr p = (match_dict_ptr) malloc(sizeof(match_dict));
   if (p == NULL) return NULL;
 
@@ -77,8 +76,7 @@ match_dict_ptr dict_alloc()
   return p;
 }
 
-match_dict_ptr dict_assign(match_dict_ptr dict)
-{
+match_dict_ptr dict_assign(match_dict_ptr dict) {
   if (dict != NULL) {
     dict->_ref_count++;
   }
@@ -86,8 +84,7 @@ match_dict_ptr dict_assign(match_dict_ptr dict)
   return dict;
 }
 
-void dict_release(match_dict_ptr dict)
-{
+void dict_release(match_dict_ptr dict) {
   if (dict != NULL) {
     dict->_ref_count--;
     if (dict->_ref_count == 0) {
@@ -100,8 +97,7 @@ void dict_release(match_dict_ptr dict)
   }
 }
 
-bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size)
-{
+bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size) {
   if (dict->before_reset != NULL)
     dict->before_reset(dict, &index_count, &buffer_size);
 
@@ -137,8 +133,7 @@ void dict_add_index(match_dict_ptr dict,
                     char *keyword,
                     char *extra,
                     char *tag,
-                    match_dict_keyword_type type)
-{
+                    match_dict_keyword_type type) {
   if (dict->idx_count == dict->idx_size) {
     dict->idx_size += 100;
     dict->index = realloc(dict->index, sizeof(match_dict) * dict->idx_size);
@@ -157,8 +152,7 @@ void dict_add_index(match_dict_ptr dict,
 
 bool dict_default_add_keyword_and_extra(match_dict_ptr dict,
                                         char keyword[],
-                                        char extra[])
-{
+                                        char extra[]) {
   match_dict_keyword_type type;
   size_t key_cur, extra_cur, tag_cur;
   size_t i, key_length;
@@ -216,8 +210,7 @@ bool dict_default_add_keyword_and_extra(match_dict_ptr dict,
   return true;
 }
 
-bool dict_parser_line(match_dict_ptr dict, const char *line_buf)
-{
+bool dict_parser_line(match_dict_ptr dict, const char *line_buf) {
   static char keyword[MAX_LINE_SIZE];
   static char extra[MAX_LINE_SIZE];
 
@@ -260,8 +253,7 @@ bool dict_parser_line(match_dict_ptr dict, const char *line_buf)
   return dict->add_keyword_and_extra(dict, keyword, extra);
 }
 
-bool dict_parser_by_file(match_dict_ptr dict, FILE *fp)
-{
+bool dict_parser_by_file(match_dict_ptr dict, FILE *fp) {
   /* 静态化以后，不支持多线程 */
   static char line_buf[MAX_LINE_SIZE];
   size_t count = 0;
@@ -303,8 +295,7 @@ bool dict_parser_by_file(match_dict_ptr dict, FILE *fp)
 
 const char *split = "\n";
 
-bool dict_parser_by_s(match_dict_ptr dict, const char *s)
-{
+bool dict_parser_by_s(match_dict_ptr dict, const char *s) {
   char *line_buf;
   size_t count = 0;
   char *work_s, *t_s;

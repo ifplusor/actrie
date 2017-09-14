@@ -31,15 +31,13 @@ const context_func acdat_context_func = {
 
 const size_t DAT_ROOT_IDX = 255;
 
-static inline dat_node_ptr dat_access_node(dat_trie_ptr self, size_t index)
-{
+static inline dat_node_ptr dat_access_node(dat_trie_ptr self, size_t index) {
   size_t region = index >> REGION_OFFSET;
   size_t position = index & POSITION_MASK;
   return &self->_nodepool[region][position];
 }
 
-static void dat_alloc_nodepool(dat_trie_ptr self, size_t region)
-{
+static void dat_alloc_nodepool(dat_trie_ptr self, size_t region) {
   size_t offset;
   int i;
 
@@ -64,8 +62,8 @@ static void dat_alloc_nodepool(dat_trie_ptr self, size_t region)
   self->_lead->dat_free_last = offset + POOL_POSITION_SIZE - 1;
 }
 
-static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self, size_t index)
-{
+static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self,
+                                               size_t index) {
   size_t region = index >> REGION_OFFSET;
   size_t position = index & POSITION_MASK;
   if (region >= POOL_REGION_SIZE) return NULL;
@@ -76,8 +74,7 @@ static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self, size_t index)
 //static size_t count = 0;
 
 static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
-                                 trie_node_ptr pNode, size_t datindex)
-{
+                                 trie_node_ptr pNode, size_t datindex) {
   unsigned char child[256];
   int len = 0;
   trie_node_ptr pChild;
@@ -146,8 +143,7 @@ checkfailed:
   }
 }
 
-static void dat_post_construct(dat_trie_ptr self)
-{
+static void dat_post_construct(dat_trie_ptr self) {
   /* 添加占位内存，防止匹配时出现非法访问 */
   int region = 1;
   while (region < POOL_REGION_SIZE && self->_nodepool[region] != NULL)
@@ -167,8 +163,7 @@ static void dat_post_construct(dat_trie_ptr self)
   }
 }
 
-dat_trie_ptr dat_alloc()
-{
+dat_trie_ptr dat_alloc() {
   dat_node_ptr pnode;
   dat_trie_ptr p;
   size_t i;
@@ -210,8 +205,7 @@ dat_trie_ptr dat_alloc()
   return p;
 }
 
-void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
-{
+void dat_construct_automation(dat_trie_ptr self, trie_ptr origin) {
   size_t index;
   trie_node_ptr pNode = origin->root;
   size_t iChild = pNode->trie_child;
@@ -249,8 +243,7 @@ void dat_construct_automation(dat_trie_ptr self, trie_ptr origin)
   fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-bool dat_destruct(dat_trie_ptr p)
-{
+bool dat_destruct(dat_trie_ptr p) {
   if (p != NULL) {
     int i;
     if (p->_dict != NULL) dict_release(p->_dict);
@@ -265,8 +258,7 @@ bool dat_destruct(dat_trie_ptr p)
   return false;
 }
 
-dat_trie_ptr dat_construct(trie_ptr origin, bool enable_automation)
-{
+dat_trie_ptr dat_construct(trie_ptr origin, bool enable_automation) {
   dat_trie_ptr p = dat_alloc();
   if (p == NULL)
     return NULL;
@@ -282,8 +274,7 @@ dat_trie_ptr dat_construct(trie_ptr origin, bool enable_automation)
   return p;
 }
 
-dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation)
-{
+dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation) {
   trie_ptr prime_trie;
   dat_trie_ptr pdat;
 
@@ -296,8 +287,8 @@ dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation)
   return pdat;
 }
 
-dat_trie_ptr dat_construct_by_string(const char *string, bool enable_automation)
-{
+dat_trie_ptr dat_construct_by_string(const char *string,
+                                     bool enable_automation) {
   trie_ptr prime_trie;
   dat_trie_ptr pdat;
 
@@ -314,8 +305,7 @@ dat_trie_ptr dat_construct_by_string(const char *string, bool enable_automation)
 // dat Context
 // ===================================================
 
-dat_context_ptr dat_alloc_context(dat_trie_ptr matcher)
-{
+dat_context_ptr dat_alloc_context(dat_trie_ptr matcher) {
   dat_context_ptr ctx = malloc(sizeof(dat_context));
   if (ctx == NULL) {
     return NULL;
@@ -326,8 +316,7 @@ dat_context_ptr dat_alloc_context(dat_trie_ptr matcher)
   return ctx;
 }
 
-bool dat_free_context(dat_context_ptr context)
-{
+bool dat_free_context(dat_context_ptr context) {
   if (context != NULL) {
     free(context);
   }
@@ -336,8 +325,7 @@ bool dat_free_context(dat_context_ptr context)
 }
 
 bool dat_reset_context(dat_context_ptr context, unsigned char content[],
-                       size_t len)
-{
+                       size_t len) {
   context->header.content = content;
   context->header.len = len;
 
@@ -352,8 +340,7 @@ bool dat_reset_context(dat_context_ptr context, unsigned char content[],
   return true;
 }
 
-bool dat_next_on_index(dat_context_ptr context)
-{
+bool dat_next_on_index(dat_context_ptr context) {
   if (context->header.out_matched_index != NULL) {
     context->header.out_matched_index = context->header.out_matched_index->next;
     if (context->header.out_matched_index != NULL)
@@ -400,8 +387,7 @@ bool dat_next_on_index(dat_context_ptr context)
   return false;
 }
 
-bool dat_ac_next_on_node(dat_context_ptr context)
-{
+bool dat_ac_next_on_node(dat_context_ptr context) {
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
   while (context->out_matched != context->trie->root) {
     context->out_matched =
@@ -442,8 +428,7 @@ bool dat_ac_next_on_node(dat_context_ptr context)
   return false;
 }
 
-bool dat_ac_next_on_index(dat_context_ptr context)
-{
+bool dat_ac_next_on_index(dat_context_ptr context) {
   /* 检查 index 列表 */
   if (context->header.out_matched_index != NULL) {
     context->header.out_matched_index = context->header.out_matched_index->next;
@@ -491,3 +476,28 @@ bool dat_ac_next_on_index(dat_context_ptr context)
   return false;
 }
 
+bool dat_prefix_next_on_index(dat_context_ptr context) {
+  /* 检查 index 列表 */
+  if (context->header.out_matched_index != NULL) {
+    context->header.out_matched_index = context->header.out_matched_index->next;
+    if (context->header.out_matched_index != NULL)
+      return true;
+  }
+
+  /* 执行匹配 */
+  for (; context->header.out_e < context->header.len; context->header.out_e++) {
+    size_t iNext = context->_pCursor->base
+        + context->header.content[context->header.out_e];
+    dat_node_ptr pNext = dat_access_node(context->trie, iNext);
+    if (pNext->check != context->_iCursor) return false;
+    context->_iCursor = iNext;
+    context->_pCursor = pNext;
+    if (pNext->dat_dictidx != NULL) {
+      context->out_matched = pNext;
+      context->header.out_matched_index = context->out_matched->dat_dictidx;
+      context->header.out_e++;
+      return true;
+    }
+  }
+  return false;
+}

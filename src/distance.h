@@ -23,7 +23,8 @@ typedef struct dist_matcher {
 typedef enum dist_match_state {
   dist_match_state_new_round = 0,
   dist_match_state_check_history,
-  dist_match_state_check_tail
+  dist_match_state_check_tail,
+  dist_match_state_check_prefix,
 } dist_match_state;
 
 typedef struct dist_context {
@@ -39,7 +40,7 @@ typedef struct dist_context {
   struct _context _history_context[HISTORY_SIZE];          /* cycle queue */
   size_t _hcnt, _htidx, _i;             /* count, tail, index for history */
 
-  context_t _head_context, _tail_context;
+  context_t _head_context, _tail_context, _digit_context;
   dist_match_state _state;
 
 } *dist_context_t;

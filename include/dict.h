@@ -54,6 +54,7 @@ struct match_dict {
 };
 
 extern const bool alpha_number_bitmap[256];
+extern const bool number_bitmap[256];
 
 match_dict_ptr dict_alloc();
 match_dict_ptr dict_assign(match_dict_ptr dict);

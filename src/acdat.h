@@ -69,6 +69,8 @@ bool dat_ac_next_on_node(dat_context_ptr context);
 
 bool dat_ac_next_on_index(dat_context_ptr context);
 
+bool dat_prefix_next_on_index(dat_context_ptr context);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

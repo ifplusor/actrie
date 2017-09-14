@@ -19,8 +19,7 @@ const context_func *const context_func_table[matcher_type_size] = {
     [matcher_type_distance] = &dist_context_func,
 };
 
-matcher_t matcher_construct_by_file(matcher_type type, const char *path)
-{
+matcher_t matcher_construct_by_file(matcher_type type, const char *path) {
   matcher_t matcher = NULL;
   switch (type) {
     case matcher_type_dat:
@@ -30,7 +29,8 @@ matcher_t matcher_construct_by_file(matcher_type type, const char *path)
       matcher = (matcher_t) dat_construct_by_file(path, true);
       break;
     case matcher_type_distance:
-      matcher = (matcher_t) dist_construct_by_file(path, true);
+      matcher = (matcher_t) dist_construct_by_file(path,
+                                                   true);
       break;
     case matcher_type_size:break;
   }
@@ -41,18 +41,20 @@ matcher_t matcher_construct_by_file(matcher_type type, const char *path)
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(matcher_type type, const char *string)
-{
+matcher_t matcher_construct_by_string(matcher_type type, const char *string) {
   matcher_t matcher = NULL;
   switch (type) {
     case matcher_type_dat:
-      matcher = (matcher_t) dat_construct_by_string(string, false);
+      matcher = (matcher_t) dat_construct_by_string(string,
+                                                    false);
       break;
     case matcher_type_acdat:
-      matcher = (matcher_t) dat_construct_by_string(string, true);
+      matcher = (matcher_t) dat_construct_by_string(string,
+                                                    true);
       break;
     case matcher_type_distance:
-      matcher = (matcher_t) dist_construct_by_string(string, true);
+      matcher = (matcher_t) dist_construct_by_string(string,
+                                                     true);
       break;
     case matcher_type_size:break;
   }
@@ -63,16 +65,14 @@ matcher_t matcher_construct_by_string(matcher_type type, const char *string)
   return matcher;
 }
 
-bool matcher_destruct(matcher_t matcher)
-{
+bool matcher_destruct(matcher_t matcher) {
   if (matcher == NULL) {
     return false;
   }
   return matcher->_func.destruct(matcher);
 }
 
-context_t matcher_alloc_context(matcher_t matcher)
-{
+context_t matcher_alloc_context(matcher_t matcher) {
   context_t context = NULL;
   if (matcher == NULL) {
     return NULL;
@@ -85,24 +85,21 @@ context_t matcher_alloc_context(matcher_t matcher)
   return context;
 }
 
-bool matcher_free_context(context_t context)
-{
+bool matcher_free_context(context_t context) {
   if (context == NULL) {
     return false;
   }
   return context->_func.free_context(context);
 }
 
-bool matcher_reset_context(context_t context, char content[], size_t len)
-{
+bool matcher_reset_context(context_t context, char content[], size_t len) {
   if (context == NULL) {
     return false;
   }
   return context->_func.reset_context(context, content, len);
 }
 
-bool matcher_next(context_t context)
-{
+bool matcher_next(context_t context) {
   if (context == NULL) {
     return false;
   }

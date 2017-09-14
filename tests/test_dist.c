@@ -4,11 +4,11 @@
 
 #include <matcher.h>
 
-int main()
-{
-  char content[150000] = "发货，您验货，满意 满意 发货，您验货，满意";
+int main() {
+  char content[150000] = "苹果的果实134较饱满 较饱满";
 
-  matcher_t matcher = matcher_construct_by_file(matcher_type_distance, "t3.txt");
+  matcher_t matcher =
+      matcher_construct_by_file(matcher_type_distance, "/home/james/Downloads/rule");
   context_t context = matcher_alloc_context(matcher);
 
   FILE *fin = fopen("corpus.txt", "r");
@@ -22,8 +22,10 @@ int main()
 
     matcher_reset_context(context, content, strlen(content));
     while (matcher_next(context)) {
-      fprintf(fout, "%s - %zu\n", context->out_matched_index->keyword,
-              context->out_matched_index->wlen);
+      fprintf(fout, "%s(%zu) - %s\n",
+              context->out_matched_index->keyword,
+              context->out_matched_index->wlen,
+              context->out_matched_index->extra);
     };
 
 //        if (count % 100 == 0) {

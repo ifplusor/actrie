@@ -4,13 +4,11 @@
 // Prime Trie
 // ========================================================
 
-size_t trie_size(trie_ptr self)
-{
+size_t trie_size(trie_ptr self) {
   return self->_autoindex;
 }
 
-static size_t trie_alloc_node(trie_ptr self)
-{
+static size_t trie_alloc_node(trie_ptr self) {
   size_t region = self->_autoindex >> REGION_OFFSET;
 //	size_t position = self->_autoindex & POSITION_MASK;
 #ifdef CHECK
@@ -35,8 +33,7 @@ static size_t trie_alloc_node(trie_ptr self)
 #define inline __inline
 #endif
 
-static inline trie_node_ptr trie_access_node(trie_ptr self, size_t index)
-{
+static inline trie_node_ptr trie_access_node(trie_ptr self, size_t index) {
   size_t region = index >> REGION_OFFSET;
   size_t position = index & POSITION_MASK;
 #ifdef CHECK
@@ -48,8 +45,7 @@ static inline trie_node_ptr trie_access_node(trie_ptr self, size_t index)
   return &self->_nodepool[region][position];
 }
 
-trie_node_ptr trie_access_node_export(trie_ptr self, size_t index)
-{
+trie_node_ptr trie_access_node_export(trie_ptr self, size_t index) {
   size_t region = index >> REGION_OFFSET;
   size_t position = index & POSITION_MASK;
 #ifdef CHECK
@@ -62,8 +58,7 @@ trie_node_ptr trie_access_node_export(trie_ptr self, size_t index)
 }
 
 bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
-                      match_dict_index_ptr index)
-{
+                      match_dict_index_ptr index) {
   trie_node_ptr pNode = self->root;
   size_t iNode = 0; /* iParent保存pNode的index */
   size_t i = 0;
@@ -132,8 +127,9 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
   return true;
 }
 
-size_t trie_next_state_by_binary(trie_ptr self, size_t iNode, unsigned char key)
-{
+size_t trie_next_state_by_binary(trie_ptr self,
+                                 size_t iNode,
+                                 unsigned char key) {
   trie_node_ptr pNode = trie_access_node(self, iNode);
   if (pNode->len >= 1) {
     size_t left = pNode->trie_child;
@@ -157,8 +153,7 @@ size_t trie_next_state_by_binary(trie_ptr self, size_t iNode, unsigned char key)
 }
 
 trie_node_ptr trie_next_node_by_binary(trie_ptr self, trie_node_ptr pNode,
-                                       unsigned char key)
-{
+                                       unsigned char key) {
   size_t left, right;
   if (key < trie_access_node(self, pNode->trie_child)->key ||
       trie_access_node(self, pNode->trie_child + pNode->len - 1)->key < key)
@@ -181,8 +176,7 @@ trie_node_ptr trie_next_node_by_binary(trie_ptr self, trie_node_ptr pNode,
   return self->root;
 }
 
-void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb)
-{
+void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb) {
   pa->trie_child ^= pb->trie_child;
   pb->trie_child ^= pa->trie_child;
   pa->trie_child ^= pb->trie_child;
@@ -210,8 +204,7 @@ void trie_swap_node_data(trie_node_ptr pa, trie_node_ptr pb)
 }
 
 // swap and return iChild's brother node
-size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
-{
+size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget) {
   trie_node_ptr pChild = trie_access_node(self, iChild);
   if (iChild != iTarget) {
     trie_node_ptr ptmp, pTarget = trie_access_node(self, iTarget);
@@ -269,8 +262,7 @@ size_t trie_swap_node(trie_ptr self, size_t iChild, size_t iTarget)
   return pChild->trie_brother;
 }
 
-trie_ptr trie_alloc()
-{
+trie_ptr trie_alloc() {
   size_t root;
   int i;
 
@@ -298,8 +290,7 @@ trie_alloc_failed:
   return NULL;
 }
 
-void trie_sort_to_line(trie_ptr self)
-{
+void trie_sort_to_line(trie_ptr self) {
   size_t i, iTarget = 1;
   for (i = 0; i < iTarget; i++) { /* 隐式bfs队列 */
     trie_node_ptr pNode = trie_access_node(self, i);
@@ -316,8 +307,7 @@ void trie_sort_to_line(trie_ptr self)
   fprintf(stderr, "sort succeed!\n");
 }
 
-void trie_set_parent_by_dfs(trie_ptr self, size_t current, size_t parent)
-{
+void trie_set_parent_by_dfs(trie_ptr self, size_t current, size_t parent) {
   trie_node_ptr pNode = trie_access_node(self, current);
   pNode->trie_parent = parent;
   if (pNode->trie_child != 0)
@@ -326,15 +316,13 @@ void trie_set_parent_by_dfs(trie_ptr self, size_t current, size_t parent)
     trie_set_parent_by_dfs(self, pNode->trie_brother, parent);
 }
 
-void trie_rebuild_parent_relation(trie_ptr self)
-{
+void trie_rebuild_parent_relation(trie_ptr self) {
   if (self->root->trie_child != 0)
     trie_set_parent_by_dfs(self, self->root->trie_child, 0);
   fprintf(stderr, "rebuild parent succeed!\n");
 }
 
-void trie_construct_automation(trie_ptr self)
-{
+void trie_construct_automation(trie_ptr self) {
   size_t index;
   trie_node_ptr pNode = self->root;
   size_t iChild = pNode->trie_child;
@@ -364,8 +352,7 @@ void trie_construct_automation(trie_ptr self)
   fprintf(stderr, "construct AC automation succeed!\n");
 }
 
-void trie_destruct(trie_ptr p)
-{
+void trie_destruct(trie_ptr p) {
   if (p != NULL) {
     int i;
     dict_release(p->_dict);
@@ -377,8 +364,7 @@ void trie_destruct(trie_ptr p)
   }
 }
 
-trie_ptr trie_construct(match_dict_ptr dict, bool enable_automation)
-{
+trie_ptr trie_construct(match_dict_ptr dict, bool enable_automation) {
 #ifdef DEBUG
   long long t0, t1, t2, t3, t4;
 #endif
@@ -422,8 +408,7 @@ trie_ptr trie_construct(match_dict_ptr dict, bool enable_automation)
   return prime_trie;
 }
 
-trie_ptr trie_construct_by_file(const char *path, bool enable_automation)
-{
+trie_ptr trie_construct_by_file(const char *path, bool enable_automation) {
   trie_ptr prime_trie = NULL;
   match_dict_ptr dict = NULL;
   FILE *fp = NULL;
@@ -451,8 +436,7 @@ trie_ptr trie_construct_by_file(const char *path, bool enable_automation)
   return prime_trie;
 }
 
-trie_ptr trie_construct_by_s(const char *s, bool enable_automation)
-{
+trie_ptr trie_construct_by_s(const char *s, bool enable_automation) {
   trie_ptr prime_trie = NULL;
   match_dict_ptr dict = NULL;
 
@@ -475,8 +459,7 @@ trie_ptr trie_construct_by_s(const char *s, bool enable_automation)
   return prime_trie;
 }
 
-void trie_ac_match(trie_ptr self, unsigned char content[], size_t len)
-{
+void trie_ac_match(trie_ptr self, unsigned char content[], size_t len) {
   size_t i;
   trie_node_ptr pCursor = self->root;
   for (i = 0; i < len; ++i) {
