@@ -50,6 +50,7 @@ static const char
     *pattern = "(.*)(\\.\\*\\?|(\\\\d|\\.)\\{0,([0-9]|1[0-5])\\})(.*)";
 static regex_t reg;
 static bool pattern_compiled = false;
+static const char *tokens_delimiter = "|";
 
 void dict_distance_before_reset(match_dict_ptr dict,
                                 size_t *index_count,
@@ -128,16 +129,16 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
 
     // 连用需要多条 index
     // 针对连用，需要扩充内存
-    for (split = strtok(dict->buffer + head_cur, ","); split;
-         split = strtok(NULL, ",")) {
+    for (split = strtok(dict->buffer + head_cur, tokens_delimiter); split;
+         split = strtok(NULL, tokens_delimiter)) {
       size_t length = strlen(split);
       if (length > dict->max_key_length) dict->max_key_length = length;
       dict_add_index(dict, strlen(split), split, (char *) distance,
                      (char *) tag, match_dict_keyword_type_head);
     }
 
-    for (split = strtok(dict->buffer + tail_cur, ","); split;
-         split = strtok(NULL, ",")) {
+    for (split = strtok(dict->buffer + tail_cur, tokens_delimiter); split;
+         split = strtok(NULL, tokens_delimiter)) {
       size_t length = strlen(split);
       if (length > dict->max_extra_length) dict->max_extra_length = length;
       dict_add_index(dict, strlen(split), split, dict->buffer + key_cur,
