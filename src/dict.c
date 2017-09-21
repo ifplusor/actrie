@@ -140,12 +140,12 @@ void dict_add_index(match_dict_ptr dict,
     memset(dict->index + dict->idx_count, 0, sizeof(match_dict) * 100);
   }
 
-  dict->index[dict->idx_count].next = NULL;
+  dict->index[dict->idx_count]._next = NULL;
   dict->index[dict->idx_count].length = length;
   dict->index[dict->idx_count].wlen = utf8_word_length(keyword, length);
   dict->index[dict->idx_count].keyword = keyword;
   dict->index[dict->idx_count].extra = extra;
-  dict->index[dict->idx_count].tag = tag;
+  dict->index[dict->idx_count]._tag = tag;
   dict->index[dict->idx_count].type = type;
   dict->idx_count++;
 }

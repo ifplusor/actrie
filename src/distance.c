@@ -346,14 +346,20 @@ bool dist_construct_out(dist_context_t ctx, const char *extra, size_t _e) {
   // alias
   unsigned char *content = ctx->header.content;
   context_t hctx = ctx->_head_context;
+  context_t tctx = ctx->_tail_context;
 
   ctx->header.out_e = _e;
   ctx->out_index.length = ctx->header.out_e - hctx->out_e
       + hctx->out_matched_index->length;
+#ifdef USE_SUBPATTERN_LENGTH
+  // NOTE: here use sub-pattern word length.
+  ctx->out_index.wlen = hctx->out_matched_index->wlen + tctx->out_matched_index->wlen;
+#else
   ctx->out_index.wlen =
       utf8_word_distance(ctx->_utf8_pos,
                          hctx->out_e - hctx->out_matched_index->length,
                          ctx->header.out_e);
+#endif
   ctx->_c = content[ctx->header.out_e];
   content[ctx->header.out_e] = '\0';
   ctx->out_index.keyword = (const char *)
@@ -397,7 +403,7 @@ bool dist_next_on_index(dist_context_t ctx) {
       matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
 check_prefix:
       while (dat_prefix_next_on_index((dat_context_ptr) dctx)) {
-        if (dctx->out_matched_index->tag == hctx->out_matched_index->tag)
+        if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
           return dist_construct_out(ctx,
                                     dctx->out_matched_index->extra,
                                     tail_so + dctx->out_e);
@@ -426,11 +432,11 @@ check_history:
       }
 
       match_dict_index_ptr matched_index = hist[ctx->_i].out_matched_index;
-      for (; matched_index != NULL; matched_index = matched_index->next) {
-        if (matched_index->tag <= hctx->out_matched_index->tag) break;
+      for (; matched_index != NULL; matched_index = matched_index->_next) {
+        if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
       }
       if (matched_index != NULL
-          && matched_index->tag == hctx->out_matched_index->tag) {
+          && matched_index->_tag == hctx->out_matched_index->_tag) {
         if (distance <= (size_t) hctx->out_matched_index->extra)
           return dist_construct_out(ctx,
                                     matched_index->extra,
@@ -461,12 +467,12 @@ check_tail:
       }
 
       match_dict_index_ptr matched_index = tctx->out_matched_index;
-      for (; matched_index != NULL; matched_index = matched_index->next) {
+      for (; matched_index != NULL; matched_index = matched_index->_next) {
         // link table's tag is descending order
-        if (matched_index->tag <= hctx->out_matched_index->tag) break;
+        if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
       }
       if (matched_index != NULL
-          && matched_index->tag == hctx->out_matched_index->tag) {
+          && matched_index->_tag == hctx->out_matched_index->_tag) {
         if (distance <= (size_t) hctx->out_matched_index->extra)
           return dist_construct_out(ctx, matched_index->extra, tctx->out_e);
         break;

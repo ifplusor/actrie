@@ -75,6 +75,19 @@ bool matcher_free_context(context_t context);
 bool matcher_reset_context(context_t context, char content[], size_t len);
 bool matcher_next(context_t context);
 
+typedef struct _idx_pos {
+  const char *keyword;
+  const char *extra;
+  size_t length, wlen;
+  size_t os, oe;
+} idx_pos_s;
+
+idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len);
+idx_pos_s *matcher_match_all(context_t context, char *content, size_t len,
+                             size_t *out_len);
+idx_pos_s *matcher_match_with_sort(context_t context, char *content,
+                                          size_t len, size_t *out_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

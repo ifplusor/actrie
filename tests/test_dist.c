@@ -4,7 +4,7 @@
 
 #include <matcher.h>
 
-int main() {
+int main2() {
   char content[150000] = "苹果的果实134较饱满 较饱满";
 
   matcher_t matcher =
@@ -45,4 +45,21 @@ int main() {
   fclose(fout);
 
 //	getchar();
+}
+
+int main() {
+  char content[] = "012345678";
+
+  matcher_t matcher = matcher_construct_by_string(matcher_type_acdat,
+                                                  "123\n5\n3456");
+  context_t context = matcher_alloc_context(matcher);
+  matcher_reset_context(context, content, strlen(content));
+  while (matcher_next(context)) {
+    fprintf(stdout, "%s(%zu) - %s\n",
+            context->out_matched_index->keyword,
+            context->out_matched_index->wlen,
+            context->out_matched_index->extra);
+  };
+  matcher_free_context(context);
+  matcher_destruct(matcher);
 }

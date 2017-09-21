@@ -340,46 +340,46 @@ bool dat_reset_context(dat_context_ptr context, unsigned char content[],
   return true;
 }
 
-bool dat_next_on_index(dat_context_ptr context) {
-  if (context->header.out_matched_index != NULL) {
-    context->header.out_matched_index = context->header.out_matched_index->next;
-    if (context->header.out_matched_index != NULL)
+bool dat_next_on_index(dat_context_ptr ctx) {
+  if (ctx->header.out_matched_index != NULL) {
+    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
+    if (ctx->header.out_matched_index != NULL)
       return true;
   }
 
-  for (; context->header.out_e < context->header.len; context->header.out_e++) {
-    size_t iNext = context->_pCursor->base
-        + context->header.content[context->header.out_e];
-    dat_node_ptr pNext = dat_access_node(context->trie, iNext);
-    if (pNext->check != context->_iCursor)
+  for (; ctx->header.out_e < ctx->header.len; ctx->header.out_e++) {
+    size_t iNext = ctx->_pCursor->base
+        + ctx->header.content[ctx->header.out_e];
+    dat_node_ptr pNext = dat_access_node(ctx->trie, iNext);
+    if (pNext->check != ctx->_iCursor)
       break;
-    context->_iCursor = iNext;
-    context->_pCursor = pNext;
+    ctx->_iCursor = iNext;
+    ctx->_pCursor = pNext;
     if (pNext->dat_dictidx != NULL) {
-      context->out_matched = pNext;
-      context->header.out_matched_index = context->out_matched->dat_dictidx;
-      context->header.out_e++;
+      ctx->out_matched = pNext;
+      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+      ctx->header.out_e++;
       return true;
     }
   }
 
-  for (context->_i++; context->_i < context->header.len; context->_i++) {
-    context->_iCursor = DAT_ROOT_IDX;
-    context->_pCursor = context->trie->root;
-    for (context->header.out_e = context->_i;
-         context->header.out_e < context->header.len;
-         context->header.out_e++) {
-      size_t iNext = context->_pCursor->base
-          + context->header.content[context->header.out_e];
-      dat_node_ptr pNext = dat_access_node(context->trie, iNext);
-      if (pNext->check != context->_iCursor)
+  for (ctx->_i++; ctx->_i < ctx->header.len; ctx->_i++) {
+    ctx->_iCursor = DAT_ROOT_IDX;
+    ctx->_pCursor = ctx->trie->root;
+    for (ctx->header.out_e = ctx->_i;
+         ctx->header.out_e < ctx->header.len;
+         ctx->header.out_e++) {
+      size_t iNext = ctx->_pCursor->base
+          + ctx->header.content[ctx->header.out_e];
+      dat_node_ptr pNext = dat_access_node(ctx->trie, iNext);
+      if (pNext->check != ctx->_iCursor)
         break;
-      context->_iCursor = iNext;
-      context->_pCursor = pNext;
+      ctx->_iCursor = iNext;
+      ctx->_pCursor = pNext;
       if (pNext->dat_dictidx != NULL) {
-        context->out_matched = pNext;
-        context->header.out_matched_index = context->out_matched->dat_dictidx;
-        context->header.out_e++;
+        ctx->out_matched = pNext;
+        ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+        ctx->header.out_e++;
         return true;
       }
     }
@@ -387,115 +387,115 @@ bool dat_next_on_index(dat_context_ptr context) {
   return false;
 }
 
-bool dat_ac_next_on_node(dat_context_ptr context) {
+bool dat_ac_next_on_node(dat_context_ptr ctx) {
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
-  while (context->out_matched != context->trie->root) {
-    context->out_matched =
-        dat_access_node(context->trie, context->out_matched->dat_failed);
-    if (context->out_matched->dat_dictidx != NULL) {
-      context->header.out_matched_index = context->out_matched->dat_dictidx;
+  while (ctx->out_matched != ctx->trie->root) {
+    ctx->out_matched =
+        dat_access_node(ctx->trie, ctx->out_matched->dat_failed);
+    if (ctx->out_matched->dat_dictidx != NULL) {
+      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
       return true;
     }
   }
 
   /* 执行匹配 */
-  for (; context->header.out_e < context->header.len; context->header.out_e++) {
-    size_t iNext = context->_pCursor->base
-        + context->header.content[context->header.out_e];
-    dat_node_ptr pNext = dat_access_node(context->trie, iNext);
-    while (context->_pCursor != context->trie->root
-        && pNext->check != context->_iCursor) {
-      context->_iCursor = context->_pCursor->dat_failed;
-      context->_pCursor = dat_access_node(context->trie, context->_iCursor);
-      iNext = context->_pCursor->base
-          + context->header.content[context->header.out_e];
-      pNext = dat_access_node(context->trie, iNext);
+  for (; ctx->header.out_e < ctx->header.len; ctx->header.out_e++) {
+    size_t iNext = ctx->_pCursor->base
+        + ctx->header.content[ctx->header.out_e];
+    dat_node_ptr pNext = dat_access_node(ctx->trie, iNext);
+    while (ctx->_pCursor != ctx->trie->root
+        && pNext->check != ctx->_iCursor) {
+      ctx->_iCursor = ctx->_pCursor->dat_failed;
+      ctx->_pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
+      iNext = ctx->_pCursor->base
+          + ctx->header.content[ctx->header.out_e];
+      pNext = dat_access_node(ctx->trie, iNext);
     }
-    if (pNext->check == context->_iCursor) {
-      context->_iCursor = iNext;
-      context->_pCursor = pNext;
-      while (pNext != context->trie->root) {
+    if (pNext->check == ctx->_iCursor) {
+      ctx->_iCursor = iNext;
+      ctx->_pCursor = pNext;
+      while (pNext != ctx->trie->root) {
         if (pNext->dat_dictidx != NULL) {
-          context->out_matched = pNext;
-          context->header.out_matched_index = context->out_matched->dat_dictidx;
-          context->header.out_e++;
+          ctx->out_matched = pNext;
+          ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+          ctx->header.out_e++;
           return true;
         }
-        pNext = dat_access_node(context->trie, pNext->dat_failed);
+        pNext = dat_access_node(ctx->trie, pNext->dat_failed);
       }
     }
   }
   return false;
 }
 
-bool dat_ac_next_on_index(dat_context_ptr context) {
+bool dat_ac_next_on_index(dat_context_ptr ctx) {
   /* 检查 index 列表 */
-  if (context->header.out_matched_index != NULL) {
-    context->header.out_matched_index = context->header.out_matched_index->next;
-    if (context->header.out_matched_index != NULL)
+  if (ctx->header.out_matched_index != NULL) {
+    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
+    if (ctx->header.out_matched_index != NULL)
       return true;
   }
 
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
-  while (context->out_matched != context->trie->root) {
-    context->out_matched =
-        dat_access_node(context->trie, context->out_matched->dat_failed);
-    if (context->out_matched->dat_dictidx != NULL) {
-      context->header.out_matched_index = context->out_matched->dat_dictidx;
+  while (ctx->out_matched != ctx->trie->root) {
+    ctx->out_matched =
+        dat_access_node(ctx->trie, ctx->out_matched->dat_failed);
+    if (ctx->out_matched->dat_dictidx != NULL) {
+      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
       return true;
     }
   }
 
   /* 执行匹配 */
-  for (; context->header.out_e < context->header.len; context->header.out_e++) {
-    size_t iNext = context->_pCursor->base
-        + context->header.content[context->header.out_e];
-    dat_node_ptr pNext = dat_access_node(context->trie, iNext);
-    while (context->_pCursor != context->trie->root
-        && pNext->check != context->_iCursor) {
-      context->_iCursor = context->_pCursor->dat_failed;
-      context->_pCursor = dat_access_node(context->trie, context->_iCursor);
-      iNext = context->_pCursor->base
-          + context->header.content[context->header.out_e];
-      pNext = dat_access_node(context->trie, iNext);
+  for (; ctx->header.out_e < ctx->header.len; ctx->header.out_e++) {
+    size_t iNext = ctx->_pCursor->base
+        + ctx->header.content[ctx->header.out_e];
+    dat_node_ptr pNext = dat_access_node(ctx->trie, iNext);
+    while (ctx->_pCursor != ctx->trie->root
+        && pNext->check != ctx->_iCursor) {
+      ctx->_iCursor = ctx->_pCursor->dat_failed;
+      ctx->_pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
+      iNext = ctx->_pCursor->base
+          + ctx->header.content[ctx->header.out_e];
+      pNext = dat_access_node(ctx->trie, iNext);
     }
-    if (pNext->check == context->_iCursor) {
-      context->_iCursor = iNext;
-      context->_pCursor = pNext;
-      while (pNext != context->trie->root) {
+    if (pNext->check == ctx->_iCursor) {
+      ctx->_iCursor = iNext;
+      ctx->_pCursor = pNext;
+      while (pNext != ctx->trie->root) {
         if (pNext->dat_dictidx != NULL) {
-          context->out_matched = pNext;
-          context->header.out_matched_index = context->out_matched->dat_dictidx;
-          context->header.out_e++;
+          ctx->out_matched = pNext;
+          ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+          ctx->header.out_e++;
           return true;
         }
-        pNext = dat_access_node(context->trie, pNext->dat_failed);
+        pNext = dat_access_node(ctx->trie, pNext->dat_failed);
       }
     }
   }
   return false;
 }
 
-bool dat_prefix_next_on_index(dat_context_ptr context) {
+bool dat_prefix_next_on_index(dat_context_ptr ctx) {
   /* 检查 index 列表 */
-  if (context->header.out_matched_index != NULL) {
-    context->header.out_matched_index = context->header.out_matched_index->next;
-    if (context->header.out_matched_index != NULL)
+  if (ctx->header.out_matched_index != NULL) {
+    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
+    if (ctx->header.out_matched_index != NULL)
       return true;
   }
 
   /* 执行匹配 */
-  for (; context->header.out_e < context->header.len; context->header.out_e++) {
-    size_t iNext = context->_pCursor->base
-        + context->header.content[context->header.out_e];
-    dat_node_ptr pNext = dat_access_node(context->trie, iNext);
-    if (pNext->check != context->_iCursor) return false;
-    context->_iCursor = iNext;
-    context->_pCursor = pNext;
+  for (; ctx->header.out_e < ctx->header.len; ctx->header.out_e++) {
+    size_t iNext = ctx->_pCursor->base
+        + ctx->header.content[ctx->header.out_e];
+    dat_node_ptr pNext = dat_access_node(ctx->trie, iNext);
+    if (pNext->check != ctx->_iCursor) return false;
+    ctx->_iCursor = iNext;
+    ctx->_pCursor = pNext;
     if (pNext->dat_dictidx != NULL) {
-      context->out_matched = pNext;
-      context->header.out_matched_index = context->out_matched->dat_dictidx;
-      context->header.out_e++;
+      ctx->out_matched = pNext;
+      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+      ctx->header.out_e++;
       return true;
     }
   }

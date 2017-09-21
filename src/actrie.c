@@ -121,7 +121,7 @@ bool trie_add_keyword(trie_ptr self, const unsigned char keyword[], size_t len,
   }
 
   if (pNode->trie_dictidx != NULL)
-    index->next = pNode->trie_dictidx;
+    index->_next = pNode->trie_dictidx;
   pNode->trie_dictidx = index;
 
   return true;

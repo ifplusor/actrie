@@ -87,7 +87,7 @@ int main()
             }
             if (strcmp(history[i].out_matched_index->extra,
                        ctx1->out_matched_index->extra) == 0 &&
-                diff_pos <= (*ctx1->out_matched_index->tag - '0')) {
+                diff_pos <= (*ctx1->out_matched_index->_tag - '0')) {
               char c = content[history[i].out_e];
               content[history[i].out_e] = '\0';
               fprintf(fout,
@@ -118,7 +118,7 @@ check_w2:
           }
           if (strcmp(ctx2->out_matched_index->extra,
                      ctx1->out_matched_index->extra) == 0 &&
-              diff_pos <= (*ctx1->out_matched_index->tag - '0')) {
+              diff_pos <= (*ctx1->out_matched_index->_tag - '0')) {
             char c = content[ctx2->out_e];
             content[ctx2->out_e] = '\0';
             fprintf(fout,

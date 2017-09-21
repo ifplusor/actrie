@@ -22,10 +22,10 @@ typedef enum match_dict_keyword_type {
 } match_dict_keyword_type;
 
 typedef struct match_dict_index {
-  struct match_dict_index *next; /* 相同前缀链表 */
+  struct match_dict_index *_next; /* 相同前缀链表 */
   const char *keyword;
   const char *extra;
-  const char *tag;
+  const char *_tag;
   size_t length, wlen;
   match_dict_keyword_type type;
 } match_dict_index, *match_dict_index_ptr;

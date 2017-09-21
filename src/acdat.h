@@ -63,13 +63,13 @@ bool dat_reset_context(dat_context_ptr context,
                        unsigned char content[],
                        size_t len);
 
-bool dat_next_on_index(dat_context_ptr context);
+bool dat_next_on_index(dat_context_ptr ctx);
 
-bool dat_ac_next_on_node(dat_context_ptr context);
+bool dat_ac_next_on_node(dat_context_ptr ctx);
 
-bool dat_ac_next_on_index(dat_context_ptr context);
+bool dat_ac_next_on_index(dat_context_ptr ctx);
 
-bool dat_prefix_next_on_index(dat_context_ptr context);
+bool dat_prefix_next_on_index(dat_context_ptr ctx);
 
 #ifdef __cplusplus
 }
