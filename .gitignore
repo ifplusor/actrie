@@ -15,7 +15,7 @@ gmon.out
 !dict.[hc]
 
 .idea
-cmake-build-debug
+cmake-build-*
 
 .vs
 

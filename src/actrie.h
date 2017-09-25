@@ -7,12 +7,6 @@
 extern "C" {
 #endif /* __cplusplus */
 
-struct trie_node;
-struct trie;
-
-typedef struct trie_node
-    *(*next_node_func)(struct trie *, struct trie_node *, unsigned char);
-
 typedef struct trie_node { /* 十字链表实现字典树 */
   size_t child;       /* 指向子结点 */
 #define trie_child   child

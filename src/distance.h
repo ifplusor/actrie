@@ -5,7 +5,7 @@
 #ifndef _MATCH_DISTANCE_H_
 #define _MATCH_DISTANCE_H_
 
-#include "matcher.h"
+#include "matcher0.h"
 
 #define HISTORY_SIZE 50
 
@@ -33,7 +33,9 @@ typedef struct dist_context {
   dist_matcher_t _matcher;
 
   match_dict_index out_index;             /* will change when call 'next' */
+#ifdef REPLACE_BY_ZERO
   unsigned char _c;
+#endif
 
   size_t *_utf8_pos;
 

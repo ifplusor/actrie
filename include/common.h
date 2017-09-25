@@ -46,6 +46,8 @@ long long system_millisecond();
             const typeof(((type *)0)->member) *__mptr = (ptr); \
             (type *)((char*)__mptr - offset_of(type, member)); })
 
+char *strdup(const char *s);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

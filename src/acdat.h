@@ -2,7 +2,7 @@
 #define _MATCH_ACDAT_H_
 
 #include "actrie.h"
-#include "matcher.h"
+#include "matcher0.h"
 
 #ifdef __cplusplus
 extern "C" {

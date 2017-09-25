@@ -111,15 +111,20 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
       }
     }
 
+    // store original keyword
     strcpy(dict->buffer + dict->_cursor, keyword);
     key_cur = dict->_cursor;
     dict->_cursor += strlen(keyword) + 1;
 
+    // store processed keyword
+
+    // 1. store head
     strncpy(dict->buffer + dict->_cursor, &keyword[pmatch[1].rm_so],
             (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
     head_cur = dict->_cursor;
     dict->_cursor += (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so) + 1;
 
+    // 2. store tail
     strncpy(dict->buffer + dict->_cursor, &keyword[pmatch[5].rm_so],
             (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
     tail_cur = dict->_cursor;
@@ -183,7 +188,7 @@ trie_ptr dist_trie_filter_construct(match_dict_ptr dict,
   }
 
   if (prime_trie != NULL) {
-    trie_sort_to_line(prime_trie);  /* 排序字典树节点 for bfs and binary-search */
+    trie_sort_to_line(prime_trie);  /* sort node for bfs and binary-search */
   }
 
   return prime_trie;
@@ -320,7 +325,9 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   context->header.len = len;
   context->header.out_matched_index = &context->out_index;
   context->header.out_e = 0;
+#ifdef REPLACE_BY_ZERO
   context->_c = content[0];
+#endif
 
   if (context->_utf8_pos != NULL) {
     free(context->_utf8_pos);
@@ -360,8 +367,10 @@ bool dist_construct_out(dist_context_t ctx, const char *extra, size_t _e) {
                          hctx->out_e - hctx->out_matched_index->length,
                          ctx->header.out_e);
 #endif
+#ifdef REPLACE_BY_ZERO
   ctx->_c = content[ctx->header.out_e];
   content[ctx->header.out_e] = '\0';
+#endif
   ctx->out_index.keyword = (const char *)
       &content[hctx->out_e - hctx->out_matched_index->length];
   ctx->out_index.extra = extra;
@@ -377,7 +386,9 @@ bool dist_next_on_index(dist_context_t ctx) {
   context_t tctx = ctx->_tail_context;
   context_t dctx = ctx->_digit_context;
 
+#ifdef REPLACE_BY_ZERO
   content[ctx->header.out_e] = ctx->_c;  // recover content
+#endif
 
   switch (ctx->_state) {
     case dist_match_state_new_round: break;

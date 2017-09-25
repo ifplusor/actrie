@@ -14,3 +14,9 @@ long long system_millisecond() {
   return t.time * 1000 + t.millitm;
 }
 
+char *strdup(const char *s) {
+  char *dup = (char *) malloc(sizeof(char) * (strlen(s) + 1));
+  if (dup != NULL)
+    strcpy(dup, s);
+  return dup;
+}

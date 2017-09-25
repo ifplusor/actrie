@@ -27,7 +27,11 @@ set(HEADER_FILES
         include/common.h
         include/utf8.h
         include/dict.h
-        include/matcher.h)
+        include/matcher.h
+        src/matcher0.h
+        src/actrie.h
+        src/acdat.h
+        src/distance.h)
 
 set(SOURCE_FILES
         src/common.c

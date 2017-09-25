@@ -2,8 +2,7 @@
 // Created by james on 6/16/17.
 //
 
-#include <matcher.h>
-#include "actrie.h"
+#include "matcher0.h"
 #include "acdat.h"
 #include "distance.h"
 
@@ -31,6 +30,7 @@ matcher_t matcher_construct_by_file(matcher_type type, const char *path) {
     case matcher_type_distance:
       matcher = (matcher_t) dist_construct_by_file(path, true);
       break;
+    case matcher_type_dist_ex:
     case matcher_type_size:break;
   }
   if (matcher != NULL) {
@@ -52,6 +52,7 @@ matcher_t matcher_construct_by_string(matcher_type type, const char *string) {
     case matcher_type_distance:
       matcher = (matcher_t) dist_construct_by_string(string, true);
       break;
+    case matcher_type_dist_ex:
     case matcher_type_size:break;
   }
   if (matcher != NULL) {
@@ -100,6 +101,10 @@ bool matcher_next(context_t context) {
     return false;
   }
   return context->_func.next(context);
+}
+
+inline match_dict_index_ptr matcher_matched_index(context_t context) {
+  return context->out_matched_index;
 }
 
 #ifndef MATCHER_ALLOC_MIN_SIZE

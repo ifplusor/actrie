@@ -298,7 +298,7 @@ const char *split = "\n";
 bool dict_parser_by_s(match_dict_ptr dict, const char *s) {
   char *line_buf;
   size_t count = 0;
-  char *work_s, *t_s;
+  char *work_s;
 
   if (s == NULL || dict == NULL) {
     return false;
@@ -306,7 +306,8 @@ bool dict_parser_by_s(match_dict_ptr dict, const char *s) {
 
   /* 计算词典条目数 */
   work_s = strdup(s);
-  for (line_buf = strtok(work_s, split); line_buf;
+  for (line_buf = strtok(work_s, split);
+       line_buf != NULL;
        line_buf = strtok(NULL, split)) {
     count++;
   }
@@ -315,19 +316,18 @@ bool dict_parser_by_s(match_dict_ptr dict, const char *s) {
   if (!dict_reset(dict, count, strlen(s) + 1))
     return false;
 
-  work_s = strdup(s);
-
   /* 处理 BOM */
   if ((unsigned char) work_s[0] == 0xef &&
       (unsigned char) work_s[1] == 0xbb &&
       (unsigned char) work_s[2] == 0xbf) {
-    t_s = work_s + 3;
+    work_s = strdup(s + 3);
   } else {
-    t_s = work_s;
+    work_s = strdup(s);
   }
 
   dict->idx_count = 0;
-  for (line_buf = strtok(t_s, split); line_buf;
+  for (line_buf = strtok(work_s, split);
+       line_buf != NULL;
        line_buf = strtok(NULL, split)) {
     dict_parser_line(dict, line_buf);
   }
