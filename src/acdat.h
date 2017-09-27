@@ -12,13 +12,13 @@ typedef struct dat_node {
   size_t base;
   size_t check;
   union {
-    size_t next;
+    size_t next; /* next free node */
     size_t failed;
   } dat_nf;
 #define dat_free_next   dat_nf.next
 #define dat_failed      dat_nf.failed
   union {
-    size_t last;
+    size_t last; /* last free node */
     match_dict_index_ptr dictidx;  /* out 表 */
   } dat_ld;
 #define dat_free_last   dat_ld.last
@@ -31,7 +31,7 @@ typedef struct dat_trie {
   struct _matcher header;
 
   dat_node_ptr _nodepool[REGION_SIZE];
-  dat_node_ptr _lead;
+  dat_node_ptr _sentinel; /* maintain free list */
   dat_node_ptr root;
   match_dict_ptr _dict;
 } dat_trie, *dat_trie_ptr;

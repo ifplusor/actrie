@@ -29,7 +29,7 @@ extern "C" {
 #define inline __inline
 #endif
 
-#define MAX_LINE_SIZE 1024*1024
+#define MAX_LINE_SIZE (1024 * 1024)
 
 #define REGION_SIZE 0x00001000
 #define REGION_OFFSET 18

@@ -57,9 +57,9 @@ static void dat_alloc_nodepool(dat_trie_ptr self, size_t region) {
   }
   pnode[POOL_POSITION_SIZE - 1].dat_free_next = 0;
 
-  pnode[0].dat_free_last = self->_lead->dat_free_last;
-  dat_access_node(self, self->_lead->dat_free_last)->dat_free_next = offset;
-  self->_lead->dat_free_last = offset + POOL_POSITION_SIZE - 1;
+  pnode[0].dat_free_last = self->_sentinel->dat_free_last;
+  dat_access_node(self, self->_sentinel->dat_free_last)->dat_free_next = offset;
+  self->_sentinel->dat_free_last = offset + POOL_POSITION_SIZE - 1;
 }
 
 static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self,
@@ -71,8 +71,6 @@ static dat_node_ptr dat_access_node_with_alloc(dat_trie_ptr self,
   return &self->_nodepool[region][position];
 }
 
-//static size_t count = 0;
-
 static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
                                  trie_node_ptr pNode, size_t datindex) {
   unsigned char child[256];
@@ -83,10 +81,6 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
   dat_node_ptr pDatNode = dat_access_node(self, datindex);
   pDatNode->dat_dictidx = pNode->trie_dictidx;
 
-  /*if (pDatNode->dat_flag & 2) {
-      count++;
-  }*/
-
   if (pNode->trie_child == 0) return;
 
   pChild = trie_access_node_export(origin, pNode->trie_child);
@@ -94,7 +88,7 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
     child[len++] = pChild->key;
     pChild = trie_access_node_export(origin, pChild->trie_brother);
   }
-  pos = self->_lead->dat_free_next;
+  pos = self->_sentinel->dat_free_next;
   while (1) {
     int i;
     size_t base;
@@ -123,11 +117,12 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
       /* 分配子节点 */
       dat_node_ptr pDatChild = dat_access_node(self, base + child[i]);
       pDatChild->check = datindex;
+      pDatChild->dat_depth = pDatNode->dat_depth + 1;
+      /* remove the node from free list */
       dat_access_node(self, pDatChild->dat_free_next)->dat_free_last =
           pDatChild->dat_free_last;
       dat_access_node(self, pDatChild->dat_free_last)->dat_free_next =
           pDatChild->dat_free_next;
-      pDatChild->dat_depth = pDatNode->dat_depth + 1;
     }
     break;
 checkfailed:
@@ -185,7 +180,7 @@ dat_trie_ptr dat_alloc() {
     p->_nodepool[i] = NULL;
 
   p->_nodepool[0] = pnode;
-  p->_lead = &p->_nodepool[0][0];
+  p->_sentinel = &p->_nodepool[0][0];
   p->root = &p->_nodepool[0][DAT_ROOT_IDX];
 
   /* 节点初始化 */
@@ -196,9 +191,13 @@ dat_trie_ptr dat_alloc() {
   pnode[POOL_POSITION_SIZE - 1].dat_free_next = 0;
   pnode[DAT_ROOT_IDX + 1].dat_free_last = 0;
 
-  p->_lead->dat_free_next = DAT_ROOT_IDX + 1;
-  p->_lead->dat_free_last = POOL_POSITION_SIZE - 1;
-  p->_lead->check = 1;
+  /*
+   * because type of base is 'size_t', we set free list start from index 256.
+   * this can avoid negative number.
+   */
+  p->_sentinel->dat_free_next = DAT_ROOT_IDX + 1;
+  p->_sentinel->dat_free_last = POOL_POSITION_SIZE - 1;
+  p->_sentinel->check = 1;
 
   p->root->dat_depth = 0;
 

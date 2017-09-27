@@ -33,11 +33,13 @@ typedef struct trie_node { /* 十字链表实现字典树 */
 #define trie_p0       trie_dp.placeholder
   unsigned char len;  /* 一个结点只存储 1 byte 数据 */
   unsigned char key;
+  char placeholder[6]; /* 8 byte align */
 } trie_node, *trie_node_ptr;
 
 typedef struct trie {
-  trie_node_ptr _nodepool[REGION_SIZE];
-  size_t _autoindex;
+  trie_node_ptr _nodepool[REGION_SIZE]; /* 区位设计不需要大块连续内存，但不能用指针做遍历 */
+  size_t _autoindex; /* 结点分配器，同时表示trie中结点数量 */
+#define trie_len _autoindex
   trie_node_ptr root;
   match_dict_ptr _dict;
 } trie, *trie_ptr;

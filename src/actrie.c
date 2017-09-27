@@ -392,7 +392,7 @@ trie_ptr trie_construct(match_dict_ptr dict, bool enable_automation) {
   fprintf(stderr, "s1: %ld ms\n", t1 - t0);
 #endif
   if (prime_trie != NULL) {
-    trie_sort_to_line(prime_trie);  /* 排序字典树节点 for bfs and binary-search */
+    trie_sort_to_line(prime_trie);  /* sort node for bfs and binary-search */
 #ifdef DEBUG
     t2 = system_millisecond();
     fprintf(stderr, "s2: %ld ms\n", t2 - t1);
