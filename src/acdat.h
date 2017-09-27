@@ -23,8 +23,6 @@ typedef struct dat_node {
   } dat_ld;
 #define dat_free_last   dat_ld.last
 #define dat_dictidx     dat_ld.dictidx
-  int depth;  /* 可以从 strlen(dictidx.keyword) 导出 */
-#define dat_depth       depth
 } dat_node, *dat_node_ptr;
 
 typedef struct dat_trie {

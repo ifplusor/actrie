@@ -29,11 +29,19 @@ extern "C" {
 #define inline __inline
 #endif
 
+#if !MAX_LINE_SIZE
 #define MAX_LINE_SIZE (1024 * 1024)
+#endif
 
+#if !REGION_SIZE
 #define REGION_SIZE 0x00001000
+#endif
+
+#if !REGION_OFFSET
 #define REGION_OFFSET 18
-#define POSITION_MASK 0x0003FFFF
+#endif
+
+#define POSITION_MASK ((0x0001LL << REGION_OFFSET) - 1)
 
 extern const size_t POOL_REGION_SIZE;
 extern const size_t POOL_POSITION_SIZE;
@@ -47,6 +55,21 @@ long long system_millisecond();
             (type *)((char*)__mptr - offset_of(type, member)); })
 
 char *strdup(const char *s);
+
+#if !EXTEND_SPACE_SIZE
+#define EXTEND_SPACE_SIZE 1024
+#endif
+
+typedef struct dynamic_buffer {
+  char *buffer;
+  size_t len, size;
+} dynabuf_s, *dynabuf_t;
+
+dynabuf_t dynabuf_alloc();
+bool dynabuf_init(dynabuf_t buf, size_t size);
+bool dynabuf_destroy(dynabuf_t buf);
+char *dynabuf_write(dynabuf_t buf, const char *src, size_t len);
+char *dynabuf_write_with_eow(dynabuf_t buf, const char *src, size_t len);
 
 #ifdef __cplusplus
 }

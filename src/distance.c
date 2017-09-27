@@ -62,7 +62,7 @@ void dict_distance_before_reset(match_dict_ptr dict,
 bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
                                          char keyword[],
                                          char extra[]) {
-  size_t key_cur, head_cur, tail_cur;
+  char *key_cur, *head_cur, *tail_cur;
   size_t tag, distance;
   regmatch_t pmatch[6];
   char dist[3], *split;
@@ -112,29 +112,25 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
     }
 
     // store original keyword
-    strcpy(dict->buffer + dict->_cursor, keyword);
-    key_cur = dict->_cursor;
-    dict->_cursor += strlen(keyword) + 1;
+    key_cur = dynabuf_write(&dict->buffer, keyword, strlen(keyword) + 1);
 
     // store processed keyword
 
     // 1. store head
-    strncpy(dict->buffer + dict->_cursor, &keyword[pmatch[1].rm_so],
-            (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
-    head_cur = dict->_cursor;
-    dict->_cursor += (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so) + 1;
+    head_cur =
+        dynabuf_write_with_eow(&dict->buffer, &keyword[pmatch[1].rm_so],
+                               (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
 
     // 2. store tail
-    strncpy(dict->buffer + dict->_cursor, &keyword[pmatch[5].rm_so],
-            (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
-    tail_cur = dict->_cursor;
-    dict->_cursor += (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so) + 1;
+    tail_cur =
+        dynabuf_write_with_eow(&dict->buffer, &keyword[pmatch[5].rm_so],
+                               (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
 
     tag = dict->idx_count;
 
     // 连用需要多条 index
     // 针对连用，需要扩充内存
-    for (split = strtok(dict->buffer + head_cur, tokens_delimiter); split;
+    for (split = strtok(head_cur, tokens_delimiter); split;
          split = strtok(NULL, tokens_delimiter)) {
       size_t length = strlen(split);
       if (length > dict->max_key_length) dict->max_key_length = length;
@@ -142,11 +138,11 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
                      (char *) tag, match_dict_keyword_type_head);
     }
 
-    for (split = strtok(dict->buffer + tail_cur, tokens_delimiter); split;
+    for (split = strtok(tail_cur, tokens_delimiter); split;
          split = strtok(NULL, tokens_delimiter)) {
       size_t length = strlen(split);
       if (length > dict->max_extra_length) dict->max_extra_length = length;
-      dict_add_index(dict, strlen(split), split, dict->buffer + key_cur,
+      dict_add_index(dict, strlen(split), split, key_cur,
                      (char *) tag, match_dict_keyword_type_tail);
     }
   }
@@ -209,15 +205,15 @@ dist_matcher_t dist_construct(match_dict_ptr dict, bool enable_automation) {
 
   matcher->_dict = dict_assign(dict);
 
-  matcher->_head_matcher =
-      (matcher_t) dat_construct(head_trie, enable_automation);
+  matcher->_head_matcher = (matcher_t)
+      dat_construct(head_trie, enable_automation);
   matcher->_head_matcher->_func = dat_matcher_func;
   matcher->_head_matcher->_type =
       enable_automation ? matcher_type_acdat : matcher_type_dat;
   trie_destruct(head_trie);
 
-  matcher->_tail_matcher =
-      (matcher_t) dat_construct(tail_trie, enable_automation);
+  matcher->_tail_matcher = (matcher_t)
+      dat_construct(tail_trie, enable_automation);
   matcher->_tail_matcher->_func = dat_matcher_func;
   matcher->_tail_matcher->_type =
       enable_automation ? matcher_type_acdat : matcher_type_dat;
@@ -436,8 +432,8 @@ check_history:
           utf8_word_distance(ctx->_utf8_pos, hctx->out_e, hist[ctx->_i].out_e);
       long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
       if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
-        if (hist[ctx->_i].out_e - hctx->out_e >
-            MAX_CHAR_DISTANCE + ctx->_matcher->_dict->max_extra_length)
+        if (hist[ctx->_i].out_e - hctx->out_e
+            > MAX_CHAR_DISTANCE + ctx->_matcher->_dict->max_extra_length)
           goto next_round;
         continue;
       }

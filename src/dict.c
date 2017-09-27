@@ -67,7 +67,6 @@ match_dict_ptr dict_alloc() {
   if (p == NULL) return NULL;
 
   p->index = NULL;
-  p->buffer = NULL;
   p->_ref_count = 1;
 
   p->add_keyword_and_extra = dict_default_add_keyword_and_extra;
@@ -88,10 +87,8 @@ void dict_release(match_dict_ptr dict) {
   if (dict != NULL) {
     dict->_ref_count--;
     if (dict->_ref_count == 0) {
-      if (dict->index != NULL)
-        free(dict->index);
-      if (dict->buffer != NULL)
-        free(dict->buffer);
+      free(dict->index);
+      dynabuf_destroy(&dict->buffer);
       free(dict);
     }
   }
@@ -102,26 +99,23 @@ bool dict_reset(match_dict_ptr dict, size_t index_count, size_t buffer_size) {
     dict->before_reset(dict, &index_count, &buffer_size);
 
   // free memory
-  if (dict->index != NULL) free(dict->index);
-  if (dict->buffer != NULL) free(dict->buffer);
+  free(dict->index);
+  dynabuf_destroy(&dict->buffer);
 
   dict->idx_count = 0;
   dict->idx_size = index_count + 1;
-  dict->index =
-      (match_dict_index_ptr) malloc(sizeof(match_dict_index) * dict->idx_size);
+  dict->index = malloc(sizeof(match_dict_index) * dict->idx_size);
   if (dict->index == NULL)
     return false;
 
-  dict->buf_size = buffer_size + 3; /* 增加缓存大小, 防止溢出 */
-  dict->buffer = (char *) malloc(sizeof(char) * dict->buf_size);
-  if (dict->buffer == NULL) {
+  /* 增加缓存大小, 防止溢出 */
+  if (!dynabuf_init(&dict->buffer, buffer_size + 3)) {
     free(dict->index);
     return false;
   }
 
   memset(dict->index, 0, sizeof(match_dict_index) * dict->idx_size);
-  memset(dict->buffer, 0, sizeof(char) * dict->buf_size);
-  dict->_cursor = 1; /* 逻辑上 dict->buff[0] 是 "" */
+  dict->empty = dynabuf_write(&dict->buffer, "", 1);
   dict->max_key_length = 0;
   dict->max_extra_length = 0;
 
@@ -154,7 +148,7 @@ bool dict_default_add_keyword_and_extra(match_dict_ptr dict,
                                         char keyword[],
                                         char extra[]) {
   match_dict_keyword_type type;
-  size_t key_cur, extra_cur, tag_cur;
+  char *key_cur, *extra_cur, *tag_cur;
   size_t i, key_length;
 
   if (keyword != NULL && keyword[0] != '\0') {
@@ -162,49 +156,42 @@ bool dict_default_add_keyword_and_extra(match_dict_ptr dict,
 
     key_length = strlen(keyword);
     for (i = 0; i < key_length; i++) {
-      if (!alpha_number_bitmap[(unsigned char) keyword[i]] &&
-          keyword[i] != ' ') {
+      if (!alpha_number_bitmap[(unsigned char) keyword[i]]
+          && keyword[i] != ' ') {
         type = match_dict_keyword_type_normal;
         break;
       }
     }
 
-    strcpy(dict->buffer + dict->_cursor, keyword);
-    key_cur = dict->_cursor;
-    dict->_cursor += key_length + 1;
+    key_cur = dynabuf_write(&dict->buffer, keyword, key_length + 1);
 
     if (key_length > dict->max_key_length)
       dict->max_key_length = key_length;
 
     if (extra == NULL || extra[0] == '\0') {
-      extra_cur = 0;
-      tag_cur = 0;
+      extra_cur = dict->empty;
+      tag_cur = dict->empty;
     } else {
-      char *t;
       size_t extra_length = strlen(extra);
-      strcpy(dict->buffer + dict->_cursor, extra);
-      extra_cur = dict->_cursor;
-      dict->_cursor += extra_length + 1;
-
-      t = strstr(extra, SEPARATOR_ID);
+      char *t = strstr(extra, SEPARATOR_ID);
       if (t != NULL) {
+        size_t tz = extra_length;
         extra_length = t - extra;
-        tag_cur = extra_cur + extra_length + sizeof(SEPARATOR_ID) - 1;
-        dict->buffer[extra_cur + extra_length] = '\0';
+        extra_cur = dynabuf_write_with_eow(&dict->buffer, extra, extra_length);
+
+        tag_cur = dynabuf_write(&dict->buffer,
+                                t + sizeof(SEPARATOR_ID),
+                                tz - extra_length - sizeof(SEPARATOR_ID) + 1);
       } else {
-        tag_cur = 0;
+        extra_cur = dynabuf_write(&dict->buffer, extra, extra_length + 1);
+        tag_cur = dict->empty;
       }
 
       if (extra_length > dict->max_extra_length)
         dict->max_extra_length = extra_length;
     }
 
-    dict_add_index(dict,
-                   key_length,
-                   dict->buffer + key_cur,
-                   dict->buffer + extra_cur,
-                   dict->buffer + tag_cur,
-                   type);
+    dict_add_index(dict, key_length, key_cur, extra_cur, tag_cur, type);
   }
 
   return true;
@@ -227,8 +214,7 @@ bool dict_parser_line(match_dict_ptr dict, const char *line_buf) {
     /* \r \r\n */
     if (keyword[1] == 'r') {
       /* \r\n */
-      if (keyword[2] == '\\' && keyword[3] == 'n' &&
-          keyword[4] == '0') {
+      if (keyword[2] == '\\' && keyword[3] == 'n' && keyword[4] == '0') {
         keyword[0] = '\r';
         keyword[1] = '\n';
         keyword[2] = 0;

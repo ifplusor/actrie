@@ -117,7 +117,6 @@ static void dat_construct_by_dfs(dat_trie_ptr self, trie_ptr origin,
       /* 分配子节点 */
       dat_node_ptr pDatChild = dat_access_node(self, base + child[i]);
       pDatChild->check = datindex;
-      pDatChild->dat_depth = pDatNode->dat_depth + 1;
       /* remove the node from free list */
       dat_access_node(self, pDatChild->dat_free_next)->dat_free_last =
           pDatChild->dat_free_last;
@@ -198,8 +197,6 @@ dat_trie_ptr dat_alloc() {
   p->_sentinel->dat_free_next = DAT_ROOT_IDX + 1;
   p->_sentinel->dat_free_last = POOL_POSITION_SIZE - 1;
   p->_sentinel->check = 1;
-
-  p->root->dat_depth = 0;
 
   return p;
 }

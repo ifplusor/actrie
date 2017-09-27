@@ -18,7 +18,8 @@ typedef enum match_dict_keyword_type {
   match_dict_keyword_type_alpha_number,
   match_dict_keyword_type_head,
   match_dict_keyword_type_tail,
-  match_dict_keyword_type_empty
+  match_dict_keyword_type_ambi,
+  match_dict_keyword_type_empty,
 } match_dict_keyword_type;
 
 typedef struct match_dict_index {
@@ -41,12 +42,11 @@ struct match_dict {
   match_dict_index_ptr index;
   size_t idx_size, idx_count;
 
-  char *buffer;
-  size_t buf_size;
+  dynabuf_s buffer;
+  char *empty;
 
   size_t max_key_length, max_extra_length;
 
-  size_t _cursor;
   int _ref_count; /* 引用计数器 */
 
   dict_add_keyword_and_extra add_keyword_and_extra;
