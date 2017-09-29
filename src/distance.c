@@ -13,16 +13,16 @@
 #define DIGITAL_MASK 0x00000100
 
 /* 内部接口 */
-extern trie_ptr trie_alloc();
+extern trie_t trie_alloc();
 
-extern bool trie_add_keyword(trie_ptr self,
+extern bool trie_add_keyword(trie_t self,
                              const unsigned char keyword[],
                              size_t len,
-                             match_dict_index_ptr index);
+                             match_dict_index_t index);
 
-extern void trie_sort_to_line(trie_ptr self);
+extern void trie_sort_to_line(trie_t self);
 
-extern dat_trie_ptr dat_construct(trie_ptr origin, bool enable_automation);
+extern datrie_t dat_construct(trie_t origin, bool enable_automation);
 
 
 // Distance Matcher
@@ -52,14 +52,14 @@ static regex_t reg;
 static bool pattern_compiled = false;
 static const char *tokens_delimiter = "|";
 
-void dict_distance_before_reset(match_dict_ptr dict,
+void dict_distance_before_reset(match_dict_t dict,
                                 size_t *index_count,
                                 size_t *buffer_size) {
   *index_count *= 2;
   *buffer_size *= 2;
 }
 
-bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
+bool dict_distance_add_keyword_and_extra(match_dict_t dict,
                                          char keyword[],
                                          char extra[]) {
   char *key_cur, *head_cur, *tail_cur;
@@ -150,26 +150,26 @@ bool dict_distance_add_keyword_and_extra(match_dict_ptr dict,
   return true;
 }
 
-bool dist_destruct(dist_matcher_t p) {
-  if (p != NULL) {
-    if (p->_head_matcher != NULL) dat_destruct((dat_trie_ptr) p->_head_matcher);
-    if (p->_tail_matcher != NULL) dat_destruct((dat_trie_ptr) p->_tail_matcher);
-    if (p->_dict != NULL) dict_release(p->_dict);
-    free(p);
+bool dist_destruct(dist_matcher_t self) {
+  if (self != NULL) {
+    if (self->_head_matcher != NULL) dat_destruct((datrie_t) self->_head_matcher);
+    if (self->_tail_matcher != NULL) dat_destruct((datrie_t) self->_tail_matcher);
+    if (self->_dict != NULL) dict_release(self->_dict);
+    free(self);
     return true;
   }
   return false;
 }
 
-trie_ptr dist_trie_filter_construct(match_dict_ptr dict,
-                                    match_dict_keyword_type filter) {
-  trie_ptr prime_trie = trie_alloc();
+trie_t dist_trie_filter_construct(match_dict_t dict,
+                                    match_dict_keyword_type_e filter) {
+  trie_t prime_trie = trie_alloc();
   if (prime_trie == NULL) return NULL;
 
   prime_trie->_dict = dict_assign(dict);
 
   for (size_t i = 0; i < dict->idx_count; i++) {
-    match_dict_index_ptr index = &dict->index[i];
+    match_dict_index_t index = &dict->index[i];
     if (index->type != filter) continue;
 
     if (!trie_add_keyword(prime_trie,
@@ -190,8 +190,8 @@ trie_ptr dist_trie_filter_construct(match_dict_ptr dict,
   return prime_trie;
 }
 
-dist_matcher_t dist_construct(match_dict_ptr dict, bool enable_automation) {
-  trie_ptr head_trie, tail_trie;
+dist_matcher_t dist_construct(match_dict_t dict, bool enable_automation) {
+  trie_t head_trie, tail_trie;
   dist_matcher_t matcher;
 
   head_trie = dist_trie_filter_construct(dict, match_dict_keyword_type_head);
@@ -225,7 +225,7 @@ dist_matcher_t dist_construct(match_dict_ptr dict, bool enable_automation) {
 dist_matcher_t dist_construct_by_file(const char *path,
                                       bool enable_automation) {
   dist_matcher_t dist_matcher = NULL;
-  match_dict_ptr dict = NULL;
+  match_dict_t dict = NULL;
   FILE *fp = NULL;
 
   if (path == NULL) {
@@ -256,7 +256,7 @@ dist_matcher_t dist_construct_by_file(const char *path,
 dist_matcher_t dist_construct_by_string(const char *string,
                                         bool enable_automation) {
   dist_matcher_t dist_matcher = NULL;
-  match_dict_ptr dict = NULL;
+  match_dict_t dict = NULL;
 
   if (string == NULL) {
     return NULL;
@@ -393,7 +393,7 @@ bool dist_next_on_index(dist_context_t ctx) {
     case dist_match_state_check_prefix: goto check_prefix;
   }
 
-  while (dat_ac_next_on_index((dat_context_ptr) hctx)) {
+  while (dat_ac_next_on_index((dat_context_t) hctx)) {
     // check number
     size_t dist = (size_t) hctx->out_matched_index->extra;
     if (dist & DIGITAL_MASK) {
@@ -409,7 +409,7 @@ bool dist_next_on_index(dist_context_t ctx) {
       // check tail
       matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
 check_prefix:
-      while (dat_prefix_next_on_index((dat_context_ptr) dctx)) {
+      while (dat_prefix_next_on_index((dat_context_t) dctx)) {
         if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
           return dist_construct_out(ctx,
                                     dctx->out_matched_index->extra,
@@ -438,7 +438,7 @@ check_history:
         continue;
       }
 
-      match_dict_index_ptr matched_index = hist[ctx->_i].out_matched_index;
+      match_dict_index_t matched_index = hist[ctx->_i].out_matched_index;
       for (; matched_index != NULL; matched_index = matched_index->_next) {
         if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
       }
@@ -455,7 +455,7 @@ check_history:
     ctx->_state = dist_match_state_check_tail;
 check_tail:
     // one node will match the tag only once.
-    while (dat_ac_next_on_node((dat_context_ptr) tctx)) {
+    while (dat_ac_next_on_node((dat_context_t) tctx)) {
       long diff_pos =
           utf8_word_distance(ctx->_utf8_pos, hctx->out_e, tctx->out_e);
       long distance = (long) (diff_pos - tctx->out_matched_index->wlen);
@@ -473,7 +473,7 @@ check_tail:
         continue;
       }
 
-      match_dict_index_ptr matched_index = tctx->out_matched_index;
+      match_dict_index_t matched_index = tctx->out_matched_index;
       for (; matched_index != NULL; matched_index = matched_index->_next) {
         // link table's tag is descending order
         if (matched_index->_tag <= hctx->out_matched_index->_tag) break;

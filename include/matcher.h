@@ -20,7 +20,7 @@ typedef enum matcher_type {
   matcher_type_distance,
   matcher_type_dist_ex,
   matcher_type_size
-} matcher_type;
+} matcher_type_e;
 
 struct _matcher;
 typedef struct _matcher *matcher_t;
@@ -31,8 +31,8 @@ typedef struct _context *context_t;
 // base interface
 //========================
 
-matcher_t matcher_construct_by_file(matcher_type type, const char *path);
-matcher_t matcher_construct_by_string(matcher_type type, const char *string);
+matcher_t matcher_construct_by_file(matcher_type_e type, const char *path);
+matcher_t matcher_construct_by_string(matcher_type_e type, const char *string);
 
 bool matcher_destruct(matcher_t matcher);
 
@@ -42,12 +42,12 @@ bool matcher_free_context(context_t context);
 bool matcher_reset_context(context_t context, char content[], size_t len);
 bool matcher_next(context_t context);
 
-match_dict_index_ptr matcher_matched_index(context_t context);
+match_dict_index_t matcher_matched_index(context_t context);
 
 // utils
 //========================
 
-typedef struct _idx_pos {
+typedef struct matched_index_pos {
   const char *keyword;
   const char *extra;
   size_t length, wlen;

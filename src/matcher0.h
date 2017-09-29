@@ -21,7 +21,7 @@ typedef struct _matcher_func {
 } matcher_func;
 
 struct _matcher {
-  matcher_type _type;
+  matcher_type_e _type;
   matcher_func _func;
 };
 
@@ -37,13 +37,13 @@ typedef struct _context_func {
 } context_func;
 
 struct _context {
-  matcher_type _type;
+  matcher_type_e _type;
   context_func _func;
 
   unsigned char *content;
   size_t len;
 
-  match_dict_index_ptr out_matched_index;  /* volatile, need deep copy */
+  match_dict_index_t out_matched_index;  /* volatile, need deep copy */
   size_t out_e;
 };
 

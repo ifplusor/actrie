@@ -5,6 +5,7 @@
 #ifndef _MATCH_DISTANCE_H_
 #define _MATCH_DISTANCE_H_
 
+#include "dict0.h"
 #include "matcher0.h"
 
 #define HISTORY_SIZE 50
@@ -17,7 +18,7 @@ typedef struct dist_matcher {
   struct _matcher header;
 
   matcher_t _head_matcher, _tail_matcher;
-  match_dict_ptr _dict;
+  match_dict_t _dict;
 } *dist_matcher_t;
 
 typedef enum dist_match_state {
@@ -32,7 +33,7 @@ typedef struct dist_context {
 
   dist_matcher_t _matcher;
 
-  match_dict_index out_index;             /* will change when call 'next' */
+  match_dict_index_s out_index;             /* will change when call 'next' */
 #ifdef REPLACE_BY_ZERO
   unsigned char _c;
 #endif
@@ -53,7 +54,7 @@ extern const context_func dist_context_func;
 dist_matcher_t dist_construct_by_file(const char *path, bool enable_automation);
 dist_matcher_t dist_construct_by_string(const char *string,
                                         bool enable_automation);
-bool dist_destruct(dist_matcher_t p);
+bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);
 bool dist_free_context(dist_context_t context);

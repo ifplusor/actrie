@@ -18,7 +18,7 @@ const context_func *const context_func_table[matcher_type_size] = {
     [matcher_type_distance] = &dist_context_func,
 };
 
-matcher_t matcher_construct_by_file(matcher_type type, const char *path) {
+matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
   matcher_t matcher = NULL;
   switch (type) {
     case matcher_type_dat:
@@ -40,7 +40,7 @@ matcher_t matcher_construct_by_file(matcher_type type, const char *path) {
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(matcher_type type, const char *string) {
+matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
   matcher_t matcher = NULL;
   switch (type) {
     case matcher_type_dat:
@@ -103,7 +103,7 @@ bool matcher_next(context_t context) {
   return context->_func.next(context);
 }
 
-inline match_dict_index_ptr matcher_matched_index(context_t context) {
+inline match_dict_index_t matcher_matched_index(context_t context) {
   return context->out_matched_index;
 }
 
@@ -124,7 +124,7 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
         idx_pos_s *new = realloc(lst, sizeof(idx_pos_s) * size);
         if (new == NULL) break; else lst = new;
       }
-      match_dict_index_ptr p = context->out_matched_index;
+      match_dict_index_t p = context->out_matched_index;
       lst[len].keyword = p->keyword;
       lst[len].extra = p->extra;
       lst[len].length = p->length;

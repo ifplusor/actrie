@@ -19,55 +19,55 @@ typedef struct dat_node {
 #define dat_failed      dat_nf.failed
   union {
     size_t last; /* last free node */
-    match_dict_index_ptr dictidx;  /* out 表 */
+    match_dict_index_t dictidx;  /* out 表 */
   } dat_ld;
 #define dat_free_last   dat_ld.last
 #define dat_dictidx     dat_ld.dictidx
-} dat_node, *dat_node_ptr;
+} dat_node_s, *dat_node_t;
 
-typedef struct dat_trie {
+typedef struct datrie {
   struct _matcher header;
 
-  dat_node_ptr _nodepool[REGION_SIZE];
-  dat_node_ptr _sentinel; /* maintain free list */
-  dat_node_ptr root;
-  match_dict_ptr _dict;
-} dat_trie, *dat_trie_ptr;
+  dat_node_s *_nodepool[REGION_SIZE];
+  dat_node_t _sentinel; /* maintain free list */
+  dat_node_t root;
+  match_dict_t _dict;
+} datrie_s, *datrie_t;
 
 typedef struct dat_context {
   struct _context header;
 
-  dat_trie_ptr trie;
+  datrie_t trie;
 
-  dat_node_ptr out_matched;
-  dat_node_ptr _pCursor;
+  dat_node_t out_matched;
+  dat_node_t _pCursor;
   size_t _iCursor;
   size_t _i;
 
-} dat_context, *dat_context_ptr;
+} dat_context_s, *dat_context_t;
 
 extern const matcher_func dat_matcher_func;
 extern const context_func dat_context_func;
 extern const context_func acdat_context_func;
 
-dat_trie_ptr dat_construct_by_file(const char *path, bool enable_automation);
-dat_trie_ptr dat_construct_by_string(const char *string,
+datrie_t dat_construct_by_file(const char *path, bool enable_automation);
+datrie_t dat_construct_by_string(const char *string,
                                      bool enable_automation);
-bool dat_destruct(dat_trie_ptr p);
+bool dat_destruct(datrie_t p);
 
-dat_context_ptr dat_alloc_context(dat_trie_ptr matcher);
-bool dat_free_context(dat_context_ptr context);
-bool dat_reset_context(dat_context_ptr context,
+dat_context_t dat_alloc_context(datrie_t matcher);
+bool dat_free_context(dat_context_t context);
+bool dat_reset_context(dat_context_t context,
                        unsigned char content[],
                        size_t len);
 
-bool dat_next_on_index(dat_context_ptr ctx);
+bool dat_next_on_index(dat_context_t ctx);
 
-bool dat_ac_next_on_node(dat_context_ptr ctx);
+bool dat_ac_next_on_node(dat_context_t ctx);
 
-bool dat_ac_next_on_index(dat_context_ptr ctx);
+bool dat_ac_next_on_index(dat_context_t ctx);
 
-bool dat_prefix_next_on_index(dat_context_ptr ctx);
+bool dat_prefix_next_on_index(dat_context_t ctx);
 
 #ifdef __cplusplus
 }

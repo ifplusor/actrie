@@ -13,6 +13,7 @@ gmon.out
 *.swp
 
 !dict.[hc]
+!src/dict0.h
 
 .idea
 cmake-build-*

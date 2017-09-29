@@ -25,20 +25,27 @@ set(CMAKE_C_FLAGS -std=c99)
 
 set(HEADER_FILES
         include/common.h
-        include/utf8.h
         include/dict.h
         include/matcher.h
-        src/matcher0.h
+        src/utf8.h
+        src/dynabuf.h
+        src/dict0.h
         src/actrie.h
+        src/avl.h
+        src/matcher0.h
         src/acdat.h
+        src/disambi.h
         src/distance.h)
 
 set(SOURCE_FILES
         src/common.c
         src/utf8.c
+        src/dynabuf.c
         src/dict.c
+        src/avl.c
         src/actrie.c
         src/acdat.c
+        src/disambi.c
         src/distance.c
         src/matcher.c)
 

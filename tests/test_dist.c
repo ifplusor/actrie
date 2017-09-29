@@ -22,7 +22,7 @@ int main() {
 
     matcher_reset_context(context, content, strlen(content));
     while (matcher_next(context)) {
-      match_dict_index_ptr idx = matcher_matched_index(context);
+      match_dict_index_t idx = matcher_matched_index(context);
       fprintf(fout, "%.*s(%zu) - %s\n",
               (int) idx->length, idx->keyword, idx->wlen, idx->extra);
     };
@@ -54,7 +54,7 @@ int main2() {
   context_t context = matcher_alloc_context(matcher);
   matcher_reset_context(context, content, strlen(content));
   while (matcher_next(context)) {
-    match_dict_index_ptr idx = matcher_matched_index(context);
+    match_dict_index_t idx = matcher_matched_index(context);
     fprintf(stdout, "%.*s(%zu) - %s\n",
             (int) idx->length, idx->keyword, idx->wlen, idx->extra);
   };

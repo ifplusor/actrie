@@ -1,7 +1,7 @@
 #ifndef _MATCH_ACTRIE_H_
 #define _MATCH_ACTRIE_H_
 
-#include "dict.h"
+#include "dict0.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,7 +26,7 @@ typedef struct trie_node { /* 十字链表实现字典树 */
 #define trie_parent   trie_pd.parent
 #define trie_datidx   trie_pd.datidx
   union {
-    match_dict_index_ptr dictidx;
+    match_dict_index_t dictidx;
     size_t placeholder;
   } trie_dp;
 #define trie_dictidx  trie_dp.dictidx
@@ -34,24 +34,22 @@ typedef struct trie_node { /* 十字链表实现字典树 */
   unsigned char len;  /* 一个结点只存储 1 byte 数据 */
   unsigned char key;
   char placeholder[6]; /* 8 byte align */
-} trie_node, *trie_node_ptr;
+} trie_node_s, *trie_node_t;
 
 typedef struct trie {
-  trie_node_ptr _nodepool[REGION_SIZE]; /* 区位设计不需要大块连续内存，但不能用指针做遍历 */
+  trie_node_s *_nodepool[REGION_SIZE]; /* 区位设计不需要大块连续内存，但不能用指针做遍历 */
   size_t _autoindex; /* 结点分配器，同时表示trie中结点数量 */
 #define trie_len _autoindex
-  trie_node_ptr root;
-  match_dict_ptr _dict;
-} trie, *trie_ptr;
+  trie_node_t root;
+  match_dict_t _dict;
+} trie_s, *trie_t;
 
-trie_ptr trie_construct_by_file(const char *path, bool enable_automation);
-trie_ptr trie_construct_by_s(const char *s, bool enable_automation);
+trie_t trie_construct_by_file(const char *path, bool enable_automation);
+trie_t trie_construct_by_s(const char *s, bool enable_automation);
 
-void trie_destruct(trie_ptr p);
+void trie_destruct(trie_t self);
 
-void trie_rebuild_parent_relation(trie_ptr self);
-
-void trie_ac_match(trie_ptr self, unsigned char content[], size_t len);
+void trie_rebuild_parent_relation(trie_t self);
 
 #ifdef __cplusplus
 }
