@@ -44,9 +44,10 @@ typedef struct trie {
   match_dict_t _dict;
 } trie_s, *trie_t;
 
-trie_t trie_construct_by_file(const char *path, bool enable_automation);
-trie_t trie_construct_by_s(const char *s, bool enable_automation);
-
+trie_t trie_construct_by_dict(match_dict_t dict,
+                              match_dict_index_prop_f filter,
+                              bool enable_automation);
+trie_t trie_construct(vocab_t vocab, bool enable_automation);
 void trie_destruct(trie_t self);
 
 void trie_rebuild_parent_relation(trie_t self);

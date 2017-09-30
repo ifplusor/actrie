@@ -29,23 +29,25 @@ set(HEADER_FILES
         include/matcher.h
         src/utf8.h
         src/dynabuf.h
+        src/vocab.h
         src/dict0.h
         src/actrie.h
         src/avl.h
         src/matcher0.h
         src/acdat.h
-        src/disambi.h
+#        src/disambi.h
         src/distance.h)
 
 set(SOURCE_FILES
         src/common.c
         src/utf8.c
         src/dynabuf.c
+        src/vocab.c
         src/dict.c
         src/avl.c
         src/actrie.c
         src/acdat.c
-        src/disambi.c
+#        src/disambi.c
         src/distance.c
         src/matcher.c)
 

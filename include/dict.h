@@ -7,14 +7,14 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef enum match_dict_keyword_type {
-  match_dict_keyword_type_normal = 0,
-  match_dict_keyword_type_alpha_number,
-  match_dict_keyword_type_head,
-  match_dict_keyword_type_tail,
-  match_dict_keyword_type_ambi,
-  match_dict_keyword_type_empty,
-} match_dict_keyword_type_e;
+typedef enum match_dict_index_prop {
+  match_dict_index_prop_empty = 0,
+  match_dict_index_prop_normal = 1,
+  match_dict_index_prop_ambi = 2,
+  match_dict_index_prop_alnum = 4,
+  match_dict_index_prop_head = 8,
+  match_dict_index_prop_tail = 16,
+} match_dict_index_prop_f;
 
 typedef struct match_dict_index {
   struct match_dict_index *_next; /* 相同前缀链表 */
@@ -22,7 +22,7 @@ typedef struct match_dict_index {
   const char *extra;
   const char *_tag;
   size_t length, wlen;
-  match_dict_keyword_type_e type;
+  match_dict_index_prop_f prop;
 } match_dict_index_s, *match_dict_index_t;
 
 #ifdef __cplusplus

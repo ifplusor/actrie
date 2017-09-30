@@ -254,12 +254,12 @@ bool dat_destruct(datrie_t p) {
   return false;
 }
 
-datrie_t dat_construct(trie_t origin, bool enable_automation) {
+datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
   datrie_t p = dat_alloc();
   if (p == NULL)
     return NULL;
 
-  p->_dict = dict_assign(origin->_dict);
+  p->_dict = dict_retain(origin->_dict);
 
   dat_construct_by_dfs(p, origin, origin->root, DAT_ROOT_IDX);
   dat_post_construct(p);
@@ -270,29 +270,15 @@ datrie_t dat_construct(trie_t origin, bool enable_automation) {
   return p;
 }
 
-datrie_t dat_construct_by_file(const char *path, bool enable_automation) {
+datrie_t dat_construct(vocab_t vocab, bool enable_automation) {
   trie_t prime_trie;
   datrie_t pdat;
 
-  prime_trie = trie_construct_by_file(path, false);       /* 建立字典树 */
+  prime_trie = trie_construct(vocab, false);       /* 建立字典树 */
   if (prime_trie == NULL) return NULL;
-  pdat = dat_construct(prime_trie,
-                       enable_automation);    /* 建立 Double-Array Trie */
-  trie_destruct(prime_trie);                              /* 释放字典树 */
-
-  return pdat;
-}
-
-datrie_t dat_construct_by_string(const char *string,
-                                     bool enable_automation) {
-  trie_t prime_trie;
-  datrie_t pdat;
-
-  prime_trie = trie_construct_by_s(string, false);        /* 建立字典树 */
-  if (prime_trie == NULL) return NULL;
-  pdat = dat_construct(prime_trie,
-                       enable_automation);    /* 建立 Double-Array Trie */
-  trie_destruct(prime_trie);                              /* 释放字典树 */
+  pdat = dat_construct_by_trie(prime_trie,
+                               enable_automation); /* 建立 Double-Array Trie */
+  trie_destruct(prime_trie);                       /* 释放字典树 */
 
   return pdat;
 }

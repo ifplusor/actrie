@@ -50,9 +50,9 @@ extern const matcher_func dat_matcher_func;
 extern const context_func dat_context_func;
 extern const context_func acdat_context_func;
 
-datrie_t dat_construct_by_file(const char *path, bool enable_automation);
-datrie_t dat_construct_by_string(const char *string,
-                                     bool enable_automation);
+datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation);
+
+datrie_t dat_construct(vocab_t vocab, bool enable_automation);
 bool dat_destruct(datrie_t p);
 
 dat_context_t dat_alloc_context(datrie_t matcher);

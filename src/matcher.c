@@ -3,6 +3,7 @@
 //
 
 #include "matcher0.h"
+#include "vocab.h"
 #include "acdat.h"
 #include "distance.h"
 
@@ -18,48 +19,42 @@ const context_func *const context_func_table[matcher_type_size] = {
     [matcher_type_distance] = &dist_context_func,
 };
 
-matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
+matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
   matcher_t matcher = NULL;
+  if (vocab == NULL) return NULL;
+
   switch (type) {
     case matcher_type_dat:
-      matcher = (matcher_t) dat_construct_by_file(path, false);
+      matcher = (matcher_t) dat_construct(vocab, false);
       break;
     case matcher_type_acdat:
-      matcher = (matcher_t) dat_construct_by_file(path, true);
+      matcher = (matcher_t) dat_construct(vocab, true);
       break;
     case matcher_type_distance:
-      matcher = (matcher_t) dist_construct_by_file(path, true);
+      matcher = (matcher_t) dist_construct(vocab, true);
       break;
     case matcher_type_dist_ex:
     case matcher_type_size:break;
   }
+
+  vocab_destruct(vocab);
+
   if (matcher != NULL) {
     matcher->_type = type;
     matcher->_func = *matcher_func_table[type];
   }
+
   return matcher;
 }
 
+matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
+  vocab_t vocab = vocab_construct(vocab_type_file, path);
+  return matcher_construct(type, vocab);
+}
+
 matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
-  matcher_t matcher = NULL;
-  switch (type) {
-    case matcher_type_dat:
-      matcher = (matcher_t) dat_construct_by_string(string, false);
-      break;
-    case matcher_type_acdat:
-      matcher = (matcher_t) dat_construct_by_string(string, true);
-      break;
-    case matcher_type_distance:
-      matcher = (matcher_t) dist_construct_by_string(string, true);
-      break;
-    case matcher_type_dist_ex:
-    case matcher_type_size:break;
-  }
-  if (matcher != NULL) {
-    matcher->_type = type;
-    matcher->_func = *matcher_func_table[type];
-  }
-  return matcher;
+  vocab_t vocab = vocab_construct(vocab_type_string, string);
+  return matcher_construct(type, vocab);
 }
 
 bool matcher_destruct(matcher_t matcher) {

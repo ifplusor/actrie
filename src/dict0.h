@@ -7,6 +7,7 @@
 
 #include <dict.h>
 #include "dynabuf.h"
+#include "vocab.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,9 +22,9 @@ extern "C" {
 struct match_dict;
 typedef struct match_dict match_dict_s, *match_dict_t;
 
-typedef bool(*dict_add_keyword_and_extra)
+typedef bool(*dict_add_keyword_and_extra_func)
     (match_dict_t dict, char keyword[], char extra[]);
-typedef void(*dict_before_reset)
+typedef void(*dict_before_reset_func)
     (match_dict_t dict, size_t *index_count, size_t *buffer_size);
 
 struct match_dict {
@@ -31,21 +32,20 @@ struct match_dict {
   size_t idx_size, idx_count;
 
   dynabuf_s buffer;
-  char *empty;
 
   size_t max_key_length, max_extra_length;
 
   int _ref_count; /* 引用计数器 */
 
-  dict_add_keyword_and_extra add_keyword_and_extra;
-  dict_before_reset before_reset;
+  dict_add_keyword_and_extra_func add_keyword_and_extra;
+  dict_before_reset_func before_reset;
 };
 
 extern const bool alpha_number_bitmap[256];
 extern const bool number_bitmap[256];
 
 match_dict_t dict_alloc();
-match_dict_t dict_assign(match_dict_t dict);
+match_dict_t dict_retain(match_dict_t dict);
 void dict_release(match_dict_t dict);
 
 void dict_add_index(match_dict_t dict,
@@ -53,10 +53,9 @@ void dict_add_index(match_dict_t dict,
                     char *keyword,
                     char *extra,
                     char *tag,
-                    match_dict_keyword_type_e type);
+                    match_dict_index_prop_f type);
 
-bool dict_parser_by_file(match_dict_t dict, FILE *fp);
-bool dict_parser_by_s(match_dict_t dict, const char *s);
+bool dict_parse(match_dict_t self, vocab_t vocab);
 
 #ifdef __cplusplus
 }

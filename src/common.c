@@ -8,6 +8,8 @@
 const size_t POOL_REGION_SIZE = REGION_SIZE;
 const size_t POOL_POSITION_SIZE = POSITION_MASK + 1;
 
+const char *str_empty = "";
+
 long long system_millisecond() {
   struct timeb t;
   ftime(&t);
@@ -19,4 +21,11 @@ char *strdup(const char *s) {
   if (dup != NULL)
     strcpy(dup, s);
   return dup;
+}
+
+bool striter_init(striter_t self, char *ptr, size_t len) {
+  self->ptr = ptr;
+  self->len = len;
+  self->cur = 0;
+  return true;
 }

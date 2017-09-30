@@ -51,9 +51,7 @@ typedef struct dist_context {
 extern const matcher_func dist_matcher_func;
 extern const context_func dist_context_func;
 
-dist_matcher_t dist_construct_by_file(const char *path, bool enable_automation);
-dist_matcher_t dist_construct_by_string(const char *string,
-                                        bool enable_automation);
+dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation);
 bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);

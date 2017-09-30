@@ -12,18 +12,6 @@
 
 #define DIGITAL_MASK 0x00000100
 
-/* 内部接口 */
-extern trie_t trie_alloc();
-
-extern bool trie_add_keyword(trie_t self,
-                             const unsigned char keyword[],
-                             size_t len,
-                             match_dict_index_t index);
-
-extern void trie_sort_to_line(trie_t self);
-
-extern datrie_t dat_construct(trie_t origin, bool enable_automation);
-
 
 // Distance Matcher
 // ========================================================
@@ -118,13 +106,13 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
 
     // 1. store head
     head_cur =
-        dynabuf_write_with_eow(&dict->buffer, &keyword[pmatch[1].rm_so],
-                               (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
+        dynabuf_write_with_zero(&dict->buffer, &keyword[pmatch[1].rm_so],
+                                (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
 
     // 2. store tail
     tail_cur =
-        dynabuf_write_with_eow(&dict->buffer, &keyword[pmatch[5].rm_so],
-                               (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
+        dynabuf_write_with_zero(&dict->buffer, &keyword[pmatch[5].rm_so],
+                                (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
 
     tag = dict->idx_count;
 
@@ -135,7 +123,7 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
       size_t length = strlen(split);
       if (length > dict->max_key_length) dict->max_key_length = length;
       dict_add_index(dict, strlen(split), split, (char *) distance,
-                     (char *) tag, match_dict_keyword_type_head);
+                     (char *) tag, match_dict_index_prop_head);
     }
 
     for (split = strtok(tail_cur, tokens_delimiter); split;
@@ -143,7 +131,7 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
       size_t length = strlen(split);
       if (length > dict->max_extra_length) dict->max_extra_length = length;
       dict_add_index(dict, strlen(split), split, key_cur,
-                     (char *) tag, match_dict_keyword_type_tail);
+                     (char *) tag, match_dict_index_prop_tail);
     }
   }
 
@@ -161,59 +149,33 @@ bool dist_destruct(dist_matcher_t self) {
   return false;
 }
 
-trie_t dist_trie_filter_construct(match_dict_t dict,
-                                    match_dict_keyword_type_e filter) {
-  trie_t prime_trie = trie_alloc();
-  if (prime_trie == NULL) return NULL;
-
-  prime_trie->_dict = dict_assign(dict);
-
-  for (size_t i = 0; i < dict->idx_count; i++) {
-    match_dict_index_t index = &dict->index[i];
-    if (index->type != filter) continue;
-
-    if (!trie_add_keyword(prime_trie,
-                          (const unsigned char *) index->keyword,
-                          index->length,
-                          index)) {
-      fprintf(stderr, "fatal: encounter error when add keywords.\n");
-      trie_destruct(prime_trie);
-      prime_trie = NULL;
-      break;
-    }
-  }
-
-  if (prime_trie != NULL) {
-    trie_sort_to_line(prime_trie);  /* sort node for bfs and binary-search */
-  }
-
-  return prime_trie;
-}
-
-dist_matcher_t dist_construct(match_dict_t dict, bool enable_automation) {
+dist_matcher_t dist_construct_by_dict(match_dict_t dict,
+                                      bool enable_automation) {
   trie_t head_trie, tail_trie;
   dist_matcher_t matcher;
 
-  head_trie = dist_trie_filter_construct(dict, match_dict_keyword_type_head);
+  head_trie =
+      trie_construct_by_dict(dict, match_dict_index_prop_head, false);
   if (head_trie == NULL) return NULL;
 
-  tail_trie = dist_trie_filter_construct(dict, match_dict_keyword_type_tail);
+  tail_trie =
+      trie_construct_by_dict(dict, match_dict_index_prop_tail, false);
   if (tail_trie == NULL) return NULL;
 
   matcher = malloc(sizeof(struct dist_matcher));
   if (matcher == NULL) return NULL;
 
-  matcher->_dict = dict_assign(dict);
+  matcher->_dict = dict_retain(dict);
 
   matcher->_head_matcher = (matcher_t)
-      dat_construct(head_trie, enable_automation);
+      dat_construct_by_trie(head_trie, enable_automation);
   matcher->_head_matcher->_func = dat_matcher_func;
   matcher->_head_matcher->_type =
       enable_automation ? matcher_type_acdat : matcher_type_dat;
   trie_destruct(head_trie);
 
   matcher->_tail_matcher = (matcher_t)
-      dat_construct(tail_trie, enable_automation);
+      dat_construct_by_trie(tail_trie, enable_automation);
   matcher->_tail_matcher->_func = dat_matcher_func;
   matcher->_tail_matcher->_type =
       enable_automation ? matcher_type_acdat : matcher_type_dat;
@@ -222,43 +184,12 @@ dist_matcher_t dist_construct(match_dict_t dict, bool enable_automation) {
   return matcher;
 }
 
-dist_matcher_t dist_construct_by_file(const char *path,
-                                      bool enable_automation) {
+dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
   dist_matcher_t dist_matcher = NULL;
   match_dict_t dict = NULL;
   FILE *fp = NULL;
 
-  if (path == NULL) {
-    return NULL;
-  }
-
-  fp = fopen(path, "rb");
-  if (fp == NULL) return NULL;
-
-  dict = dict_alloc();
-  if (dict == NULL) return NULL;
-  dict->add_keyword_and_extra = dict_distance_add_keyword_and_extra;
-  dict->before_reset = dict_distance_before_reset;
-
-  if (dict_parser_by_file(dict, fp)) {
-    dist_matcher = dist_construct(dict, enable_automation);
-  }
-
-  fclose(fp);
-  dict_release(dict);
-
-  fprintf(stderr,
-          "construct trie %s!\n",
-          dist_matcher != NULL ? "success" : "failed");
-  return dist_matcher;
-}
-
-dist_matcher_t dist_construct_by_string(const char *string,
-                                        bool enable_automation) {
-  dist_matcher_t dist_matcher = NULL;
-  match_dict_t dict = NULL;
-
-  if (string == NULL) {
+  if (vocab == NULL) {
     return NULL;
   }
 
@@ -267,8 +198,8 @@ dist_matcher_t dist_construct_by_string(const char *string,
   dict->add_keyword_and_extra = dict_distance_add_keyword_and_extra;
   dict->before_reset = dict_distance_before_reset;
 
-  if (dict_parser_by_s(dict, string)) {
-    dist_matcher = dist_construct(dict, enable_automation);
+  if (dict_parse(dict, vocab)) {
+    dist_matcher = dist_construct_by_dict(dict, enable_automation);
   }
 
   dict_release(dict);

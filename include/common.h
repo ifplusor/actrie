@@ -1,6 +1,14 @@
 //
 // Created by james on 6/16/17.
 //
+/*
+ * description:
+ *   API 语义约定:
+ *     1. alloc/free            分配、释放对象内存
+ *     2. init/clean/reset      初始化、释放缓存、重置状态
+ *     3. construct/destruct    构造、析构对象
+ *     4. retain/release        增加、减少对象引用
+ */
 
 #ifndef _MATCH_COMMON_H_
 #define _MATCH_COMMON_H_
@@ -24,6 +32,12 @@ extern "C" {
 #define true 1
 #define false 0
 #endif /* __bool_true_false_are_defined */
+
+#ifdef _WIN32
+#define EOL "\r\n"
+#else
+#define EOL "\n"
+#endif
 
 #if defined(_WIN32) && !defined(__cplusplus)
 #define inline __inline
@@ -54,6 +68,8 @@ extern const size_t POOL_POSITION_SIZE;
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 
+extern const char *str_empty;
+
 long long system_millisecond();
 
 #define offset_of(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
@@ -63,6 +79,18 @@ long long system_millisecond();
             (type *)((char*)__mptr - offset_of(type, member)); })
 
 char *strdup(const char *s);
+
+typedef struct str_len {
+  char *ptr;
+  size_t len;
+} strlen_s, *strlen_t;
+
+typedef struct str_iter {
+  char *ptr;
+  size_t len, cur;
+} striter_s, *striter_t;
+
+bool striter_init(striter_t self, char *ptr, size_t len);
 
 #ifdef __cplusplus
 }
