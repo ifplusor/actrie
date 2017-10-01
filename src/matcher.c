@@ -7,13 +7,13 @@
 #include "acdat.h"
 #include "distance.h"
 
-const matcher_func *const matcher_func_table[matcher_type_size] = {
+const matcher_func_t const matcher_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_matcher_func,
     [matcher_type_acdat] = &dat_matcher_func,
     [matcher_type_distance] = &dist_matcher_func,
 };
 
-const context_func *const context_func_table[matcher_type_size] = {
+const context_func_t const context_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_context_func,
     [matcher_type_acdat] = &acdat_context_func,
     [matcher_type_distance] = &dist_context_func,
@@ -48,12 +48,12 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
 }
 
 matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
-  vocab_t vocab = vocab_construct(vocab_type_file, path);
+  vocab_t vocab = vocab_construct(stream_type_file, path);
   return matcher_construct(type, vocab);
 }
 
 matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
-  vocab_t vocab = vocab_construct(vocab_type_string, string);
+  vocab_t vocab = vocab_construct(stream_type_string, string);
   return matcher_construct(type, vocab);
 }
 
@@ -72,7 +72,7 @@ context_t matcher_alloc_context(matcher_t matcher) {
   context = matcher->_func.alloc_context(matcher);
   if (context != NULL) {
     context->_type = matcher->_type;
-    context->_func = *context_func_table[context->_type];
+    context->_func = context_func_table[context->_type];
   }
   return context;
 }
@@ -81,21 +81,21 @@ bool matcher_free_context(context_t context) {
   if (context == NULL) {
     return false;
   }
-  return context->_func.free_context(context);
+  return context->_func->free_context(context);
 }
 
 bool matcher_reset_context(context_t context, char content[], size_t len) {
   if (context == NULL) {
     return false;
   }
-  return context->_func.reset_context(context, content, len);
+  return context->_func->reset_context(context, content, len);
 }
 
 bool matcher_next(context_t context) {
   if (context == NULL) {
     return false;
   }
-  return context->_func.next(context);
+  return context->_func->next(context);
 }
 
 inline match_dict_index_t matcher_matched_index(context_t context) {
@@ -124,8 +124,8 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
       lst[len].extra = p->extra;
       lst[len].length = p->length;
       lst[len].wlen = p->wlen;
-      lst[len].oe = context->out_e;
-      lst[len].os = context->out_e - p->length;
+      lst[len].eo = context->out_e;
+      lst[len].so = context->out_e - p->length;
       len++;
     }
   }
@@ -141,10 +141,10 @@ idx_pos_s *matcher_match_all(context_t context, char *content, size_t len,
 
 int cmp(const void *a, const void *b) {
   idx_pos_s *sa = a, *sb = b;
-  if (sa->os == sb->os) {
-    return (int)sa->oe - (int)sb->oe;
+  if (sa->so == sb->so) {
+    return (int)sa->eo - (int)sb->eo;
   } else {
-    return (int)sa->os - (int)sb->os;
+    return (int)sa->so - (int)sb->so;
   }
 }
 

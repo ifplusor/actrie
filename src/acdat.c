@@ -12,18 +12,18 @@ size_t trie_next_state_by_binary(trie_t self, size_t iNode,
 // Double-Array Trie
 // ========================================================
 
-const matcher_func dat_matcher_func = {
+const matcher_func_l dat_matcher_func = {
     .destruct = (matcher_destruct_func) dat_destruct,
     .alloc_context = (matcher_alloc_context_func) dat_alloc_context
 };
 
-const context_func dat_context_func = {
+const context_func_l dat_context_func = {
     .free_context = (matcher_free_context_func) dat_free_context,
     .reset_context = (matcher_reset_context_func) dat_reset_context,
     .next = (matcher_next_func) dat_next_on_index
 };
 
-const context_func acdat_context_func = {
+const context_func_l acdat_context_func = {
     .free_context = (matcher_free_context_func) dat_free_context,
     .reset_context = (matcher_reset_context_func) dat_reset_context,
     .next = (matcher_next_func) dat_ac_next_on_index

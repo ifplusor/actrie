@@ -28,6 +28,7 @@ set(HEADER_FILES
         include/dict.h
         include/matcher.h
         src/utf8.h
+        src/stream.h
         src/dynabuf.h
         src/vocab.h
         src/dict0.h
@@ -41,6 +42,7 @@ set(HEADER_FILES
 set(SOURCE_FILES
         src/common.c
         src/utf8.c
+        src/stream.c
         src/dynabuf.c
         src/vocab.c
         src/dict.c

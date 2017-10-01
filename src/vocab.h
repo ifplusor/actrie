@@ -7,35 +7,23 @@
 
 #include <common.h>
 #include "dynabuf.h"
+#include "stream.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum vocab_type {
-  vocab_type_file,
-  vocab_type_string
-} vocab_type_e;
-
-typedef enum vocab_prop {
-  vocab_prop_empty = 0,
-  vocab_prop_bom = 1,
-} vocab_prop_f;
-
 typedef struct vocab {
-  void *data;
+  stream_t _stream;
   size_t count, length;
-  vocab_type_e type;
-  vocab_prop_f prop;
 
   dynabuf_s _buf;
-  striter_s _cur;
 } vocab_s, *vocab_t;
 
 vocab_t vocab_alloc();
 bool vocab_free(vocab_t self);
 
-vocab_t vocab_construct(vocab_type_e type, void *src);
+vocab_t vocab_construct(stream_type_e type, const char *src);
 bool vocab_destruct(vocab_t self);
 
 size_t vocab_count(vocab_t self);

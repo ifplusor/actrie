@@ -20,14 +20,14 @@ extern "C" {
 #define SEPARATOR_ID "###"
 
 struct match_dict;
-typedef struct match_dict match_dict_s, *match_dict_t;
+typedef struct match_dict *match_dict_t;
 
 typedef bool(*dict_add_keyword_and_extra_func)
     (match_dict_t dict, char keyword[], char extra[]);
 typedef void(*dict_before_reset_func)
     (match_dict_t dict, size_t *index_count, size_t *buffer_size);
 
-struct match_dict {
+typedef struct match_dict {
   match_dict_index_t index;
   size_t idx_size, idx_count;
 
@@ -39,7 +39,7 @@ struct match_dict {
 
   dict_add_keyword_and_extra_func add_keyword_and_extra;
   dict_before_reset_func before_reset;
-};
+} match_dict_s;
 
 extern const bool alpha_number_bitmap[256];
 extern const bool number_bitmap[256];

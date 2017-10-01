@@ -23,9 +23,26 @@ char *strdup(const char *s) {
   return dup;
 }
 
-bool striter_init(striter_t self, char *ptr, size_t len) {
+bool striter_init(striter_t self, unsigned char *ptr, size_t len) {
   self->ptr = ptr;
   self->len = len;
   self->cur = 0;
   return true;
+}
+
+bool striter_reset(striter_t self) {
+  self->cur = 0;
+  return true;
+}
+
+int striter_cur(striter_t self) {
+  if (self->cur >= self->len)
+    return EOF;
+  return self->ptr[self->cur];
+}
+
+int striter_next(striter_t self) {
+  if (self->cur >= self->len)
+    return EOF;
+  return self->ptr[self->cur++];
 }

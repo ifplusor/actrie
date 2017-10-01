@@ -46,9 +46,9 @@ typedef struct dat_context {
 
 } dat_context_s, *dat_context_t;
 
-extern const matcher_func dat_matcher_func;
-extern const context_func dat_context_func;
-extern const context_func acdat_context_func;
+extern const matcher_func_l dat_matcher_func;
+extern const context_func_l dat_context_func;
+extern const context_func_l acdat_context_func;
 
 datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation);
 

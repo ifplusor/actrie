@@ -18,12 +18,12 @@ typedef context_t(*matcher_alloc_context_func)(matcher_t);
 typedef struct _matcher_func {
   matcher_destruct_func destruct;  /* 销毁 */
   matcher_alloc_context_func alloc_context;  /* 构造 context */
-} matcher_func;
+} matcher_func_l, *matcher_func_t;
 
-struct _matcher {
+typedef struct _matcher {
   matcher_type_e _type;
-  matcher_func _func;
-};
+  matcher_func_l _func;
+} matcher_s;
 
 typedef bool(*matcher_free_context_func)(context_t);
 typedef bool(*matcher_reset_context_func)(context_t, char[], size_t);
@@ -34,18 +34,18 @@ typedef struct _context_func {
   matcher_free_context_func free_context;  /* 销毁 */
   matcher_reset_context_func reset_context;  /* 初始化 */
   matcher_next_func next;  /* 迭代匹配 */
-} context_func;
+} context_func_l, *context_func_t;
 
-struct _context {
+typedef struct _context {
   matcher_type_e _type;
-  context_func _func;
+  context_func_t _func;
 
   unsigned char *content;
   size_t len;
 
   match_dict_index_t out_matched_index;  /* volatile, need deep copy */
   size_t out_e;
-};
+} context_s;
 
 #ifdef __cplusplus
 }

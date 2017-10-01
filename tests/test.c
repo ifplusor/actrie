@@ -10,6 +10,10 @@ int main() {
 
   char content[150000];
 
+#ifdef _WIN32
+  system("chcp 65001");
+#endif
+
   pdat1 = matcher_construct_by_file(matcher_type_acdat, "n.dict");
   ctx1 = matcher_alloc_context(pdat1);
   FILE *fin = fopen("corpus.txt", "r");
@@ -22,7 +26,7 @@ int main() {
     count++;
     matcher_reset_context(ctx1, content, strlen(content));
     while (matcher_next(ctx1)) {
-//        fprintf(fout, "%s\n", ctx1->out_matched_index->keyword);
+      fprintf(fout, "%s\n", matcher_matched_index(ctx1)->keyword);
       c++;
     }
   }

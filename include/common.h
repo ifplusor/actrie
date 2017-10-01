@@ -78,19 +78,27 @@ long long system_millisecond();
             const typeof(((type *)0)->member) *__mptr = (ptr); \
             (type *)((char*)__mptr - offset_of(type, member)); })
 
+#ifndef _WIN32
 char *strdup(const char *s);
+#endif
 
 typedef struct str_len {
   char *ptr;
   size_t len;
 } strlen_s, *strlen_t;
 
+typedef struct str_pos {
+  size_t so, eo;
+} strpos_s, *strpos_t;
+
 typedef struct str_iter {
-  char *ptr;
+  unsigned char *ptr;
   size_t len, cur;
 } striter_s, *striter_t;
 
-bool striter_init(striter_t self, char *ptr, size_t len);
+bool striter_init(striter_t self, unsigned char *ptr, size_t len);
+bool striter_reset(striter_t self);
+int striter_next(striter_t self);
 
 #ifdef __cplusplus
 }

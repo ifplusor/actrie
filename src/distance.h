@@ -15,7 +15,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef struct dist_matcher {
-  struct _matcher header;
+  matcher_s header;
 
   matcher_t _head_matcher, _tail_matcher;
   match_dict_t _dict;
@@ -29,7 +29,7 @@ typedef enum dist_match_state {
 } dist_match_state;
 
 typedef struct dist_context {
-  struct _context header; /* 'header.out_matched_index' point 'out_index' */
+  context_s header; /* 'header.out_matched_index' point 'out_index' */
 
   dist_matcher_t _matcher;
 
@@ -48,8 +48,8 @@ typedef struct dist_context {
 
 } *dist_context_t;
 
-extern const matcher_func dist_matcher_func;
-extern const context_func dist_context_func;
+extern const matcher_func_l dist_matcher_func;
+extern const context_func_l dist_context_func;
 
 dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation);
 bool dist_destruct(dist_matcher_t self);

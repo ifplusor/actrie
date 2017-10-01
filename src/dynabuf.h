@@ -6,6 +6,7 @@
 #define _MATCH_DYNABUF_H_
 
 #include <common.h>
+#include "stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +40,10 @@ size_t dynabuf_length(dynabuf_t self);
 char *dynabuf_write(dynabuf_t self, const char *src, size_t len);
 char *dynabuf_write_with_zero(dynabuf_t self, const char *src, size_t len);
 
-char dynabuf_read_file_until(dynabuf_t self, FILE *fp, const char *delim);
+int dynabuf_consume_until(dynabuf_t self,
+                          stream_t stream,
+                          const char *delim,
+                          strpos_t out_pos);
 
 #ifdef __cplusplus
 }

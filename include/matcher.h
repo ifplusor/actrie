@@ -51,7 +51,7 @@ typedef struct matched_index_pos {
   const char *keyword;
   const char *extra;
   size_t length, wlen;
-  size_t os, oe;
+  size_t so, eo;
 } idx_pos_s;
 
 idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len);

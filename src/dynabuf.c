@@ -131,51 +131,51 @@ char *dynabuf_write_with_zero(dynabuf_t self, const char *src, size_t len) {
   return ret;
 }
 
-char dynabuf_read_file_until(dynabuf_t self, FILE *fp, const char *delim) {
-  if (delim == NULL || delim[0] == '\0')
-    return '\0';
+int dynabuf_consume_until(dynabuf_t self,
+                          stream_t stream,
+                          const char *delim,
+                          strpos_t out_pos) {
+  unsigned char buf[256], *pb = buf;
+  unsigned char *s = (unsigned char*) delim;
+  int ch;
 
-  char buf[256], *ch;
-  if (delim[1] == '\0') {
-    ch = buf;
-    while ((*ch = (char) getc(fp)) != EOF && *ch != *delim) {
-      if ((ch - buf) == 255) {
-        dynabuf_write(self, buf, 256);
-        ch = buf;
-      } else {
-        ch++;
+  if (out_pos) out_pos->so = dynabuf_length(self);
+
+  if (delim == NULL || delim[0] == '\0') {
+    ch = 0;
+  } else {
+    if (delim[1] == '\0') {
+      while ((ch = stream_getc(stream)) != EOF && ch != *s) {
+        *(pb++) = (unsigned char) ch;
+        if ((pb - buf) == 256) {
+          dynabuf_write(self, buf, 256);
+          pb = buf;
+        }
+      }
+    } else {
+      unsigned char table[256];
+      unsigned char *p = memset (table, 0, 64);
+      memset (p + 64, 0, 64);
+      memset (p + 128, 0, 64);
+      memset (p + 192, 0, 64);
+
+      do {
+        p[*s++] = 1;
+      } while (*s);
+
+      while ((ch = stream_getc(stream)) != EOF && !p[ch]) {
+        *(pb++) = (unsigned char) ch;
+        if ((pb - buf) == 256) {
+          dynabuf_write(self, buf, 256);
+          pb = buf;
+        }
       }
     }
-    dynabuf_write(self, buf, ch - buf);
-    return *ch;
+
+    dynabuf_write(self, buf, pb - buf);
   }
 
-  unsigned char table[256];
-  unsigned char *p = memset (table, 0, 64);
-  memset (p + 64, 0, 64);
-  memset (p + 128, 0, 64);
-  memset (p + 192, 0, 64);
+  if (out_pos) out_pos->eo = dynabuf_length(self);
 
-  unsigned char *s = (unsigned char*) delim;
-
-  do {
-    p[*s++] = 1;
-  } while (*s);
-
-  ch = buf;
-  while ((*ch = (char) getc(fp)) != EOF && !p[*(unsigned char*)ch]) {
-    if ((ch - buf) == 255) {
-      dynabuf_write(self, buf, 256);
-      ch = buf;
-    } else {
-      ch++;
-    }
-  }
-  dynabuf_write(self, buf, ch - buf);
-  return *ch;
-}
-
-size_t dynabuf_read_string_until(dynabuf_t self, dynabuf_t str,
-                                 const char *delim) {
-  return 0;
+  return ch;
 }

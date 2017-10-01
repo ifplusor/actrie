@@ -17,12 +17,12 @@
 // ========================================================
 
 
-const matcher_func dist_matcher_func = {
+const matcher_func_l dist_matcher_func = {
     .destruct = (matcher_destruct_func) dist_destruct,
     .alloc_context = (matcher_alloc_context_func) dist_alloc_context
 };
 
-const context_func dist_context_func = {
+const context_func_l dist_context_func = {
     .free_context = (matcher_free_context_func) dist_free_context,
     .reset_context = (matcher_reset_context_func) dist_reset_context,
     .next = (matcher_next_func) dist_next_on_index
