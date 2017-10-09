@@ -52,6 +52,7 @@ bool dynabuf_init(dynabuf_t self, size_t size, bool fixed) {
 bool dynabuf_clean(dynabuf_t self) {
   if (dynabuf_reset(self)) {
     free(self->_buffer);
+    self->_buffer = NULL;
     self->_size = 0;
     return true;
   }
@@ -64,65 +65,129 @@ bool dynabuf_reset(dynabuf_t self) {
   return true;
 }
 
-char *dynabuf_buffer(dynabuf_t self, size_t offset) {
-  return self->_buffer + offset;
+strcur_s dynabuf_empty(dynabuf_t self) {
+  strcur_s ret;
+  if (self->_prop & dynabuf_prop_fixed)
+    ret.ptr = NULL;
+  else
+    ret.idx = (size_t) -1;
+  return ret;
+}
+
+char *dynabuf_content(dynabuf_t self, strcur_s cursor) {
+  if (self->_prop & dynabuf_prop_fixed) {
+    return cursor.ptr;
+  } else {
+    if (cursor.idx == -1)
+      return NULL;
+    return self->_buffer + cursor.idx;
+  }
+}
+
+strlen_s dynabuf_split(dynabuf_t self, strpos_s pos) {
+  strlen_s ret;
+  ret.ptr = self->_buffer + pos.so;
+  ret.len = pos.eo - pos.so;
+  return ret;
+}
+
+strcur_s dynabuf_related(dynabuf_t self, strcur_s base, char *related) {
+  if (self->_prop & dynabuf_prop_fixed) {
+    return (strcur_s) {.ptr=related};
+  } else {
+    return (strcur_s) {
+        .idx = base.idx + (related - dynabuf_content(self, base))
+    };
+  }
+}
+
+strcur_s dynabuf_cur2ptr(dynabuf_t self, strcur_s cursor) {
+  if (self->_prop & dynabuf_prop_fixed) {
+    return cursor;
+  } else {
+    return (strcur_s) {
+        .ptr = cursor.idx == -1 ? NULL : self->_buffer + cursor.idx
+    };
+  }
 }
 
 size_t dynabuf_length(dynabuf_t self) {
   return self->_len;
 }
 
-char *dynabuf_write(dynabuf_t self, const char *src, size_t len) {
-  if (self == NULL) return NULL;
+strcur_s dynabuf_write(dynabuf_t self, const char *src, size_t len) {
+//  if (self == NULL) return NULL;
 
   if (self->_len + len > self->_size) {
     if (self->_prop & dynabuf_prop_fixed) {
-      fprintf(stderr, "fatal: memory error!");
+      fprintf(stderr, "%s(%d) - fatal: memory error!\n", __FILE__, __LINE__);
       exit(-1);
     }
 
     size_t new_size = dynabuf_extend_size(self->_size, len);
     char *new_buffer = malloc(new_size);
-    if (new_buffer == NULL) return NULL;
+    if (new_buffer == NULL) {
+      fprintf(stderr, "%s(%d) - fatal: memory error!\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+    memcpy(new_buffer, self->_buffer, self->_len);
     free(self->_buffer);
     self->_buffer = new_buffer;
     self->_size = new_size;
   }
 
-  char *ret;
+  strcur_s ret;
   if (len > 0) {
-    ret = memcpy(self->_buffer + self->_len, src, len);
+    if (self->_prop & dynabuf_prop_fixed) {
+      ret.ptr = memcpy(self->_buffer + self->_len, src, len);
+    } else {
+      ret.idx = self->_len;
+      memcpy(self->_buffer + self->_len, src, len);
+    }
     self->_len += len;
   } else {
-    ret = NULL;
+    ret = dynabuf_empty(self);
   }
 
   return ret;
 }
 
-char *dynabuf_write_with_zero(dynabuf_t self, const char *src, size_t len) {
-  if (self == NULL) return NULL;
+strcur_s dynabuf_write_with_zero(dynabuf_t self, const char *src, size_t len) {
+//  if (self == NULL) return NULL;
 
   if (self->_len + len + 1 > self->_size) {
     if (self->_prop & dynabuf_prop_fixed) {
-      fprintf(stderr, "fatal: memory error!");
+      fprintf(stderr, "%s(%d) - fatal: memory error!\n", __FILE__, __LINE__);
       exit(-1);
     }
 
     size_t new_size = dynabuf_extend_size(self->_size, len + 1);
     char *new_buffer = malloc(new_size);
-    if (new_buffer == NULL) return NULL;
+    if (new_buffer == NULL) {
+      fprintf(stderr, "%s(%d) - fatal: memory error!\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+    memcpy(new_buffer, self->_buffer, self->_len);
     free(self->_buffer);
     self->_buffer = new_buffer;
     self->_size = new_size;
   }
 
-  char *ret;
+  strcur_s ret;
   if (len > 0) {
-    ret = memcpy(self->_buffer + self->_len, src, len);
+    if (self->_prop & dynabuf_prop_fixed) {
+      ret.ptr = memcpy(self->_buffer + self->_len, src, len);
+    } else {
+      ret.idx = self->_len;
+      memcpy(self->_buffer + self->_len, src, len);
+    }
     self->_len += len;
   } else {
-    ret = self->_buffer + self->_len;
+    if (self->_prop & dynabuf_prop_fixed) {
+      ret.ptr = self->_buffer + self->_len;
+    } else {
+      ret.idx = self->_len;
+    }
   }
 
   // append '\0'

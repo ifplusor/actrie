@@ -6,7 +6,7 @@
  *   API 语义约定:
  *     1. alloc/free            分配、释放对象内存
  *     2. init/clean/reset      初始化、释放缓存、重置状态
- *     3. construct/destruct    构造、析构对象
+ *     3. construct/sf_destruct    构造、析构对象
  *     4. retain/release        增加、减少对象引用
  */
 
@@ -82,10 +82,18 @@ long long system_millisecond();
 char *strdup(const char *s);
 #endif
 
+size_t strnlen(const char *s, size_t n);
+char *strnstr(const char *s1, const char *s2, size_t n);
+
 typedef struct str_len {
   char *ptr;
   size_t len;
 } strlen_s, *strlen_t;
+
+typedef union str_cur {
+  char *ptr;
+  size_t idx;
+} strcur_s, *strcur_t;
 
 typedef struct str_pos {
   size_t so, eo;

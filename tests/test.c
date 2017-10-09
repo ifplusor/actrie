@@ -26,7 +26,7 @@ int main() {
     count++;
     matcher_reset_context(ctx1, content, strlen(content));
     while (matcher_next(ctx1)) {
-      fprintf(fout, "%s\n", matcher_matched_index(ctx1)->keyword);
+      fprintf(fout, "%s\n", matcher_matched_index(ctx1)->_keyword);
       c++;
     }
   }

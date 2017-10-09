@@ -78,13 +78,11 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
     return false;
   } else {
     dynabuf_write_with_zero(&self->_buf, NULL, 0);
-    keyword->ptr = dynabuf_buffer(&self->_buf, keyword_pos.so);
-    keyword->len = keyword_pos.eo - keyword_pos.so;
+    *keyword = dynabuf_split(&self->_buf, keyword_pos);
     if (ch == '\t') {
       ch = dynabuf_consume_until(&self->_buf, self->_stream, "\n", &extra_pos);
       dynabuf_write_with_zero(&self->_buf, NULL, 0);
-      extra->ptr = dynabuf_buffer(&self->_buf, extra_pos.so);
-      extra->len = extra_pos.eo - extra_pos.so;
+      *extra = dynabuf_split(&self->_buf, extra_pos);
     } else {
       extra->ptr = (char *) str_empty;
       extra->len = 0;

@@ -5,6 +5,7 @@
 #include "matcher0.h"
 #include "vocab.h"
 #include "acdat.h"
+#include "disambi.h"
 #include "distance.h"
 
 const matcher_func_t const matcher_func_table[matcher_type_size] = {
@@ -30,14 +31,14 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
     case matcher_type_acdat:
       matcher = (matcher_t) dat_construct(vocab, true);
       break;
+    case matcher_type_ambi:
+//      matcher = (matcher_t) ambi_construct(vocab, 0, true);
+      break;
     case matcher_type_distance:
       matcher = (matcher_t) dist_construct(vocab, true);
       break;
-    case matcher_type_dist_ex:
-    case matcher_type_size:break;
+    default:break;
   }
-
-  vocab_destruct(vocab);
 
   if (matcher != NULL) {
     matcher->_type = type;
@@ -49,12 +50,16 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
 
 matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
   vocab_t vocab = vocab_construct(stream_type_file, path);
-  return matcher_construct(type, vocab);
+  matcher_t matcher = matcher_construct(type, vocab);
+  vocab_destruct(vocab);
+  return matcher;
 }
 
 matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
-  return matcher_construct(type, vocab);
+  matcher_t matcher = matcher_construct(type, vocab);
+  vocab_destruct(vocab);
+  return matcher;
 }
 
 bool matcher_destruct(matcher_t matcher) {
@@ -120,8 +125,8 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
         if (new == NULL) break; else lst = new;
       }
       match_dict_index_t p = context->out_matched_index;
-      lst[len].keyword = p->keyword;
-      lst[len].extra = p->extra;
+      lst[len].keyword = p->mdi_keyword;
+      lst[len].extra = p->mdi_extra;
       lst[len].length = p->length;
       lst[len].wlen = p->wlen;
       lst[len].eo = context->out_e;

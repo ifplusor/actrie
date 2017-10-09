@@ -365,7 +365,7 @@ void trie_destruct(trie_t self) {
 }
 
 trie_t trie_construct_by_dict(match_dict_t dict,
-                              match_dict_index_prop_f filter,
+                              mdi_prop_f filter,
                               bool enable_automation) {
 #ifdef DEBUG
   long long t0, t1, t2, t3, t4;
@@ -379,12 +379,13 @@ trie_t trie_construct_by_dict(match_dict_t dict,
 #endif
   for (size_t i = 0; i < dict->idx_count; i++) {
     match_dict_index_t index = &dict->index[i];
-    if (index->prop != filter) continue;
+    if ((index->prop & filter) == 0) continue;
     if (!trie_add_keyword(prime_trie,
-                          (const unsigned char *) index->keyword,
+                          dynabuf_content(dict->buffer, index->_keyword),
                           index->length,
                           index)) {
-      fprintf(stderr, "fatal: encounter error when add keywords.\n");
+      fprintf(stderr, "%s(%d) - fatal: encounter error when add keywords!\n",
+              __FILE__, __LINE__);
       trie_destruct(prime_trie);
       prime_trie = NULL;
       break;
@@ -415,16 +416,14 @@ trie_t trie_construct(vocab_t vocab, bool enable_automation) {
   trie_t prime_trie = NULL;
   match_dict_t dict = NULL;
 
-  if (vocab == NULL) {
-    return NULL;
-  }
+  if (vocab == NULL) return NULL;
 
   dict = dict_alloc();
   if (dict == NULL) return NULL;
 
   if (dict_parse(dict, vocab)) {
     prime_trie = trie_construct_by_dict(dict,
-                                        match_dict_index_prop_normal,
+                                        mdi_prop_normal,
                                         enable_automation);
   }
 

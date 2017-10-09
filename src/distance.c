@@ -48,9 +48,9 @@ void dict_distance_before_reset(match_dict_t dict,
 }
 
 bool dict_distance_add_keyword_and_extra(match_dict_t dict,
-                                         char keyword[],
-                                         char extra[]) {
-  char *key_cur, *head_cur, *tail_cur;
+                                         strlen_s keyword,
+                                         strlen_s extra) {
+  strcur_s key_cur, head_cur, tail_cur;
   size_t tag, distance;
   regmatch_t pmatch[6];
   char dist[3], *split;
@@ -67,72 +67,84 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
     }
   }
 
-  if (keyword != NULL && keyword[0] != '\0') {
-    err = regexec(&reg, keyword, 6, pmatch, 0);
-    if (err == REG_NOMATCH) {
-      return true;
-    } else if (err != REG_NOERROR) {
-      return false;
-    }
+  if (keyword.len == 0) return true;
 
-    if (pmatch[3].rm_so == -1) {
-      // .*?
-      distance = MAX_WORD_DISTANCE;
+  err = regexec(&reg, keyword.ptr, 6, pmatch, 0);
+  if (err == REG_NOMATCH) {
+    return true;
+  } else if (err != REG_NOERROR) {
+    return false;
+  }
+
+  if (pmatch[3].rm_so == -1) {
+    // .*?
+    distance = MAX_WORD_DISTANCE;
+  } else {
+
+    if (pmatch[4].rm_so + 1 == pmatch[4].rm_eo) {
+      dist[0] = keyword.ptr[pmatch[4].rm_so];
+      dist[1] = '\0';
     } else {
-
-      if (pmatch[4].rm_so + 1 == pmatch[4].rm_eo) {
-        dist[0] = keyword[pmatch[4].rm_so];
-        dist[1] = '\0';
-      } else {
-        dist[0] = keyword[pmatch[4].rm_so];
-        dist[1] = keyword[pmatch[4].rm_so + 1];
-        dist[2] = '\0';
-      }
-      distance = (size_t) atoi(dist);
-
-      if (keyword[pmatch[3].rm_so] == '.') {
-        // .{0,n}
-        ;
-      } else {
-        // \d{0,n}
-        distance |= DIGITAL_MASK;
-      }
+      dist[0] = keyword.ptr[pmatch[4].rm_so];
+      dist[1] = keyword.ptr[pmatch[4].rm_so + 1];
+      dist[2] = '\0';
     }
+    distance = (size_t) atoi(dist);
 
-    // store original keyword
-    key_cur = dynabuf_write(&dict->buffer, keyword, strlen(keyword) + 1);
-
-    // store processed keyword
-
-    // 1. store head
-    head_cur =
-        dynabuf_write_with_zero(&dict->buffer, &keyword[pmatch[1].rm_so],
-                                (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so));
-
-    // 2. store tail
-    tail_cur =
-        dynabuf_write_with_zero(&dict->buffer, &keyword[pmatch[5].rm_so],
-                                (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so));
-
-    tag = dict->idx_count;
-
-    // 连用需要多条 index
-    // 针对连用，需要扩充内存
-    for (split = strtok(head_cur, tokens_delimiter); split;
-         split = strtok(NULL, tokens_delimiter)) {
-      size_t length = strlen(split);
-      if (length > dict->max_key_length) dict->max_key_length = length;
-      dict_add_index(dict, strlen(split), split, (char *) distance,
-                     (char *) tag, match_dict_index_prop_head);
+    if (keyword.ptr[pmatch[3].rm_so] == '.') {
+      // .{0,n}
+      ;
+    } else {
+      // \d{0,n}
+      distance |= DIGITAL_MASK;
     }
+  }
 
-    for (split = strtok(tail_cur, tokens_delimiter); split;
-         split = strtok(NULL, tokens_delimiter)) {
-      size_t length = strlen(split);
-      if (length > dict->max_extra_length) dict->max_extra_length = length;
-      dict_add_index(dict, strlen(split), split, key_cur,
-                     (char *) tag, match_dict_index_prop_tail);
-    }
+  // store original keyword
+  key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
+
+  // store processed keyword
+
+  // 1. store head
+  strlen_s head = {
+      .ptr = &keyword.ptr[pmatch[1].rm_so],
+      .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
+  };
+  head_cur = dynabuf_write_with_zero(dict->buffer, head.ptr, head.len);
+
+  // 2. store tail
+  strlen_s tail = {
+      .ptr = &keyword.ptr[pmatch[5].rm_so],
+      .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
+  };
+  tail_cur = dynabuf_write_with_zero(dict->buffer, tail.ptr, tail.len);
+
+  tag = dict->idx_count;
+
+  // 连用需要多条 index
+  // 针对连用，需要扩充内存
+  for (split = strtok(dynabuf_content(dict->buffer, head_cur),
+                      tokens_delimiter);
+       split;
+       split = strtok(NULL, tokens_delimiter)) {
+    size_t length = strlen(split);
+    if (length > dict->max_key_length) dict->max_key_length = length;
+    dict_add_index(dict, strlen(split),
+                   dynabuf_related(dict->buffer, head_cur, split),
+                   (strcur_s) {.idx=distance}, (void *) tag,
+                   mdi_prop_head | mdi_prop_bufkey);
+  }
+
+  for (split = strtok(dynabuf_content(dict->buffer, tail_cur),
+                      tokens_delimiter);
+       split;
+       split = strtok(NULL, tokens_delimiter)) {
+    size_t length = strlen(split);
+    if (length > dict->max_extra_length) dict->max_extra_length = length;
+    dict_add_index(dict, strlen(split),
+                   dynabuf_related(dict->buffer, tail_cur, split),
+                   key_cur, (void *) tag,
+                   mdi_prop_tail | mdi_prop_bufkey | mdi_prop_bufextra);
   }
 
   return true;
@@ -151,47 +163,51 @@ bool dist_destruct(dist_matcher_t self) {
 
 dist_matcher_t dist_construct_by_dict(match_dict_t dict,
                                       bool enable_automation) {
-  trie_t head_trie, tail_trie;
-  dist_matcher_t matcher;
+  dist_matcher_t matcher = NULL;
+  trie_t head_trie = NULL;
+  trie_t tail_trie = NULL;
 
-  head_trie =
-      trie_construct_by_dict(dict, match_dict_index_prop_head, false);
-  if (head_trie == NULL) return NULL;
+  do {
+    head_trie = trie_construct_by_dict(dict, mdi_prop_head, false);
+    if (head_trie == NULL) break;
 
-  tail_trie =
-      trie_construct_by_dict(dict, match_dict_index_prop_tail, false);
-  if (tail_trie == NULL) return NULL;
+    tail_trie = trie_construct_by_dict(dict, mdi_prop_tail, false);
+    if (tail_trie == NULL) break;
 
-  matcher = malloc(sizeof(struct dist_matcher));
-  if (matcher == NULL) return NULL;
+    matcher = malloc(sizeof(struct dist_matcher));
+    if (matcher == NULL) break;
 
-  matcher->_dict = dict_retain(dict);
+    matcher->_dict = dict_retain(dict);
 
-  matcher->_head_matcher = (matcher_t)
-      dat_construct_by_trie(head_trie, enable_automation);
-  matcher->_head_matcher->_func = dat_matcher_func;
-  matcher->_head_matcher->_type =
-      enable_automation ? matcher_type_acdat : matcher_type_dat;
+    matcher->_head_matcher = (matcher_t)
+        dat_construct_by_trie(head_trie, enable_automation);
+    matcher->_head_matcher->_func = dat_matcher_func;
+    matcher->_head_matcher->_type =
+        enable_automation ? matcher_type_acdat : matcher_type_dat;
+    trie_destruct(head_trie);
+
+    matcher->_tail_matcher = (matcher_t)
+        dat_construct_by_trie(tail_trie, enable_automation);
+    matcher->_tail_matcher->_func = dat_matcher_func;
+    matcher->_tail_matcher->_type =
+        enable_automation ? matcher_type_acdat : matcher_type_dat;
+    trie_destruct(tail_trie);
+
+    return matcher;
+  } while(0);
+
+  // clean
   trie_destruct(head_trie);
-
-  matcher->_tail_matcher = (matcher_t)
-      dat_construct_by_trie(tail_trie, enable_automation);
-  matcher->_tail_matcher->_func = dat_matcher_func;
-  matcher->_tail_matcher->_type =
-      enable_automation ? matcher_type_acdat : matcher_type_dat;
   trie_destruct(tail_trie);
 
-  return matcher;
+  return NULL;
 }
 
 dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
   dist_matcher_t dist_matcher = NULL;
   match_dict_t dict = NULL;
-  FILE *fp = NULL;
 
-  if (vocab == NULL) {
-    return NULL;
-  }
+  if (vocab == NULL) return NULL;
 
   dict = dict_alloc();
   if (dict == NULL) return NULL;
@@ -298,9 +314,9 @@ bool dist_construct_out(dist_context_t ctx, const char *extra, size_t _e) {
   ctx->_c = content[ctx->header.out_e];
   content[ctx->header.out_e] = '\0';
 #endif
-  ctx->out_index.keyword = (const char *)
-      &content[hctx->out_e - hctx->out_matched_index->length];
-  ctx->out_index.extra = extra;
+  ctx->out_index.mdi_keyword =
+      (char *) &content[hctx->out_e - hctx->out_matched_index->length];
+  ctx->out_index.mdi_extra = (char *) extra;
 
   return true;
 }
@@ -326,7 +342,7 @@ bool dist_next_on_index(dist_context_t ctx) {
 
   while (dat_ac_next_on_index((dat_context_t) hctx)) {
     // check number
-    size_t dist = (size_t) hctx->out_matched_index->extra;
+    size_t dist = hctx->out_matched_index->_extra.idx;
     if (dist & DIGITAL_MASK) {
       ctx->_state = dist_match_state_check_prefix;
       dist &= ~DIGITAL_MASK;
@@ -343,7 +359,7 @@ check_prefix:
       while (dat_prefix_next_on_index((dat_context_t) dctx)) {
         if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
           return dist_construct_out(ctx,
-                                    dctx->out_matched_index->extra,
+                                    dctx->out_matched_index->mdi_extra,
                                     tail_so + dctx->out_e);
       }
       continue;
@@ -375,9 +391,9 @@ check_history:
       }
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= (size_t) hctx->out_matched_index->extra)
+        if (distance <= hctx->out_matched_index->_extra.idx)
           return dist_construct_out(ctx,
-                                    matched_index->extra,
+                                    matched_index->mdi_extra,
                                     hist[ctx->_i].out_e);
         break;
       }
@@ -411,8 +427,8 @@ check_tail:
       }
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= (size_t) hctx->out_matched_index->extra)
-          return dist_construct_out(ctx, matched_index->extra, tctx->out_e);
+        if (distance <= hctx->out_matched_index->_extra.idx)
+          return dist_construct_out(ctx, matched_index->mdi_extra, tctx->out_e);
         break;
       }
     }

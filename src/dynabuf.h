@@ -34,11 +34,17 @@ bool dynabuf_init(dynabuf_t self, size_t size, bool fixed);
 bool dynabuf_clean(dynabuf_t self);
 bool dynabuf_reset(dynabuf_t self);
 
-char *dynabuf_buffer(dynabuf_t self, size_t offset);
+strcur_s dynabuf_empty(dynabuf_t self);
+char *dynabuf_content(dynabuf_t self, strcur_s cursor);
+strlen_s dynabuf_split(dynabuf_t self, strpos_s pos);
+strcur_s dynabuf_related(dynabuf_t self, strcur_s base, char *related);
+strcur_s dynabuf_cur2ptr(dynabuf_t self, strcur_s cursor);
 size_t dynabuf_length(dynabuf_t self);
 
-char *dynabuf_write(dynabuf_t self, const char *src, size_t len);
-char *dynabuf_write_with_zero(dynabuf_t self, const char *src, size_t len);
+strcur_s dynabuf_write(dynabuf_t self, const char *src, size_t len);
+strcur_s dynabuf_write_with_zero(dynabuf_t self,
+                                    const char *src,
+                                    size_t len);
 
 int dynabuf_consume_until(dynabuf_t self,
                           stream_t stream,

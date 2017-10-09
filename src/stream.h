@@ -20,10 +20,10 @@ typedef int (*stream_ungetc_func)(stream_t, int);
 typedef void (*stream_rewind_func)(stream_t);
 
 typedef struct stream_func {
-  stream_destruct_func destruct;
-  stream_getc_func getc;
-  stream_ungetc_func ungetc;
-  stream_rewind_func rewind;
+  stream_destruct_func sf_destruct;
+  stream_getc_func sf_getc;
+  stream_ungetc_func sf_ungetc;
+  stream_rewind_func sf_rewind;
 } stream_func_l, *stream_func_t;
 
 typedef enum stream_type {

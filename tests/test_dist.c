@@ -24,7 +24,7 @@ int main() {
     while (matcher_next(context)) {
       match_dict_index_t idx = matcher_matched_index(context);
       fprintf(fout, "%.*s(%zu) - %s\n",
-              (int) idx->length, idx->keyword, idx->wlen, idx->extra);
+              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
     };
 
 //        if (count % 100 == 0) {
@@ -56,7 +56,7 @@ int main2() {
   while (matcher_next(context)) {
     match_dict_index_t idx = matcher_matched_index(context);
     fprintf(stdout, "%.*s(%zu) - %s\n",
-            (int) idx->length, idx->keyword, idx->wlen, idx->extra);
+            (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
   };
   matcher_free_context(context);
   matcher_destruct(matcher);

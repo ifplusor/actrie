@@ -23,6 +23,30 @@ char *strdup(const char *s) {
   return dup;
 }
 
+size_t strnlen(const char *s, size_t n) {
+  size_t i;
+  for (i = 0; i < n; i++) {
+    if (s[i] == '\0')
+      return i;
+  }
+  return n;
+}
+
+char *strnstr(const char *s1, const char *s2, size_t n) {
+  int i;
+  size_t needle_len;
+
+  if (0 == (needle_len = strnlen(s2, n)))
+    return (char *) s1;
+
+  for (i = 0; i <= (int) (n - needle_len); i++) {
+    if ((s1[0] == s2[0]) && (0 == strncmp(s1, s2, needle_len)))
+      return (char *) s1;
+    s1++;
+  }
+  return NULL;
+}
+
 bool striter_init(striter_t self, unsigned char *ptr, size_t len) {
   self->ptr = ptr;
   self->len = len;

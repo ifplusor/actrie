@@ -45,7 +45,7 @@ typedef struct trie {
 } trie_s, *trie_t;
 
 trie_t trie_construct_by_dict(match_dict_t dict,
-                              match_dict_index_prop_f filter,
+                              mdi_prop_f filter,
                               bool enable_automation);
 trie_t trie_construct(vocab_t vocab, bool enable_automation);
 void trie_destruct(trie_t self);

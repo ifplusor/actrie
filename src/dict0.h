@@ -17,13 +17,11 @@ extern "C" {
 // dictionary API
 // ==============
 
-#define SEPARATOR_ID "###"
-
 struct match_dict;
 typedef struct match_dict *match_dict_t;
 
 typedef bool(*dict_add_keyword_and_extra_func)
-    (match_dict_t dict, char keyword[], char extra[]);
+    (match_dict_t dict, strlen_s keyword, strlen_s extra);
 typedef void(*dict_before_reset_func)
     (match_dict_t dict, size_t *index_count, size_t *buffer_size);
 
@@ -31,7 +29,7 @@ typedef struct match_dict {
   match_dict_index_t index;
   size_t idx_size, idx_count;
 
-  dynabuf_s buffer;
+  dynabuf_t buffer;
 
   size_t max_key_length, max_extra_length;
 
@@ -50,10 +48,10 @@ void dict_release(match_dict_t dict);
 
 void dict_add_index(match_dict_t dict,
                     size_t length,
-                    char *keyword,
-                    char *extra,
-                    char *tag,
-                    match_dict_index_prop_f type);
+                    strcur_s keyword,
+                    strcur_s extra,
+                    void *tag,
+                    mdi_prop_f prop);
 
 bool dict_parse(match_dict_t self, vocab_t vocab);
 

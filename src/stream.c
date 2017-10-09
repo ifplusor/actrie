@@ -7,15 +7,15 @@
 
 bool stream_destruct(stream_t self) {
   if (self == NULL) return false;
-  return self->_func->destruct(self);
+  return self->_func->sf_destruct(self);
 }
 
 int stream_getc(stream_t self) {
-  return self->_func->getc(self);
+  return self->_func->sf_getc(self);
 }
 
 int stream_ungetc(stream_t self, int c) {
-  return self->_func->ungetc(self, c);
+  return self->_func->sf_ungetc(self, c);
 }
 
 void stream_skip_bom(stream_t self) {
@@ -34,7 +34,7 @@ void stream_skip_bom(stream_t self) {
 }
 
 void stream_rewind(stream_t self) {
-  self->_func->rewind(self);
+  self->_func->sf_rewind(self);
   stream_skip_bom(self);
 }
 
@@ -62,10 +62,10 @@ void file_stream_rewind(stream_t self) {
 }
 
 const stream_func_l file_stream_func = {
-    .destruct = file_stream_destruct,
-    .getc = file_stream_getc,
-    .ungetc = file_stream_ungetc,
-    .rewind = file_stream_rewind,
+    .sf_destruct = file_stream_destruct,
+    .sf_getc = file_stream_getc,
+    .sf_ungetc = file_stream_ungetc,
+    .sf_rewind = file_stream_rewind,
 };
 
 stream_t file_stream_construct(const char *path) {
@@ -111,10 +111,10 @@ void string_stream_rewind(stream_t self) {
 }
 
 const stream_func_l string_stream_func = {
-    .destruct = string_stream_destruct,
-    .getc = string_stream_getc,
-    .ungetc = string_stream_ungetc,
-    .rewind = string_stream_rewind,
+    .sf_destruct = string_stream_destruct,
+    .sf_getc = string_stream_getc,
+    .sf_ungetc = string_stream_ungetc,
+    .sf_rewind = string_stream_rewind,
 };
 
 stream_t string_stream_construct(const char *str) {
