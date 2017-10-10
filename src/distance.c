@@ -45,6 +45,41 @@ void dist_dict_before_reset(match_dict_t dict,
   *buffer_size *= 2;
 }
 
+size_t max_alternation_length(strlen_s keyword) {
+  size_t max = 0;
+
+  if ((keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')')
+      || (keyword.ptr[0] != '(' && keyword.ptr[keyword.len - 1] == ')')) {
+    max = keyword.len;
+  } else {
+    size_t i, t = 0;
+    if (keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')') {
+      t = 1;
+    }
+    size_t depth = 0, so = t;
+    for (i = t; i < keyword.len - t; i++) {
+      switch (keyword.ptr[i]) {
+        case '|':
+          if (depth == 0 && i > so) {
+            size_t len = i - so;
+            if (len > max) max = len;
+            so = i + 1;
+          }
+          break;
+        case '(': depth++; break;
+        case ')': depth--; break;
+        default: break;
+      }
+    }
+    if (i > so) {
+      size_t len = i - so;
+      if (len > max) max = len;
+    }
+  }
+
+  return max;
+}
+
 bool dist_dict_add_index(match_dict_t dict,
                          dict_add_indix_filter filter,
                          strlen_s keyword,
@@ -52,6 +87,7 @@ bool dist_dict_add_index(match_dict_t dict,
                          void * tag,
                          mdi_prop_f prop) {
   int err;
+
   if (!pattern_compiled) {
     // compile pattern
     err = regcomp(&reg, pattern, REG_EXTENDED | REG_NEWLINE);
@@ -107,51 +143,25 @@ bool dist_dict_add_index(match_dict_t dict,
   dict_add_index(dict, NULL, keyword, extra, tag, prop);
 
   // store processed keyword
-  size_t tail_max_len = 0;
-  strlen_s tail = {
-      .ptr = keyword.ptr + pmatch[5].rm_so,
-      .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
-  };
-  tail.ptr = strndup(tail.ptr, tail.len);
-  for (char *split = strtok(tail.ptr, tokens_delimiter); split;
-       split = strtok(NULL, tokens_delimiter)) {
-    size_t len = strlen(split);
-    if (len > tail_max_len) tail_max_len = len;
-    filter->add_index(dict, filter->next,
-                      (strlen_s) {
-                          .ptr = split,
-                          .len = len
-                      },
-                      (strlen_s) {
-                          .ptr = (char *) distance,
-                          .len = 0
-                      },
-                      key_tag,
-                      mdi_prop_tail | base_prop);
-  }
-  free(tail.ptr);
-
   strlen_s head = {
       .ptr = keyword.ptr + pmatch[1].rm_so,
       .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
   };
-  head.ptr = strndup(head.ptr, head.len);
-  for (char *split = strtok(head.ptr, tokens_delimiter); split;
-       split = strtok(NULL, tokens_delimiter)) {
-    size_t len = strlen(split);
-    filter->add_index(dict, filter->next,
-                      (strlen_s) {
-                          .ptr = split,
-                          .len = len
-                      },
-                      (strlen_s) {
-                          .ptr = (char *) tail_max_len,
-                          .len = 0
-                      },
-                      key_tag,
-                      mdi_prop_head | base_prop);
-  }
-  free(head.ptr);
+
+  strlen_s tail = {
+      .ptr = keyword.ptr + pmatch[5].rm_so,
+      .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
+  };
+
+  size_t tail_max_len = max_alternation_length(tail);
+
+  filter->add_index(dict, filter->next, head,
+                    (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
+                    key_tag, mdi_prop_head | base_prop);
+
+  filter->add_index(dict, filter->next, tail,
+                    (strlen_s) {.ptr = (char *) distance, .len = 0},
+                    key_tag, mdi_prop_tail | base_prop);
 
   return true;
 }
@@ -217,6 +227,8 @@ dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
 
   dict = dict_alloc();
   if (dict == NULL) return NULL;
+  dict->add_index_filter =
+      dict_add_index_filter_wrap(dict->add_index_filter, dict_add_alternation_index);
   dict->add_index_filter =
       dict_add_index_filter_wrap(dict->add_index_filter, dist_dict_add_index);
   dict->before_reset = dist_dict_before_reset;

@@ -67,6 +67,10 @@ bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
                              strlen_s keyword, strlen_s extra, void *tag,
                              mdi_prop_f prop);
 
+bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
+                                strlen_s keyword, strlen_s extra, void *tag,
+                                mdi_prop_f prop);
+
 dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
                                                  dict_add_index_func func);
 

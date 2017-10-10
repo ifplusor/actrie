@@ -228,6 +228,50 @@ bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
   return filter->add_index(dict, filter->next, keyword, extra, tag, type | prop);
 }
 
+bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
+                                strlen_s keyword, strlen_s extra, void *tag,
+                                mdi_prop_f prop) {
+
+  if (keyword.len == 0) return true;
+
+  if ((keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')')
+      || (keyword.ptr[0] != '(' && keyword.ptr[keyword.len - 1] == ')')) {
+    filter->add_index(dict, filter->next, keyword, extra, tag, prop);
+  } else {
+    size_t i, t = 0;
+    if (keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')') {
+      t = 1;
+    }
+    size_t depth = 0, so = t;
+    for (i = t; i < keyword.len - t; i++) {
+      switch (keyword.ptr[i]) {
+        case '|':
+          if (depth == 0 && i > so) {
+            strlen_s key = {
+                .ptr = keyword.ptr + so,
+                .len = i - so,
+            };
+            filter->add_index(dict, filter->next, key, extra, tag, prop);
+            so = i + 1;
+          }
+          break;
+        case '(': depth++; break;
+        case ')': depth--; break;
+        default: break;
+      }
+    }
+    if (i > so) {
+      strlen_s key = {
+          .ptr = keyword.ptr + so,
+          .len = i - so,
+      };
+      filter->add_index(dict, filter->next, key, extra, tag, prop);
+    }
+  }
+
+  return true;
+}
+
 bool dict_parse(match_dict_t self, vocab_t vocab) {
   if (self == NULL || vocab == NULL) {
     return false;
