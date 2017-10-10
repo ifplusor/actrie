@@ -10,13 +10,28 @@ extern "C" {
 
 typedef enum match_dict_index_prop {
   mdi_prop_empty = 0,
-  mdi_prop_normal = 1,
-  mdi_prop_ambi = 2,
-  mdi_prop_alnum = 4,
-  mdi_prop_head = 8,
-  mdi_prop_tail = 16,
-  mdi_prop_bufkey = 32,
-  mdi_prop_bufextra = 64,
+  mdi_prop_reserve = 1,
+
+  // store attr
+  mdi_prop_bufkey = 2,
+  mdi_prop_bufextra = 4,
+
+  // word attr
+  mdi_prop_word = 8,
+  mdi_prop_alnum = 16,
+
+  // ambi attr
+  mdi_prop_normal = 32,
+  mdi_prop_ambi = 64,
+
+  // dist attr
+  mdi_prop_single = 128,
+  mdi_prop_head = 256,
+  mdi_prop_tail = 512,
+  mdi_prop_dist_digit = 1024,
+
+  mdi_prop_tag_id = 2048,
+
 } mdi_prop_f;
 
 typedef struct match_dict_index {

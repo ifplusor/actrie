@@ -57,6 +57,8 @@ add_library(actrie STATIC
         ${HEADER_FILES} ${SOURCE_FILES})
 target_include_directories(actrie
         PUBLIC include)
+target_compile_definitions(actrie
+        PUBLIC "-DAVL_USER_INDEX=1")
 
 
 add_subdirectory(tests)

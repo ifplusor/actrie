@@ -58,9 +58,24 @@ const bool number_bitmap[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-bool dict_default_add_keyword_and_extra(match_dict_t dict,
-                                        strlen_s keyword,
-                                        strlen_s extra);
+void dict_add_index_filter_free(dict_add_indix_filter filter) {
+  while (filter != NULL) {
+    dict_add_indix_filter next = filter->next;
+    free(filter);
+    filter = next;
+  }
+}
+
+dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
+                                                dict_add_index_func func) {
+  dict_add_indix_filter node =
+      malloc(sizeof(struct match_dict_add_index_filter));
+  if (node == NULL) return NULL;
+
+  node->add_index = func;
+  node->next = filter;
+  return node;
+}
 
 match_dict_t dict_alloc() {
   match_dict_t p = NULL;
@@ -76,9 +91,13 @@ match_dict_t dict_alloc() {
 
     p->index = NULL;
     p->_ref_count = 1;
-
-    p->add_keyword_and_extra = dict_default_add_keyword_and_extra;
+    p->add_index_filter = NULL;
     p->before_reset = NULL;
+
+    dict_add_indix_filter chain = p->add_index_filter;
+    chain = dict_add_index_filter_wrap(chain, dict_add_index);
+    chain = dict_add_index_filter_wrap(chain, dict_add_wordattr_index);
+    p->add_index_filter = chain;
 
     return p;
   } while (0);
@@ -104,6 +123,7 @@ void dict_release(match_dict_t dict) {
     if (dict->_ref_count == 0) {
       free(dict->index);
       dynabuf_free(dict->buffer);
+      dict_add_index_filter_free(dict->add_index_filter);
       free(dict);
     }
   }
@@ -137,66 +157,75 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   return true;
 }
 
-void dict_add_index(match_dict_t dict,
-                    size_t length,
-                    strcur_s keyword,
-                    strcur_s extra,
-                    void *tag,
+bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
+                    strlen_s keyword, strlen_s extra, void *tag,
                     mdi_prop_f prop) {
+  strcur_s key_cur, extra_cur;
+
   if (dict->idx_count == dict->idx_size) {
+    // extend memory
     dict->idx_size += 100;
-    dict->index = realloc(dict->index, sizeof(match_dict_s) * dict->idx_size);
+    void *new = realloc(dict->index, sizeof(match_dict_s) * dict->idx_size);
+    if (new == NULL) {
+      sprintf(stderr, "%s(%d) - fatal: memory error!", __FILE__, __LINE__);
+      exit(-1);
+    }
+    dict->index = new;
     memset(dict->index + dict->idx_count, 0, sizeof(match_dict_s) * 100);
   }
 
   dict->index[dict->idx_count]._next = NULL;
-  dict->index[dict->idx_count].length = length;
+  dict->index[dict->idx_count].length = keyword.len;
   dict->index[dict->idx_count].wlen =
-      utf8_word_length(prop & mdi_prop_bufkey
-                       ? dynabuf_content(dict->buffer, keyword)
-                       : keyword.ptr,
-                       length);
-  dict->index[dict->idx_count]._keyword = keyword;
-  dict->index[dict->idx_count]._extra = extra;
+      utf8_word_length(keyword.ptr, keyword.len);
+
+  // because we use standard c string, must use dynabuf_write_with_zero
+
+  if (prop & mdi_prop_bufkey) {
+    key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
+    if (keyword.len > dict->max_key_length)
+      dict->max_key_length = keyword.len;
+  } else {
+    key_cur.ptr = keyword.ptr;
+  }
+  dict->index[dict->idx_count]._keyword = key_cur;
+
+  if (prop & mdi_prop_bufextra) {
+    if (extra.len == 0) {
+      extra_cur = dynabuf_empty(dict->buffer);
+    } else {
+      extra_cur = dynabuf_write_with_zero(dict->buffer, extra.ptr, extra.len);
+      if (extra.len > dict->max_extra_length)
+        dict->max_extra_length = extra.len;
+    }
+  } else {
+    extra_cur.ptr = extra.ptr;
+  }
+  dict->index[dict->idx_count]._extra = extra_cur;
+
   dict->index[dict->idx_count]._tag = tag;
   dict->index[dict->idx_count].prop = prop;
   dict->idx_count++;
+
+  return true;
 }
 
-bool dict_default_add_keyword_and_extra(match_dict_t dict,
-                                        strlen_s keyword,
-                                        strlen_s extra) {
+bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
+                             strlen_s keyword, strlen_s extra, void *tag,
+                             mdi_prop_f prop) {
   mdi_prop_f type = mdi_prop_alnum;
-  strcur_s key_cur, extra_cur;
 
   if (keyword.len == 0) return true;
 
   for (size_t i = 0; i < keyword.len; i++) {
     if (!alpha_number_bitmap[(unsigned char) keyword.ptr[i]]
         && keyword.ptr[i] != ' ') {
-      type = mdi_prop_normal;
+      type = mdi_prop_word;
       break;
     }
   }
 
-  key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
-
-  if (keyword.len > dict->max_key_length)
-    dict->max_key_length = keyword.len;
-
-  if (extra.len == 0) {
-    extra_cur = dynabuf_empty(dict->buffer);
-  } else {
-    extra_cur = dynabuf_write_with_zero(dict->buffer, extra.ptr, extra.len);
-
-    if (extra.len > dict->max_extra_length)
-      dict->max_extra_length = extra.len;
-  }
-
-  dict_add_index(dict, keyword.len, key_cur, extra_cur, NULL,
-                 type | mdi_prop_bufkey | mdi_prop_bufextra);
-
-  return true;
+  return filter->add_index(dict, filter->next, keyword, extra, tag, type | prop);
 }
 
 bool dict_parse(match_dict_t self, vocab_t vocab) {
@@ -214,8 +243,12 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
-    if (!self->add_keyword_and_extra(self, keyword, extra))
+    // store keyword and extra in buffer
+    if (!self->add_index_filter
+        ->add_index(self, self->add_index_filter->next, keyword, extra, NULL,
+                    mdi_prop_reserve | mdi_prop_bufkey | mdi_prop_bufextra)) {
       return false;
+    }
   }
 
   // post-process: change idx to ptr
@@ -225,9 +258,11 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
       idx->_keyword = dynabuf_cur2ptr(self->buffer, idx->_keyword);
     if (idx->prop & mdi_prop_bufextra) {
       idx->_extra = dynabuf_cur2ptr(self->buffer, idx->_extra);
-      if (idx->mdi_extra == NULL)
-        idx->mdi_extra = str_empty;
+      // replace NULL with ""
+      if (idx->mdi_extra == NULL) idx->mdi_extra = (char *) str_empty;
     }
+    if (idx->prop & mdi_prop_tag_id)
+      idx->_tag = self->index + (size_t) idx->_tag;
   }
   self->buffer->_prop |= dynabuf_prop_fixed;
 

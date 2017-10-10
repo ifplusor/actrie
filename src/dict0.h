@@ -20,10 +20,19 @@ extern "C" {
 struct match_dict;
 typedef struct match_dict *match_dict_t;
 
-typedef bool(*dict_add_keyword_and_extra_func)
-    (match_dict_t dict, strlen_s keyword, strlen_s extra);
+struct match_dict_add_index_filter;
+typedef struct match_dict_add_index_filter *dict_add_indix_filter;
+
+typedef bool(*dict_add_index_func)
+    (match_dict_t dict, dict_add_indix_filter chain, strlen_s keyword,
+     strlen_s extra, void *tag, mdi_prop_f prop);
 typedef void(*dict_before_reset_func)
     (match_dict_t dict, size_t *index_count, size_t *buffer_size);
+
+struct match_dict_add_index_filter {
+  dict_add_index_func add_index;
+  struct match_dict_add_index_filter *next;
+};
 
 typedef struct match_dict {
   match_dict_index_t index;
@@ -35,7 +44,7 @@ typedef struct match_dict {
 
   int _ref_count; /* 引用计数器 */
 
-  dict_add_keyword_and_extra_func add_keyword_and_extra;
+  dict_add_indix_filter add_index_filter;
   dict_before_reset_func before_reset;
 } match_dict_s;
 
@@ -46,12 +55,20 @@ match_dict_t dict_alloc();
 match_dict_t dict_retain(match_dict_t dict);
 void dict_release(match_dict_t dict);
 
-void dict_add_index(match_dict_t dict,
-                    size_t length,
-                    strcur_s keyword,
-                    strcur_s extra,
-                    void *tag,
-                    mdi_prop_f prop);
+/**
+ * if mdi_prop_bufkey is set, store keyword in buffer; else record keyword.ptr.
+ * if mdi_prop_bufextra is set, store extra in buffer; else record extra.ptr.
+ * @note this is filter terminal, so next will be ignored.
+ */
+bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
+                    strlen_s keyword, strlen_s extra, void *tag, mdi_prop_f prop);
+
+bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
+                             strlen_s keyword, strlen_s extra, void *tag,
+                             mdi_prop_f prop);
+
+dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
+                                                 dict_add_index_func func);
 
 bool dict_parse(match_dict_t self, vocab_t vocab);
 

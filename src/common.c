@@ -32,6 +32,14 @@ size_t strnlen(const char *s, size_t n) {
   return n;
 }
 
+char *strndup(const char *s, size_t n) {
+  size_t len = strnlen(s, n);
+  char *dup = malloc(sizeof(char) * (len + 1));
+  strncpy(dup, s, len);
+  dup[len] = '\0';
+  return dup;
+}
+
 char *strnstr(const char *s1, const char *s2, size_t n) {
   int i;
   size_t needle_len;

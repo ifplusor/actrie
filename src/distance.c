@@ -10,8 +10,6 @@
 #define MAX_WORD_DISTANCE 15
 #define MAX_CHAR_DISTANCE (MAX_WORD_DISTANCE*3)
 
-#define DIGITAL_MASK 0x00000100
-
 
 // Distance Matcher
 // ========================================================
@@ -40,22 +38,20 @@ static regex_t reg;
 static bool pattern_compiled = false;
 static const char *tokens_delimiter = "|";
 
-void dict_distance_before_reset(match_dict_t dict,
-                                size_t *index_count,
-                                size_t *buffer_size) {
+void dist_dict_before_reset(match_dict_t dict,
+                            size_t *index_count,
+                            size_t *buffer_size) {
   *index_count *= 2;
   *buffer_size *= 2;
 }
 
-bool dict_distance_add_keyword_and_extra(match_dict_t dict,
-                                         strlen_s keyword,
-                                         strlen_s extra) {
-  strcur_s key_cur, head_cur, tail_cur;
-  size_t tag, distance;
-  regmatch_t pmatch[6];
-  char dist[3], *split;
+bool dist_dict_add_index(match_dict_t dict,
+                         dict_add_indix_filter filter,
+                         strlen_s keyword,
+                         strlen_s extra,
+                         void * tag,
+                         mdi_prop_f prop) {
   int err;
-
   if (!pattern_compiled) {
     // compile pattern
     err = regcomp(&reg, pattern, REG_EXTENDED | REG_NEWLINE);
@@ -69,18 +65,24 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
 
   if (keyword.len == 0) return true;
 
+  regmatch_t pmatch[6];
   err = regexec(&reg, keyword.ptr, 6, pmatch, 0);
   if (err == REG_NOMATCH) {
+    // single
+    filter->add_index(dict, filter->next, keyword, extra, tag,
+                      mdi_prop_single | prop);
     return true;
   } else if (err != REG_NOERROR) {
     return false;
   }
 
+  size_t distance;
+  mdi_prop_f base_prop = mdi_prop_tag_id | mdi_prop_bufkey;
   if (pmatch[3].rm_so == -1) {
     // .*?
     distance = MAX_WORD_DISTANCE;
   } else {
-
+    char dist[3];
     if (pmatch[4].rm_so + 1 == pmatch[4].rm_eo) {
       dist[0] = keyword.ptr[pmatch[4].rm_so];
       dist[1] = '\0';
@@ -89,63 +91,67 @@ bool dict_distance_add_keyword_and_extra(match_dict_t dict,
       dist[1] = keyword.ptr[pmatch[4].rm_so + 1];
       dist[2] = '\0';
     }
-    distance = (size_t) atoi(dist);
+    distance = (size_t) strtol(dist, NULL, 10);
 
     if (keyword.ptr[pmatch[3].rm_so] == '.') {
       // .{0,n}
       ;
     } else {
       // \d{0,n}
-      distance |= DIGITAL_MASK;
+      base_prop |= mdi_prop_dist_digit;
     }
   }
 
   // store original keyword
-  key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
+  void *key_tag = (void *) dict->idx_count;
+  dict_add_index(dict, NULL, keyword, extra, tag, prop);
 
   // store processed keyword
-
-  // 1. store head
-  strlen_s head = {
-      .ptr = &keyword.ptr[pmatch[1].rm_so],
-      .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
-  };
-  head_cur = dynabuf_write_with_zero(dict->buffer, head.ptr, head.len);
-
-  // 2. store tail
+  size_t tail_max_len = 0;
   strlen_s tail = {
-      .ptr = &keyword.ptr[pmatch[5].rm_so],
+      .ptr = keyword.ptr + pmatch[5].rm_so,
       .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
   };
-  tail_cur = dynabuf_write_with_zero(dict->buffer, tail.ptr, tail.len);
-
-  tag = dict->idx_count;
-
-  // 连用需要多条 index
-  // 针对连用，需要扩充内存
-  for (split = strtok(dynabuf_content(dict->buffer, head_cur),
-                      tokens_delimiter);
-       split;
+  tail.ptr = strndup(tail.ptr, tail.len);
+  for (char *split = strtok(tail.ptr, tokens_delimiter); split;
        split = strtok(NULL, tokens_delimiter)) {
-    size_t length = strlen(split);
-    if (length > dict->max_key_length) dict->max_key_length = length;
-    dict_add_index(dict, strlen(split),
-                   dynabuf_related(dict->buffer, head_cur, split),
-                   (strcur_s) {.idx=distance}, (void *) tag,
-                   mdi_prop_head | mdi_prop_bufkey);
+    size_t len = strlen(split);
+    if (len > tail_max_len) tail_max_len = len;
+    filter->add_index(dict, filter->next,
+                      (strlen_s) {
+                          .ptr = split,
+                          .len = len
+                      },
+                      (strlen_s) {
+                          .ptr = (char *) distance,
+                          .len = 0
+                      },
+                      key_tag,
+                      mdi_prop_tail | base_prop);
   }
+  free(tail.ptr);
 
-  for (split = strtok(dynabuf_content(dict->buffer, tail_cur),
-                      tokens_delimiter);
-       split;
+  strlen_s head = {
+      .ptr = keyword.ptr + pmatch[1].rm_so,
+      .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
+  };
+  head.ptr = strndup(head.ptr, head.len);
+  for (char *split = strtok(head.ptr, tokens_delimiter); split;
        split = strtok(NULL, tokens_delimiter)) {
-    size_t length = strlen(split);
-    if (length > dict->max_extra_length) dict->max_extra_length = length;
-    dict_add_index(dict, strlen(split),
-                   dynabuf_related(dict->buffer, tail_cur, split),
-                   key_cur, (void *) tag,
-                   mdi_prop_tail | mdi_prop_bufkey | mdi_prop_bufextra);
+    size_t len = strlen(split);
+    filter->add_index(dict, filter->next,
+                      (strlen_s) {
+                          .ptr = split,
+                          .len = len
+                      },
+                      (strlen_s) {
+                          .ptr = (char *) tail_max_len,
+                          .len = 0
+                      },
+                      key_tag,
+                      mdi_prop_head | base_prop);
   }
+  free(head.ptr);
 
   return true;
 }
@@ -168,7 +174,7 @@ dist_matcher_t dist_construct_by_dict(match_dict_t dict,
   trie_t tail_trie = NULL;
 
   do {
-    head_trie = trie_construct_by_dict(dict, mdi_prop_head, false);
+    head_trie = trie_construct_by_dict(dict, mdi_prop_head | mdi_prop_single, false);
     if (head_trie == NULL) break;
 
     tail_trie = trie_construct_by_dict(dict, mdi_prop_tail, false);
@@ -211,8 +217,9 @@ dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
 
   dict = dict_alloc();
   if (dict == NULL) return NULL;
-  dict->add_keyword_and_extra = dict_distance_add_keyword_and_extra;
-  dict->before_reset = dict_distance_before_reset;
+  dict->add_index_filter =
+      dict_add_index_filter_wrap(dict->add_index_filter, dist_dict_add_index);
+  dict->before_reset = dist_dict_before_reset;
 
   if (dict_parse(dict, vocab)) {
     dist_matcher = dist_construct_by_dict(dict, enable_automation);
@@ -227,34 +234,37 @@ dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
 }
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher) {
-  dist_context_t ctx = malloc(sizeof(struct dist_context));
-  if (ctx == NULL) return NULL;
+  dist_context_t ctx = NULL;
 
-  ctx->_matcher = matcher;
-  ctx->_head_context = matcher_alloc_context(matcher->_head_matcher);
-  if (ctx->_head_context == NULL) goto dist_alloc_context_failed;
-  ctx->_tail_context = matcher_alloc_context(matcher->_tail_matcher);
-  if (ctx->_tail_context == NULL) goto dist_alloc_context_failed;
-  ctx->_digit_context = matcher_alloc_context(matcher->_tail_matcher);
-  if (ctx->_digit_context == NULL) goto dist_alloc_context_failed;
-  ctx->header.out_matched_index = &ctx->out_index;
-  ctx->_utf8_pos = NULL;
-  return ctx;
+  do {
+    ctx = malloc(sizeof(struct dist_context));
+    if (ctx == NULL) break;
 
-dist_alloc_context_failed:
-  if (ctx->_tail_context != NULL) matcher_free_context(ctx->_tail_context);
-  if (ctx->_head_context != NULL) matcher_free_context(ctx->_head_context);
-  if (ctx->_digit_context != NULL) matcher_free_context(ctx->_digit_context);
-  free(ctx);
+    ctx->_matcher = matcher;
+    ctx->_head_context = ctx->_tail_context = ctx->_digit_context = NULL;
+    ctx->_utf8_pos = NULL;
+
+    ctx->_head_context = matcher_alloc_context(matcher->_head_matcher);
+    if (ctx->_head_context == NULL) break;
+    ctx->_tail_context = matcher_alloc_context(matcher->_tail_matcher);
+    if (ctx->_tail_context == NULL) break;
+    ctx->_digit_context = matcher_alloc_context(matcher->_tail_matcher);
+    if (ctx->_digit_context == NULL) break;
+
+    return ctx;
+  } while (0);
+
+  dist_free_context(ctx);
+
   return NULL;
 }
 
 bool dist_free_context(dist_context_t ctx) {
   if (ctx != NULL) {
-    if (ctx->_utf8_pos != NULL) free(ctx->_utf8_pos);
-    if (ctx->_tail_context != NULL) matcher_free_context(ctx->_tail_context);
-    if (ctx->_head_context != NULL) matcher_free_context(ctx->_head_context);
-    if (ctx->_digit_context != NULL) matcher_free_context(ctx->_digit_context);
+    free(ctx->_utf8_pos);
+    matcher_free_context(ctx->_tail_context);
+    matcher_free_context(ctx->_head_context);
+    matcher_free_context(ctx->_digit_context);
     free(ctx);
   }
   return true;
@@ -266,7 +276,7 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
 
   context->header.content = content;
   context->header.len = len;
-  context->header.out_matched_index = &context->out_index;
+  context->header.out_matched_index = NULL;
   context->header.out_e = 0;
 #ifdef REPLACE_BY_ZERO
   context->_c = content[0];
@@ -292,15 +302,19 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   return false;
 }
 
-bool dist_construct_out(dist_context_t ctx, const char *extra, size_t _e) {
+bool dist_construct_out(dist_context_t ctx, size_t _e) {
   // alias
   unsigned char *content = ctx->header.content;
   context_t hctx = ctx->_head_context;
-  context_t tctx = ctx->_tail_context;
 
   ctx->header.out_e = _e;
-  ctx->out_index.length = ctx->header.out_e - hctx->out_e
-      + hctx->out_matched_index->length;
+
+  match_dict_index_t matched_index = hctx->out_matched_index->_tag;
+
+  ctx->header.out_matched_index = &ctx->out_index;
+
+  ctx->out_index.length =
+      ctx->header.out_e - hctx->out_e + hctx->out_matched_index->length;
 #ifdef USE_SUBPATTERN_LENGTH
   // NOTE: here use sub-pattern word length.
   ctx->out_index.wlen = hctx->out_matched_index->wlen + tctx->out_matched_index->wlen;
@@ -316,7 +330,9 @@ bool dist_construct_out(dist_context_t ctx, const char *extra, size_t _e) {
 #endif
   ctx->out_index.mdi_keyword =
       (char *) &content[hctx->out_e - hctx->out_matched_index->length];
-  ctx->out_index.mdi_extra = (char *) extra;
+  ctx->out_index.mdi_extra = matched_index->mdi_keyword;
+  ctx->out_index._tag = matched_index->_tag;
+  ctx->out_index.prop = matched_index->prop;
 
   return true;
 }
@@ -341,11 +357,16 @@ bool dist_next_on_index(dist_context_t ctx) {
   }
 
   while (dat_ac_next_on_index((dat_context_t) hctx)) {
+    if (hctx->out_matched_index->prop & mdi_prop_single) {
+      ctx->header.out_matched_index = hctx->out_matched_index;
+      ctx->_state = dist_match_state_new_round;
+      return true;
+    }
+
     // check number
-    size_t dist = hctx->out_matched_index->_extra.idx;
-    if (dist & DIGITAL_MASK) {
+    size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
+    if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
       ctx->_state = dist_match_state_check_prefix;
-      dist &= ~DIGITAL_MASK;
       // skip number
       size_t tail_so = hctx->out_e;
       while (dist--) {
@@ -358,9 +379,7 @@ bool dist_next_on_index(dist_context_t ctx) {
 check_prefix:
       while (dat_prefix_next_on_index((dat_context_t) dctx)) {
         if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-          return dist_construct_out(ctx,
-                                    dctx->out_matched_index->mdi_extra,
-                                    tail_so + dctx->out_e);
+          return dist_construct_out(ctx, tail_so + dctx->out_e);
       }
       continue;
     }
@@ -379,22 +398,22 @@ check_history:
           utf8_word_distance(ctx->_utf8_pos, hctx->out_e, hist[ctx->_i].out_e);
       long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
       if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
+        // if diff of end_pos is longer than max_tail_length, next round.
         if (hist[ctx->_i].out_e - hctx->out_e
-            > MAX_CHAR_DISTANCE + ctx->_matcher->_dict->max_extra_length)
+            > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
           goto next_round;
         continue;
       }
 
       match_dict_index_t matched_index = hist[ctx->_i].out_matched_index;
       for (; matched_index != NULL; matched_index = matched_index->_next) {
+        // linked table's tag is descending order
         if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
       }
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= hctx->out_matched_index->_extra.idx)
-          return dist_construct_out(ctx,
-                                    matched_index->mdi_extra,
-                                    hist[ctx->_i].out_e);
+        if (distance <= (size_t) matched_index->mdi_extra)
+          return dist_construct_out(ctx, hist[ctx->_i].out_e);
         break;
       }
     }
@@ -414,21 +433,22 @@ check_tail:
       ctx->_hcnt++;
 
       if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
-        if (tctx->out_e - hctx->out_e >
-            MAX_CHAR_DISTANCE + ctx->_matcher->_dict->max_extra_length)
+        // if diff of end_pos is longer than max_tail_length, next round.
+        if (tctx->out_e - hctx->out_e
+            > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
           goto next_round;
         continue;
       }
 
       match_dict_index_t matched_index = tctx->out_matched_index;
       for (; matched_index != NULL; matched_index = matched_index->_next) {
-        // link table's tag is descending order
+        // linked table's tag is descending order
         if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
       }
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= hctx->out_matched_index->_extra.idx)
-          return dist_construct_out(ctx, matched_index->mdi_extra, tctx->out_e);
+        if (distance <= (size_t) matched_index->mdi_extra)
+          return dist_construct_out(ctx, tctx->out_e);
         break;
       }
     }
