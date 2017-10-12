@@ -33,17 +33,17 @@ typedef struct dist_context {
 
   dist_matcher_t _matcher;
 
-  match_dict_index_s out_index;             /* will change when call 'next' */
-#ifdef REPLACE_BY_ZERO
+  match_dict_index_s out_index;     /* will change when call 'next' */
+#ifdef DIST_REPLACE_BY_ZERO
   unsigned char _c;
 #endif
 
   size_t *_utf8_pos;
 
-  struct _context _history_context[HISTORY_SIZE];          /* cycle queue */
-  size_t _hcnt, _htidx, _i;             /* count, tail, index for history */
+  context_s _hist_ctx[HISTORY_SIZE];     /* cycle queue, store node */
+  size_t _hcnt, _htidx, _i;       /* count, tail, index for history */
 
-  context_t _head_context, _tail_context, _digit_context;
+  context_t _head_ctx, _tail_ctx, _digit_ctx;
   dist_match_state _state;
 
 } *dist_context_t;

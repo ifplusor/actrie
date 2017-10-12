@@ -44,7 +44,7 @@ typedef struct _context {
   size_t len;
 
   match_dict_index_t out_matched_index;  /* volatile, need deep copy */
-  size_t out_e;
+  size_t out_eo;               /* end offset of current matched word */
 } context_s;
 
 #ifdef __cplusplus

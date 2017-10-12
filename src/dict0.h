@@ -38,7 +38,8 @@ typedef struct match_dict {
   match_dict_index_t index;
   size_t idx_size, idx_count;
 
-  dynabuf_t buffer;
+  dynabuf_t buffer; /* the content in buffer is const*/
+  void *_map;       /* reserved, duplicate checking for buffer */
 
   size_t max_key_length, max_extra_length;
 
@@ -47,6 +48,10 @@ typedef struct match_dict {
   dict_add_indix_filter add_index_filter;
   dict_before_reset_func before_reset;
 } match_dict_s;
+
+extern const char tokens_delimiter;
+extern const char left_parentheses;
+extern const char right_parentheses;
 
 extern const bool alpha_number_bitmap[256];
 extern const bool number_bitmap[256];

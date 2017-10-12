@@ -84,8 +84,7 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
       dynabuf_write_with_zero(&self->_buf, NULL, 0);
       *extra = dynabuf_split(&self->_buf, extra_pos);
     } else {
-      extra->ptr = (char *) str_empty;
-      extra->len = 0;
+      *extra = strlen_empty;
     }
   }
   return true;

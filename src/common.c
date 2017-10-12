@@ -8,7 +8,7 @@
 const size_t POOL_REGION_SIZE = REGION_SIZE;
 const size_t POOL_POSITION_SIZE = POSITION_MASK + 1;
 
-const char *str_empty = "";
+const strlen_s strlen_empty = {.ptr = "", .len = 0};
 
 long long system_millisecond() {
   struct timeb t;

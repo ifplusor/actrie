@@ -36,7 +36,6 @@ static const char
     *pattern = "(.*)(\\.\\*\\?|(\\\\d|\\.)\\{0,([0-9]|1[0-5])\\})(.*)";
 static regex_t reg;
 static bool pattern_compiled = false;
-static const char *tokens_delimiter = "|";
 
 void dist_dict_before_reset(match_dict_t dict,
                             size_t *index_count,
@@ -45,34 +44,38 @@ void dist_dict_before_reset(match_dict_t dict,
   *buffer_size *= 2;
 }
 
-size_t max_alternation_length(strlen_s keyword) {
+size_t max_alternation_length(strlen_s keyword, bool nest) {
   size_t max = 0;
 
-  if ((keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')')
-      || (keyword.ptr[0] != '(' && keyword.ptr[keyword.len - 1] == ')')) {
+  size_t so = 0, eo = keyword.len - 1;
+  if ((keyword.ptr[so] == left_parentheses
+      && keyword.ptr[eo] != right_parentheses)
+      || (keyword.ptr[so] != left_parentheses
+          && keyword.ptr[eo] == right_parentheses)) {
     max = keyword.len;
   } else {
-    size_t i, t = 0;
-    if (keyword.ptr[0] == '(' && keyword.ptr[keyword.len - 1] != ')') {
-      t = 1;
+    // 脱括号
+    if (keyword.ptr[so] == left_parentheses
+        && keyword.ptr[eo] == right_parentheses) {
+      so++;
+      eo--;
     }
-    size_t depth = 0, so = t;
-    for (i = t; i < keyword.len - t; i++) {
-      switch (keyword.ptr[i]) {
-        case '|':
-          if (depth == 0 && i > so) {
-            size_t len = i - so;
-            if (len > max) max = len;
-            so = i + 1;
-          }
-          break;
-        case '(': depth++; break;
-        case ')': depth--; break;
-        default: break;
+    size_t i, depth = 0, cur = so;
+    for (i = so; i <= eo; i++) {
+      if (keyword.ptr[i] == tokens_delimiter) {
+        if (depth == 0 && i > cur) {
+          size_t len = i - cur;
+          if (len > max) max = len;
+          cur = i + 1;
+        }
+      } else if (keyword.ptr[i] == left_parentheses) {
+        depth++;
+      } else if (keyword.ptr[i] == right_parentheses) {
+        depth--;
       }
     }
-    if (i > so) {
-      size_t len = i - so;
+    if (i > cur) {
+      size_t len = i - cur;
       if (len > max) max = len;
     }
   }
@@ -92,8 +95,9 @@ bool dist_dict_add_index(match_dict_t dict,
     // compile pattern
     err = regcomp(&reg, pattern, REG_EXTENDED | REG_NEWLINE);
     if (err) {
-      fprintf(stderr, "error: compile regex failed!\n");
-      return false;
+      fprintf(stderr, "%s(%d) - error: compile regex failed!\n",
+              __FILE__, __LINE__);
+      exit(-1);
     } else {
       pattern_compiled = true;
     }
@@ -112,8 +116,9 @@ bool dist_dict_add_index(match_dict_t dict,
     return false;
   }
 
-  size_t distance;
   mdi_prop_f base_prop = mdi_prop_tag_id | mdi_prop_bufkey;
+
+  size_t distance;
   if (pmatch[3].rm_so == -1) {
     // .*?
     distance = MAX_WORD_DISTANCE;
@@ -153,7 +158,7 @@ bool dist_dict_add_index(match_dict_t dict,
       .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
   };
 
-  size_t tail_max_len = max_alternation_length(tail);
+  size_t tail_max_len = max_alternation_length(tail, true);
 
   filter->add_index(dict, filter->next, head,
                     (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
@@ -253,15 +258,15 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher) {
     if (ctx == NULL) break;
 
     ctx->_matcher = matcher;
-    ctx->_head_context = ctx->_tail_context = ctx->_digit_context = NULL;
+    ctx->_head_ctx = ctx->_tail_ctx = ctx->_digit_ctx = NULL;
     ctx->_utf8_pos = NULL;
 
-    ctx->_head_context = matcher_alloc_context(matcher->_head_matcher);
-    if (ctx->_head_context == NULL) break;
-    ctx->_tail_context = matcher_alloc_context(matcher->_tail_matcher);
-    if (ctx->_tail_context == NULL) break;
-    ctx->_digit_context = matcher_alloc_context(matcher->_tail_matcher);
-    if (ctx->_digit_context == NULL) break;
+    ctx->_head_ctx = matcher_alloc_context(matcher->_head_matcher);
+    if (ctx->_head_ctx == NULL) break;
+    ctx->_tail_ctx = matcher_alloc_context(matcher->_tail_matcher);
+    if (ctx->_tail_ctx == NULL) break;
+    ctx->_digit_ctx = matcher_alloc_context(matcher->_tail_matcher);
+    if (ctx->_digit_ctx == NULL) break;
 
     return ctx;
   } while (0);
@@ -274,9 +279,9 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher) {
 bool dist_free_context(dist_context_t ctx) {
   if (ctx != NULL) {
     free(ctx->_utf8_pos);
-    matcher_free_context(ctx->_tail_context);
-    matcher_free_context(ctx->_head_context);
-    matcher_free_context(ctx->_digit_context);
+    matcher_free_context(ctx->_tail_ctx);
+    matcher_free_context(ctx->_head_ctx);
+    matcher_free_context(ctx->_digit_ctx);
     free(ctx);
   }
   return true;
@@ -289,8 +294,8 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   context->header.content = content;
   context->header.len = len;
   context->header.out_matched_index = NULL;
-  context->header.out_e = 0;
-#ifdef REPLACE_BY_ZERO
+  context->header.out_eo = 0;
+#ifdef DIST_REPLACE_BY_ZERO
   context->_c = content[0];
 #endif
 
@@ -304,8 +309,8 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   }
   utf8_word_position((const char *) content, len, context->_utf8_pos);
 
-  matcher_reset_context(context->_head_context, (char *) content, len);
-  matcher_reset_context(context->_tail_context, (char *) content, len);
+  matcher_reset_context(context->_head_ctx, (char *) content, len);
+  matcher_reset_context(context->_tail_ctx, (char *) content, len);
 
   context->_hcnt = 0;
   context->_htidx = 0;
@@ -314,34 +319,34 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
   return false;
 }
 
-bool dist_construct_out(dist_context_t ctx, size_t _e) {
+bool dist_construct_out(dist_context_t ctx, size_t _eo) {
   // alias
   unsigned char *content = ctx->header.content;
-  context_t hctx = ctx->_head_context;
+  context_t hctx = ctx->_head_ctx;
 
-  ctx->header.out_e = _e;
+  ctx->header.out_eo = _eo;
 
   match_dict_index_t matched_index = hctx->out_matched_index->_tag;
 
   ctx->header.out_matched_index = &ctx->out_index;
 
   ctx->out_index.length =
-      ctx->header.out_e - hctx->out_e + hctx->out_matched_index->length;
+      (ctx->header.out_eo - hctx->out_eo) + hctx->out_matched_index->length;
 #ifdef USE_SUBPATTERN_LENGTH
   // NOTE: here use sub-pattern word length.
   ctx->out_index.wlen = hctx->out_matched_index->wlen + tctx->out_matched_index->wlen;
 #else
   ctx->out_index.wlen =
       utf8_word_distance(ctx->_utf8_pos,
-                         hctx->out_e - hctx->out_matched_index->length,
-                         ctx->header.out_e);
+                         hctx->out_eo - hctx->out_matched_index->length,
+                         ctx->header.out_eo);
 #endif
-#ifdef REPLACE_BY_ZERO
-  ctx->_c = content[ctx->header.out_e];
-  content[ctx->header.out_e] = '\0';
+#ifdef DIST_REPLACE_BY_ZERO
+  ctx->_c = content[ctx->header.out_eo];
+  content[ctx->header.out_eo] = '\0';
 #endif
   ctx->out_index.mdi_keyword =
-      (char *) &content[hctx->out_e - hctx->out_matched_index->length];
+      (char *) &content[hctx->out_eo - hctx->out_matched_index->length];
   ctx->out_index.mdi_extra = matched_index->mdi_keyword;
   ctx->out_index._tag = matched_index->_tag;
   ctx->out_index.prop = matched_index->prop;
@@ -352,13 +357,13 @@ bool dist_construct_out(dist_context_t ctx, size_t _e) {
 bool dist_next_on_index(dist_context_t ctx) {
   // alias
   unsigned char *content = ctx->header.content;
-  context_t hist = ctx->_history_context;
-  context_t hctx = ctx->_head_context;
-  context_t tctx = ctx->_tail_context;
-  context_t dctx = ctx->_digit_context;
+  context_t hist = ctx->_hist_ctx;
+  context_t hctx = ctx->_head_ctx;
+  context_t tctx = ctx->_tail_ctx;
+  context_t dctx = ctx->_digit_ctx;
 
-#ifdef REPLACE_BY_ZERO
-  content[ctx->header.out_e] = ctx->_c;  // recover content
+#ifdef DIST_REPLACE_BY_ZERO
+  content[ctx->header.out_eo] = ctx->_c;  // recover content
 #endif
 
   switch (ctx->_state) {
@@ -380,7 +385,7 @@ bool dist_next_on_index(dist_context_t ctx) {
     if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
       ctx->_state = dist_match_state_check_prefix;
       // skip number
-      size_t tail_so = hctx->out_e;
+      size_t tail_so = hctx->out_eo;
       while (dist--) {
         tail_so++;
         if (!number_bitmap[content[tail_so]])
@@ -391,7 +396,7 @@ bool dist_next_on_index(dist_context_t ctx) {
 check_prefix:
       while (dat_prefix_next_on_index((dat_context_t) dctx)) {
         if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-          return dist_construct_out(ctx, tail_so + dctx->out_e);
+          return dist_construct_out(ctx, tail_so + dctx->out_eo);
       }
       continue;
     }
@@ -399,7 +404,7 @@ check_prefix:
     ctx->_state = dist_match_state_check_history;
     for (ctx->_i = (HISTORY_SIZE + ctx->_htidx - ctx->_hcnt) % HISTORY_SIZE;
          ctx->_i != ctx->_htidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
-      if (hist[ctx->_i].out_e > hctx->out_e) break;
+      if (hist[ctx->_i].out_eo > hctx->out_eo) break;
       ctx->_hcnt--;
     }
     ctx->_i--;
@@ -407,11 +412,11 @@ check_history:
     for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_htidx;
          ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
       long diff_pos =
-          utf8_word_distance(ctx->_utf8_pos, hctx->out_e, hist[ctx->_i].out_e);
+          utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, hist[ctx->_i].out_eo);
       long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
       if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
         // if diff of end_pos is longer than max_tail_length, next round.
-        if (hist[ctx->_i].out_e - hctx->out_e
+        if (hist[ctx->_i].out_eo - hctx->out_eo
             > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
           goto next_round;
         continue;
@@ -425,7 +430,7 @@ check_history:
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
         if (distance <= (size_t) matched_index->mdi_extra)
-          return dist_construct_out(ctx, hist[ctx->_i].out_e);
+          return dist_construct_out(ctx, hist[ctx->_i].out_eo);
         break;
       }
     }
@@ -435,7 +440,7 @@ check_tail:
     // one node will match the tag only once.
     while (dat_ac_next_on_node((dat_context_t) tctx)) {
       long diff_pos =
-          utf8_word_distance(ctx->_utf8_pos, hctx->out_e, tctx->out_e);
+          utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, tctx->out_eo);
       long distance = (long) (diff_pos - tctx->out_matched_index->wlen);
       if (distance < 0) continue;
 
@@ -446,7 +451,7 @@ check_tail:
 
       if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
         // if diff of end_pos is longer than max_tail_length, next round.
-        if (tctx->out_e - hctx->out_e
+        if (tctx->out_eo - hctx->out_eo
             > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
           goto next_round;
         continue;
@@ -460,7 +465,7 @@ check_tail:
       if (matched_index != NULL
           && matched_index->_tag == hctx->out_matched_index->_tag) {
         if (distance <= (size_t) matched_index->mdi_extra)
-          return dist_construct_out(ctx, tctx->out_e);
+          return dist_construct_out(ctx, tctx->out_eo);
         break;
       }
     }

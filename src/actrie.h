@@ -50,6 +50,10 @@ trie_t trie_construct_by_dict(match_dict_t dict,
 trie_t trie_construct(vocab_t vocab, bool enable_automation);
 void trie_destruct(trie_t self);
 
+trie_t trie_alloc();
+bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
+                      match_dict_index_t index);
+void *trie_search(trie_t self, const unsigned char keyword[], size_t len);
 void trie_rebuild_parent_relation(trie_t self);
 
 #ifdef __cplusplus

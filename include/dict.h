@@ -10,7 +10,7 @@ extern "C" {
 
 typedef enum match_dict_index_prop {
   mdi_prop_empty = 0,
-  mdi_prop_reserve = 1,
+  mdi_prop_reserved = 1,
 
   // store attr
   mdi_prop_bufkey = 2,
@@ -30,18 +30,20 @@ typedef enum match_dict_index_prop {
   mdi_prop_tail = 512,
   mdi_prop_dist_digit = 1024,
 
+  // post process attr
   mdi_prop_tag_id = 2048,
 
 } mdi_prop_f;
 
 typedef struct match_dict_index {
   struct match_dict_index *_next; /* 相同前缀链表 */
-  strcur_s _keyword;
+
+  strcur_s _keyword;            /* 匹配的正文文本 */
 #define mdi_keyword _keyword.ptr
   strcur_s _extra;
 #define mdi_extra _extra.ptr
   void *_tag;
-  size_t length, wlen;
+  size_t length, wlen;    /* 文本的字节、字符长度 */
   mdi_prop_f prop;
 } match_dict_index_s, *match_dict_index_t;
 

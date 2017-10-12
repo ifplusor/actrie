@@ -129,8 +129,8 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
       lst[len].extra = p->mdi_extra;
       lst[len].length = p->length;
       lst[len].wlen = p->wlen;
-      lst[len].eo = context->out_e;
-      lst[len].so = context->out_e - p->length;
+      lst[len].eo = context->out_eo;
+      lst[len].so = context->out_eo - p->length;
       len++;
     }
   }

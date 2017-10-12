@@ -127,9 +127,7 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
   return true;
 }
 
-size_t trie_next_state_by_binary(trie_t self,
-                                 size_t iNode,
-                                 unsigned char key) {
+size_t trie_next_state_by_binary(trie_t self, size_t iNode, unsigned char key) {
   trie_node_t pNode = trie_access_node(self, iNode);
   if (pNode->len >= 1) {
     size_t left = pNode->trie_child;
@@ -327,7 +325,7 @@ void trie_construct_automation(trie_t self) {
   trie_node_t pNode = self->root;
   size_t iChild = pNode->trie_child;
   while (iChild != 0) {
-    trie_node_t pChild = trie_access_node_export(self, iChild);
+    trie_node_t pChild = trie_access_node(self, iChild);
     iChild = pChild->trie_brother;
     pChild->trie_failed = 0; /* 设置 failed 域 */
   }
@@ -423,7 +421,7 @@ trie_t trie_construct(vocab_t vocab, bool enable_automation) {
 
   if (dict_parse(dict, vocab)) {
     prime_trie = trie_construct_by_dict(dict,
-                                        mdi_prop_normal,
+                                        mdi_prop_reserved,
                                         enable_automation);
   }
 
@@ -433,4 +431,33 @@ trie_t trie_construct(vocab_t vocab, bool enable_automation) {
           "construct trie %s!\n",
           prime_trie != NULL ? "success" : "failed");
   return prime_trie;
+}
+
+void *trie_search(trie_t self, const unsigned char keyword[], size_t len) {
+  trie_node_t pNode = self->root;
+  size_t iNode = 0; /* iParent保存pNode的index */
+  size_t i = 0;
+
+  for (i = 0; i < len; ++i) {
+    /* 当创建时，使用插入排序的方法，以保证子节点链接关系有序 */
+    size_t iChild = pNode->trie_child, iBrother = 0; // iBrother跟踪iChild
+    trie_node_t pChild = NULL;
+    while (iChild != 0) {
+      /* 从所有孩子中查找 */
+      pChild = trie_access_node(self, iChild);
+      if (pChild->key >= keyword[i]) break;
+      iBrother = iChild;
+      iChild = pChild->trie_brother;
+    }
+
+    if (iChild != 0 && pChild->key == keyword[i]) {
+      /* 找到 */
+      iNode = iChild;
+      pNode = pChild;
+    } else {
+      return NULL;
+    }
+  }
+
+  return pNode->trie_dictidx;
 }

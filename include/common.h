@@ -68,8 +68,6 @@ extern const size_t POOL_POSITION_SIZE;
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 
-extern const char *str_empty;
-
 long long system_millisecond();
 
 #define offset_of(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
@@ -90,6 +88,9 @@ typedef struct str_len {
   char *ptr;
   size_t len;
 } strlen_s, *strlen_t;
+
+extern const strlen_s strlen_empty;
+#define str_empty strlen_empty.ptr
 
 typedef union str_cur {
   char *ptr;
