@@ -74,7 +74,7 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
   if (self == NULL) return false;
   dynabuf_reset(&self->_buf);
   ch = dynabuf_consume_until(&self->_buf, self->_stream, "\n\t", &keyword_pos);
-  if (ch == EOF && self->_buf._len == 0) {
+  if (ch == EOF && dynabuf_empty(&self->_buf)) {
     return false;
   } else {
     dynabuf_write_with_zero(&self->_buf, NULL, 0);

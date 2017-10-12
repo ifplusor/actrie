@@ -202,7 +202,7 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
 
   if (prop & mdi_prop_bufextra) {
     if (extra.len == 0) {
-      extra_cur = dynabuf_empty(dict->buffer);
+      extra_cur = dynabuf_empty_cur(dict->buffer);
     } else {
       extra_cur.ptr = trie_search(dict->_map, extra.ptr, extra.len);
       if (extra_cur.ptr == NULL) {
@@ -304,7 +304,6 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
   // parse vocab, construct dict
   self->_map = trie_alloc();
   if (self->_map == NULL) return false;
-  dict_add_index(self, NULL, strlen_empty, strlen_empty, NULL, mdi_prop_bufkey);
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
