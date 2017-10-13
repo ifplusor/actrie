@@ -55,6 +55,14 @@ char *strnstr(const char *s1, const char *s2, size_t n) {
   return NULL;
 }
 
+inline bool strpos_wlc(strpos_s w, strpos_s lc) {
+  return lc.so < w.so && lc.eo > w.so ? true : false;
+}
+
+inline bool strpos_wrc(strpos_s w, strpos_s rc) {
+  return rc.so < w.eo && rc.eo > w.eo ? true : false;
+}
+
 bool striter_init(striter_t self, unsigned char *ptr, size_t len) {
   self->ptr = ptr;
   self->len = len;

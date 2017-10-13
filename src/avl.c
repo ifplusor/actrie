@@ -332,6 +332,7 @@ bool avl_insert(avl_t self, void *data) {
     avl_access_node(self, p)->left = avl_invalid_node(self);
     avl_access_node(self, p)->right = avl_invalid_node(self);
     avl_access_node(self, p)->bf = 0;
+    avl_access_node(self, p)->data = NULL;
     self->set_data(&avl_access_node(self, p)->data, data);
 
     if (path & 1LL) {

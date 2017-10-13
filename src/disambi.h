@@ -7,6 +7,8 @@
 
 #include "acdat.h"
 #include "avl.h"
+#include "dynapool.h"
+#include "dlnk.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,24 +28,38 @@ typedef enum ambi_match_state {
   ambi_match_state_check_prefix,
 } ambi_match_state;
 
+struct mdi_queue_node;
+typedef struct mdi_queue_node *mdiq_node_t;
+
+typedef struct mdi_queue_node {
+  dynapool_node_s header;
+#define mqn_next header.forw  // list in map, key is tag
+  strpos_s pos;
+  match_dict_index_t idx;
+  deque_node_s deque_elem; // queue for context out
+} mdiq_node_s;
+
 typedef struct ambi_context {
   struct _context header; /* 'header.out_matched_index' point 'out_index' */
 
   ambi_matcher_t _matcher;
 
+  dynapool_t _mdiqn_pool;
   avl_t _word_map;
   avl_t _ambi_map;
 
-  context_t _pure_context;
+  context_t _pure_ctx;
+
+  deque_node_s _out_buffer;
 
 } *ambi_context_t;
 
-extern const matcher_func ambi_matcher_func;
-extern const context_func ambi_context_func;
+extern const matcher_func_l ambi_matcher_func;
+extern const context_func_l ambi_context_func;
 
-ambi_matcher_t ambi_construct_by_file(const char *path, bool enable_automation);
-ambi_matcher_t ambi_construct_by_string(const char *string,
-                                        bool enable_automation);
+ambi_matcher_t ambi_construct(vocab_t vocab,
+                              mdi_prop_f filter,
+                              bool enable_automation);
 bool ambi_destruct(ambi_matcher_t self);
 
 ambi_context_t ambi_alloc_context(ambi_matcher_t matcher);

@@ -107,6 +107,14 @@ inline match_dict_index_t matcher_matched_index(context_t context) {
   return context->out_matched_index;
 }
 
+inline strpos_s matcher_matched_pos(context_t context) {
+  return {
+      .so = context->out_eo - context->out_matched_index->length,
+      .eo = context->out_eo
+  };
+}
+
+
 #ifndef MATCHER_ALLOC_MIN_SIZE
 #define MATCHER_ALLOC_MIN_SIZE 16
 #endif

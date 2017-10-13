@@ -373,7 +373,7 @@ bool dist_next_on_index(dist_context_t ctx) {
     case dist_match_state_check_prefix: goto check_prefix;
   }
 
-  while (dat_ac_next_on_index((dat_context_t) hctx)) {
+  while (matcher_next(hctx)) {
     if (hctx->out_matched_index->prop & mdi_prop_single) {
       ctx->header.out_matched_index = hctx->out_matched_index;
       ctx->_state = dist_match_state_new_round;
@@ -438,7 +438,7 @@ check_history:
     ctx->_state = dist_match_state_check_tail;
 check_tail:
     // one node will match the tag only once.
-    while (dat_ac_next_on_node((dat_context_t) tctx)) {
+    while (matcher_next(tctx)) {
       long diff_pos =
           utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, tctx->out_eo);
       long distance = (long) (diff_pos - tctx->out_matched_index->wlen);

@@ -44,6 +44,7 @@ bool matcher_reset_context(context_t context, char content[], size_t len);
 bool matcher_next(context_t context);
 
 match_dict_index_t matcher_matched_index(context_t context);
+strpos_s matcher_matched_pos(context_t context);
 
 // utils
 //========================

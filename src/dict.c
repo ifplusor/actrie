@@ -191,7 +191,11 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
     key_cur.ptr = trie_search(dict->_map, keyword.ptr, keyword.len);
     if (key_cur.ptr == NULL) {
       key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
-      trie_add_keyword(dict->_map, keyword.ptr, keyword.len, key_cur.ptr);
+      // store suffix
+      for (size_t i = 0; i < 1/*keyword.len*/; i++) {
+        trie_add_keyword(dict->_map, keyword.ptr + i, keyword.len,
+                         key_cur.ptr + i);
+      }
       if (keyword.len > dict->max_key_length)
         dict->max_key_length = keyword.len;
     }
@@ -207,7 +211,11 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
       extra_cur.ptr = trie_search(dict->_map, extra.ptr, extra.len);
       if (extra_cur.ptr == NULL) {
         extra_cur = dynabuf_write_with_zero(dict->buffer, extra.ptr, extra.len);
-        trie_add_keyword(dict->_map, extra.ptr, extra.len, extra_cur.ptr);
+        // store suffix
+        for (size_t i = 0; i < 1/*keyword.len*/; i++) {
+          trie_add_keyword(dict->_map, extra.ptr + i, keyword.len,
+                           extra_cur.ptr + i);
+        }
         if (extra.len > dict->max_extra_length)
           dict->max_extra_length = extra.len;
       }

@@ -3,12 +3,22 @@
 //
 
 #include <matcher.h>
+//#include "../src/distance.h"
 
 int main() {
   char content[150000] = "苹果的果实134较饱满 较饱满";
 
-  matcher_t matcher =
-      matcher_construct_by_file(matcher_type_distance, "/home/james/Downloads/rule");
+  matcher_t matcher = matcher_construct_by_file(matcher_type_distance,
+                                                "/home/james/Downloads/rule");
+//                                                "n.dict");
+//  FILE *fp = fopen("split.dict","w");
+//  for (int i = 0; i < ((dist_matcher_t)matcher)->_dict->idx_count; i++) {
+//    match_dict_index_t idx = ((dist_matcher_t)matcher)->_dict->index + i;
+////    if (idx->prop & mdi_prop_reserve)
+//      fprintf(fp, "%s %d\n", idx->_keyword, idx->prop);
+//  }
+//  fclose(fp);
+
   context_t context = matcher_alloc_context(matcher);
 
   FILE *fin = fopen("corpus.txt", "r");
