@@ -105,26 +105,29 @@ static void dat_construct_by_dfs(datrie_t self, trie_t origin,
       dat_alloc_nodepool(self, region);
       pos = (size_t) region << REGION_OFFSET;
     }
+
     /* 检查: pos容纳第一个子节点 */
     base = pos - child[0];
     for (i = 1; i < len; ++i) {
-      if (dat_access_node_with_alloc(self, base + child[i])->check != 0)
-        goto checkfailed;
+      if (dat_access_node_with_alloc(self, base + child[i])->check != 0) break;
     }
+
     /* base 分配成功 */
-    pDatNode->base = base;
-    for (i = 0; i < len; ++i) {
-      /* 分配子节点 */
-      dat_node_t pDatChild = dat_access_node(self, base + child[i]);
-      pDatChild->check = datindex;
-      /* remove the node from free list */
-      dat_access_node(self, pDatChild->dat_free_next)->dat_free_last =
-          pDatChild->dat_free_last;
-      dat_access_node(self, pDatChild->dat_free_last)->dat_free_next =
-          pDatChild->dat_free_next;
+    if (i == len) {
+      pDatNode->base = base;
+      for (i = 0; i < len; ++i) {
+        /* 分配子节点 */
+        dat_node_t pDatChild = dat_access_node(self, base + child[i]);
+        pDatChild->check = datindex;
+        /* remove the node from free list */
+        dat_access_node(self, pDatChild->dat_free_next)->dat_free_last =
+            pDatChild->dat_free_last;
+        dat_access_node(self, pDatChild->dat_free_last)->dat_free_next =
+            pDatChild->dat_free_next;
+      }
+      break;
     }
-    break;
-checkfailed:
+
     pos = dat_access_node(self, pos)->dat_free_next;
   }
 

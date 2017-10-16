@@ -101,8 +101,8 @@ typedef struct str_pos {
   size_t so, eo;
 } strpos_s, *strpos_t;
 
-inline bool strpos_wlc(strpos_s w, strpos_s lc);
-inline bool strpos_wrc(strpos_s w, strpos_s rc);
+bool strpos_wlc(strpos_s w, strpos_s lc);
+bool strpos_wrc(strpos_s w, strpos_s rc);
 
 typedef struct str_iter {
   unsigned char *ptr;

@@ -20,7 +20,7 @@ ELSEIF (UNIX)
 ENDIF ()
 
 
-set(CMAKE_C_FLAGS -std=c99)
+set(CMAKE_C_STANDARD 99)
 
 
 set(HEADER_FILES

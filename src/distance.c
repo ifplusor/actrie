@@ -367,110 +367,104 @@ bool dist_next_on_index(dist_context_t ctx) {
 #endif
 
   switch (ctx->_state) {
-    case dist_match_state_new_round: break;
-    case dist_match_state_check_history: goto check_history;
-    case dist_match_state_check_tail: goto check_tail;
-    case dist_match_state_check_prefix: goto check_prefix;
-  }
-
-  while (matcher_next(hctx)) {
-    if (hctx->out_matched_index->prop & mdi_prop_single) {
-      ctx->header.out_matched_index = hctx->out_matched_index;
-      ctx->_state = dist_match_state_new_round;
-      return true;
-    }
-
-    // check number
-    size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
-    if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
-      ctx->_state = dist_match_state_check_prefix;
-      // skip number
-      size_t tail_so = hctx->out_eo;
-      while (dist--) {
-        tail_so++;
-        if (!number_bitmap[content[tail_so]])
-          break;
-      }
-      // check tail
-      matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
-check_prefix:
-      while (dat_prefix_next_on_index((dat_context_t) dctx)) {
-        if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-          return dist_construct_out(ctx, tail_so + dctx->out_eo);
-      }
-      continue;
-    }
-
-    ctx->_state = dist_match_state_check_history;
-    for (ctx->_i = (HISTORY_SIZE + ctx->_htidx - ctx->_hcnt) % HISTORY_SIZE;
-         ctx->_i != ctx->_htidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
-      if (hist[ctx->_i].out_eo > hctx->out_eo) break;
-      ctx->_hcnt--;
-    }
-    ctx->_i--;
-check_history:
-    for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_htidx;
-         ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
-      long diff_pos =
-          utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, hist[ctx->_i].out_eo);
-      long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
-      if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
-        // if diff of end_pos is longer than max_tail_length, next round.
-        if (hist[ctx->_i].out_eo - hctx->out_eo
-            > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
-          goto next_round;
-        continue;
+  case dist_match_state_new_round:
+    while (dat_ac_next_on_index((dat_context_t) hctx)) {
+      // check single
+      if (hctx->out_matched_index->prop & mdi_prop_single) {
+        ctx->header.out_matched_index = hctx->out_matched_index;
+        return true; // next round
       }
 
-      match_dict_index_t matched_index = hist[ctx->_i].out_matched_index;
-      for (; matched_index != NULL; matched_index = matched_index->_next) {
-        // linked table's tag is descending order
-        if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
+      // check number
+      size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
+      if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
+        ctx->_state = dist_match_state_check_prefix;
+        // skip number
+        size_t tail_so = hctx->out_eo;
+        while (dist--) { tail_so++;
+          if (!number_bitmap[content[tail_so]])break;
+        }
+        // check prefix
+        matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
+  case dist_match_state_check_prefix:
+        while (dat_prefix_next_on_index((dat_context_t) dctx)) {
+          if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
+            return dist_construct_out(ctx, tail_so + dctx->out_eo);
+        }
+        ctx->_state = dist_match_state_new_round;
+        continue; // next round
       }
-      if (matched_index != NULL
-          && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= (size_t) matched_index->mdi_extra)
+
+      ctx->_state = dist_match_state_check_history;
+      for (ctx->_i = (HISTORY_SIZE + ctx->_htidx - ctx->_hcnt) % HISTORY_SIZE;
+           ctx->_i != ctx->_htidx; ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
+        if (hist[ctx->_i].out_eo > hctx->out_eo) break;
+        ctx->_hcnt--;
+      }
+      ctx->_i--;
+  case dist_match_state_check_history:
+      for (ctx->_i = (ctx->_i + 1) % HISTORY_SIZE; ctx->_i != ctx->_htidx;
+           ctx->_i = (ctx->_i + 1) % HISTORY_SIZE) {
+        long diff_pos = utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, hist[ctx->_i].out_eo);
+        long distance = diff_pos - hist[ctx->_i].out_matched_index->wlen;
+        if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
+          // if diff of end_pos is longer than max_tail_length, next round.
+          if (hist[ctx->_i].out_eo - hctx->out_eo > MAX_CHAR_DISTANCE
+              + (size_t) hctx->out_matched_index->mdi_extra) break;
+          continue;
+        }
+
+        match_dict_index_t matched_index = hist[ctx->_i].out_matched_index;
+        for (; matched_index != NULL; matched_index = matched_index->_next) {
+          // linked table's tag is descending order
+          if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
+        }
+        if (matched_index != NULL
+            && matched_index->_tag == hctx->out_matched_index->_tag) {
+          if (distance > (size_t) matched_index->mdi_extra) {
+            ctx->_state = dist_match_state_new_round;
+            break;
+          }
           return dist_construct_out(ctx, hist[ctx->_i].out_eo);
-        break;
+        }
       }
-    }
+      if (ctx->_i != ctx->_htidx) continue; // next round
 
-    ctx->_state = dist_match_state_check_tail;
-check_tail:
-    // one node will match the tag only once.
-    while (matcher_next(tctx)) {
-      long diff_pos =
-          utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, tctx->out_eo);
-      long distance = (long) (diff_pos - tctx->out_matched_index->wlen);
-      if (distance < 0) continue;
+      ctx->_state = dist_match_state_check_tail;
+  case dist_match_state_check_tail:
+      // NOTE: one node will match the tag only once.
+      while (dat_ac_next_on_node((dat_context_t) tctx)) {
+        long diff_pos = utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, tctx->out_eo);
+        long distance = (long) (diff_pos - tctx->out_matched_index->wlen);
+        if (distance < 0) continue;
 
-      // record history
-      hist[ctx->_htidx] = *tctx;
-      ctx->_htidx = (ctx->_htidx + 1) % HISTORY_SIZE;
-      ctx->_hcnt++;
+        // record history
+        hist[ctx->_htidx] = *tctx;
+        ctx->_htidx = (ctx->_htidx + 1) % HISTORY_SIZE;
+        ctx->_hcnt++;
 
-      if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
-        // if diff of end_pos is longer than max_tail_length, next round.
-        if (tctx->out_eo - hctx->out_eo
-            > MAX_CHAR_DISTANCE + (size_t) hctx->out_matched_index->mdi_extra)
-          goto next_round;
-        continue;
-      }
+        if (distance > MAX_WORD_DISTANCE) {  // max distance is 15
+          // if diff of end_pos is longer than max_tail_length, next round.
+          if (tctx->out_eo - hctx->out_eo > MAX_CHAR_DISTANCE
+              + (size_t) hctx->out_matched_index->mdi_extra) break;
+          continue;
+        }
 
-      match_dict_index_t matched_index = tctx->out_matched_index;
-      for (; matched_index != NULL; matched_index = matched_index->_next) {
-        // linked table's tag is descending order
-        if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
-      }
-      if (matched_index != NULL
-          && matched_index->_tag == hctx->out_matched_index->_tag) {
-        if (distance <= (size_t) matched_index->mdi_extra)
+        match_dict_index_t matched_index = tctx->out_matched_index;
+        for (; matched_index != NULL; matched_index = matched_index->_next) {
+          // linked table's tag is descending order
+          if (matched_index->_tag <= hctx->out_matched_index->_tag) break;
+        }
+        if (matched_index != NULL
+            && matched_index->_tag == hctx->out_matched_index->_tag) {
+          if (distance > (size_t) matched_index->mdi_extra) {
+            ctx->_state = dist_match_state_new_round;
+            break;
+          }
           return dist_construct_out(ctx, tctx->out_eo);
-        break;
+        }
       }
     }
-next_round:
-    ctx->_state = dist_match_state_new_round;
   }
 
   return false;

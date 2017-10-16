@@ -108,7 +108,7 @@ inline match_dict_index_t matcher_matched_index(context_t context) {
 }
 
 inline strpos_s matcher_matched_pos(context_t context) {
-  return {
+  return (strpos_s) {
       .so = context->out_eo - context->out_matched_index->length,
       .eo = context->out_eo
   };

@@ -173,7 +173,7 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
     dict->idx_size += 100;
     void *new = realloc(dict->index, sizeof(match_dict_s) * dict->idx_size);
     if (new == NULL) {
-      sprintf(stderr, "%s(%d) - fatal: memory error!", __FILE__, __LINE__);
+      fprintf(stderr, "%s(%d) - fatal: memory error!", __FILE__, __LINE__);
       exit(-1);
     }
     dict->index = new;

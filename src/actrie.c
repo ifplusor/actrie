@@ -120,6 +120,7 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
     }
   }
 
+  /* 头插法链接 dict_index */
   if (pNode->trie_dictidx != NULL)
     index->_next = pNode->trie_dictidx;
   pNode->trie_dictidx = index;
@@ -263,28 +264,28 @@ size_t trie_swap_node(trie_t self, size_t iChild, size_t iTarget) {
 trie_t trie_alloc() {
   size_t root;
   int i;
+  trie_t p = NULL;
 
-  trie_t p = (trie_t) malloc(sizeof(trie_s));
-  if (p == NULL)
-    goto trie_alloc_failed;
+  do {
+    p = (trie_t) malloc(sizeof(trie_s));
+    if (p == NULL) break;
 
-  p->_dict = NULL;
-  for (i = 0; i < POOL_REGION_SIZE; i++)
-    p->_nodepool[i] = NULL;
-  p->_autoindex = 0;
+    p->_dict = NULL;
+    for (i = 0; i < POOL_REGION_SIZE; i++)
+      p->_nodepool[i] = NULL;
+    p->_autoindex = 0;
 
-  root = trie_alloc_node(p);
-  if (root == (size_t) -1)
-    goto trie_alloc_failed;
+    root = trie_alloc_node(p);
+    if (root == (size_t) -1) break;
 
-  p->root = trie_access_node(p, root);
-  if (p->root == NULL)
-    goto trie_alloc_failed;
+    p->root = trie_access_node(p, root);
+    if (p->root == NULL) break;
 
-  return p;
+    return p;
+  } while (0);
 
-trie_alloc_failed:
   trie_destruct(p);
+
   return NULL;
 }
 
