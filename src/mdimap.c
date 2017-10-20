@@ -4,10 +4,9 @@
 
 #include "mdimap.h"
 
-int mdimap_compare(avl_node_t node, void *key) {
+sptr_t mdimap_compare(avl_node_t node, void *key) {
   mdim_node_t n = container_of(node, mdim_node_s, avl_elem);
-  if (n->idx->_tag == key) return 0;
-  return (uptr_t)n->idx->_tag < (uptr_t)key ? -1 : 1;
+  return (sptr_t) n->idx->_tag - (sptr_t) key;
 }
 
 avl_node_t mdimap_replace(avl_node_t old, avl_node_t new) {

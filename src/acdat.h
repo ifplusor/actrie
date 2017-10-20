@@ -19,10 +19,10 @@ typedef struct dat_node {
 #define dat_failed      dat_nf.failed
   union {
     size_t last; /* last free node */
-    mdi_t dictidx;  /* out 表 */
+    mdi_t idxlist;  /* out 表 */
   } dat_ld;
 #define dat_free_last   dat_ld.last
-#define dat_dictidx     dat_ld.dictidx
+#define dat_idxlist     dat_ld.idxlist
 } dat_node_s, *dat_node_t;
 
 typedef struct datrie {
@@ -41,7 +41,6 @@ typedef struct dat_context {
 
   dat_node_t _matched;
   aobj _list;
-  dat_node_t _pCursor;
   size_t _iCursor;
   size_t _i;
 
