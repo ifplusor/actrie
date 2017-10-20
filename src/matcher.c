@@ -11,12 +11,14 @@
 const matcher_func_t const matcher_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_matcher_func,
     [matcher_type_acdat] = &dat_matcher_func,
+    [matcher_type_ambi] = &ambi_matcher_func,
     [matcher_type_distance] = &dist_matcher_func,
 };
 
 const context_func_t const context_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_context_func,
     [matcher_type_acdat] = &acdat_context_func,
+    [matcher_type_ambi] = &ambi_context_func,
     [matcher_type_distance] = &dist_context_func,
 };
 
@@ -32,7 +34,8 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
       matcher = (matcher_t) dat_construct(vocab, true);
       break;
     case matcher_type_ambi:
-//      matcher = (matcher_t) ambi_construct(vocab, 0, true);
+      matcher = (matcher_t)
+          ambi_construct(vocab, mdi_prop_normal | mdi_prop_ambi, true);
       break;
     case matcher_type_distance:
       matcher = (matcher_t) dist_construct(vocab, true);
@@ -103,7 +106,7 @@ bool matcher_next(context_t context) {
   return context->_func->next(context);
 }
 
-inline match_dict_index_t matcher_matched_index(context_t context) {
+inline mdi_t matcher_matched_index(context_t context) {
   return context->out_matched_index;
 }
 
@@ -132,7 +135,7 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
         idx_pos_s *new = realloc(lst, sizeof(idx_pos_s) * size);
         if (new == NULL) break; else lst = new;
       }
-      match_dict_index_t p = context->out_matched_index;
+      mdi_t p = context->out_matched_index;
       lst[len].keyword = p->mdi_keyword;
       lst[len].extra = p->mdi_extra;
       lst[len].length = p->length;

@@ -1,4 +1,5 @@
 #include "actrie.h"
+#include "list.h"
 
 
 // Prime Trie
@@ -17,7 +18,7 @@ static size_t trie_alloc_node(trie_t self) {
 #endif // CHECK
   if (self->_nodepool[region] == NULL) {
     trie_node_t pnode =
-        (trie_node_t) malloc(sizeof(trie_node_s) * POOL_POSITION_SIZE);
+        (trie_node_t) amalloc(sizeof(trie_node_s) * POOL_POSITION_SIZE);
     if (pnode == NULL) return (size_t) -1;
     self->_nodepool[region] = pnode;
     memset(pnode, 0, sizeof(trie_node_s) * POOL_POSITION_SIZE);
@@ -58,7 +59,7 @@ trie_node_t trie_access_node_export(trie_t self, size_t index) {
 }
 
 bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
-                      match_dict_index_t index) {
+                      mdi_t index) {
   trie_node_t pNode = self->root;
   size_t iNode = 0; /* iParent保存pNode的index */
   size_t i = 0;
@@ -121,9 +122,8 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
   }
 
   /* 头插法链接 dict_index */
-  if (pNode->trie_dictidx != NULL)
-    index->_next = pNode->trie_dictidx;
-  pNode->trie_dictidx = index;
+  // NOTE: 注意内存泄漏
+  pNode->trie_dictidx = cons(index, pNode->trie_dictidx);
 
   return true;
 }
@@ -267,7 +267,7 @@ trie_t trie_alloc() {
   trie_t p = NULL;
 
   do {
-    p = (trie_t) malloc(sizeof(trie_s));
+    p = (trie_t) amalloc(sizeof(trie_s));
     if (p == NULL) break;
 
     p->_dict = NULL;
@@ -353,13 +353,16 @@ void trie_construct_automation(trie_t self) {
 
 void trie_destruct(trie_t self) {
   if (self != NULL) {
-    int i;
     dict_release(self->_dict);
-    for (i = 0; i < POOL_REGION_SIZE; i++) {
-      if (self->_nodepool[i] != NULL)
-        free(self->_nodepool[i]);
+    for (int i = 0; i < POOL_REGION_SIZE; i++) {
+      if (self->_nodepool[i] != NULL) {
+        for (int j = 0; j < POOL_POSITION_SIZE; j++) {
+          aobj_release(self->_nodepool[i][j].trie_dictidx);
+        }
+        afree(self->_nodepool[i]);
+      }
     }
-    free(self);
+    afree(self);
   }
 }
 
@@ -377,7 +380,7 @@ trie_t trie_construct_by_dict(match_dict_t dict,
   t0 = system_millisecond();
 #endif
   for (size_t i = 0; i < dict->idx_count; i++) {
-    match_dict_index_t index = &dict->index[i];
+    mdi_t index = &dict->index[i];
     if ((index->prop & filter) == 0) continue;
     if (!trie_add_keyword(prime_trie,
                           dynabuf_content(dict->buffer, index->_keyword),
@@ -434,7 +437,7 @@ trie_t trie_construct(vocab_t vocab, bool enable_automation) {
   return prime_trie;
 }
 
-void *trie_search(trie_t self, const unsigned char keyword[], size_t len) {
+aobj trie_search(trie_t self, const unsigned char keyword[], size_t len) {
   trie_node_t pNode = self->root;
   size_t iNode = 0; /* iParent保存pNode的index */
   size_t i = 0;

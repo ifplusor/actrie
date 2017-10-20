@@ -2,11 +2,13 @@
 // Created by james on 6/19/17.
 //
 
-#ifndef _MATCH_DISTANCE_H_
-#define _MATCH_DISTANCE_H_
+#ifndef _ACTRIE_DISTANCE_H_
+#define _ACTRIE_DISTANCE_H_
 
-#include "dict0.h"
 #include "matcher0.h"
+#include "dynapool.h"
+#include "dlnk.h"
+#include "mdimap.h"
 
 #define HISTORY_SIZE 50
 
@@ -33,15 +35,17 @@ typedef struct dist_context {
 
   dist_matcher_t _matcher;
 
-  match_dict_index_s out_index;     /* will change when call 'next' */
+  mdi_s out_index;     /* will change when call 'next' */
 #ifdef DIST_REPLACE_BY_ZERO
   unsigned char _c;
 #endif
 
   size_t *_utf8_pos;
 
-  context_s _hist_ctx[HISTORY_SIZE];     /* cycle queue, store node */
-  size_t _hcnt, _htidx, _i;       /* count, tail, index for history */
+  dynapool_t _mdiqn_pool;
+  deque_node_s _tail_cache;
+  mdimap_t _tail_map;
+  mdim_node_t _tail_node;
 
   context_t _head_ctx, _tail_ctx, _digit_ctx;
   dist_match_state _state;
@@ -66,4 +70,4 @@ bool dist_next_on_index(dist_context_t ctx);
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_DISTANCE_H_ */
+#endif /* _ACTRIE_DISTANCE_H_ */

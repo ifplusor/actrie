@@ -1,5 +1,5 @@
-#ifndef _MATCH_ACDAT_H_
-#define _MATCH_ACDAT_H_
+#ifndef _ACTRIE_ACDAT_H_
+#define _ACTRIE_ACDAT_H_
 
 #include "actrie.h"
 #include "matcher0.h"
@@ -19,7 +19,7 @@ typedef struct dat_node {
 #define dat_failed      dat_nf.failed
   union {
     size_t last; /* last free node */
-    match_dict_index_t dictidx;  /* out 表 */
+    mdi_t dictidx;  /* out 表 */
   } dat_ld;
 #define dat_free_last   dat_ld.last
 #define dat_dictidx     dat_ld.dictidx
@@ -39,7 +39,8 @@ typedef struct dat_context {
 
   datrie_t trie;
 
-  dat_node_t out_matched;
+  dat_node_t _matched;
+  aobj _list;
   dat_node_t _pCursor;
   size_t _iCursor;
   size_t _i;
@@ -73,4 +74,4 @@ bool dat_prefix_next_on_index(dat_context_t ctx);
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_ACDAT_H_ */
+#endif /* _ACTRIE_ACDAT_H_ */

@@ -19,50 +19,71 @@ ELSEIF (UNIX)
     ENDIF ()
 ENDIF ()
 
-
 set(CMAKE_C_STANDARD 99)
 
+if (GenProfile)
+    MESSAGE("generate profile")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+endif ()
 
-set(HEADER_FILES
-        include/common.h
+if (NOT (DEFINED ALIB_DIR))
+    set(ALIB_DIR "${PROJECT_SOURCE_DIR}/../alib")
+endif()
+add_subdirectory(${ALIB_DIR} alib)
+
+set(ACTRIE_HEADER_FILES
         include/dict.h
         include/matcher.h
-        src/utf8.h
-        src/stream.h
-        src/dynabuf.h
         src/vocab.h
         src/dict0.h
-        src/dlnk.h
-        src/dynapool.h
         src/actrie.h
-        src/avl.h
         src/matcher0.h
         src/acdat.h
+        src/mdimap.h
         src/disambi.h
         src/distance.h)
 
-set(SOURCE_FILES
-        src/common.c
-        src/utf8.c
-        src/stream.c
-        src/dynabuf.c
+set(ACTRIE_SOURCE_FILES
         src/vocab.c
         src/dict.c
-        src/dlnk.c
-        src/dynapool.c
-        src/avl.c
         src/actrie.c
         src/acdat.c
+        src/mdimap.c
         src/disambi.c
         src/distance.c
         src/matcher.c)
 
 add_library(actrie STATIC
-        ${HEADER_FILES} ${SOURCE_FILES})
+        ${ACTRIE_HEADER_FILES} ${ACTRIE_SOURCE_FILES})
 target_include_directories(actrie
         PUBLIC include)
-target_compile_definitions(actrie
-        PUBLIC "-DAVL_USER_INDEX=1")
-
+target_link_libraries(actrie
+        PUBLIC alib)
 
 add_subdirectory(tests)
+
+set(ALIB_SOURCE_FILES
+        ${ALIB_DIR}/src/amem.c
+        ${ALIB_DIR}/src/aobj.c
+        ${ALIB_DIR}/src/astr.c
+        ${ALIB_DIR}/src/acom.c
+        ${ALIB_DIR}/src/list.c
+        ${ALIB_DIR}/src/dlnk.c
+        ${ALIB_DIR}/src/dynapool.c
+        ${ALIB_DIR}/src/avl.c
+        ${ALIB_DIR}/src/stream.c
+        ${ALIB_DIR}/src/dynabuf.c
+        ${ALIB_DIR}/src/utf8.c)
+
+add_executable(test_profile
+        ${ALIB_SOURCE_FILES}
+        ${ACTRIE_SOURCE_FILES}
+        tests/test_dist.c)
+target_include_directories(test_profile
+        PRIVATE ${ALIB_DIR}/include
+        PRIVATE include)
+target_compile_options(test_profile
+        PRIVATE -pg)

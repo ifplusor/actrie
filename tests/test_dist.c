@@ -3,17 +3,16 @@
 //
 
 #include <matcher.h>
-//#include "../src/distance.h"
 
 int main() {
   char content[150000] = "苹果的果实134较饱满 较饱满";
 
   matcher_t matcher = matcher_construct_by_file(matcher_type_distance,
-                                                "/home/james/Downloads/rule");
+                                                "rule");
 //                                                "n.dict");
 //  FILE *fp = fopen("split.dict","w");
 //  for (int i = 0; i < ((dist_matcher_t)matcher)->_dict->idx_count; i++) {
-//    match_dict_index_t idx = ((dist_matcher_t)matcher)->_dict->index + i;
+//    mdi_t idx = ((dist_matcher_t)matcher)->_dict->index + i;
 ////    if (idx->prop & mdi_prop_reserve)
 //      fprintf(fp, "%s %d\n", idx->_keyword, idx->prop);
 //  }
@@ -22,19 +21,24 @@ int main() {
   context_t context = matcher_alloc_context(matcher);
 
   FILE *fin = fopen("corpus.txt", "r");
+  if (fin == NULL) exit(-1);
+
   FILE *fout = fopen("match.out", "w");
 
   int count = 0;
 
-  long long start = system_millisecond();
+  sint64_t start = current_milliseconds();
   while (fscanf(fin, "%[^\n]\n", content) != EOF) {
     count++;
 
     matcher_reset_context(context, content, strlen(content));
     while (matcher_next(context)) {
-      match_dict_index_t idx = matcher_matched_index(context);
-      fprintf(fout, "%.*s(%zu) - %s\n",
+      mdi_t idx = matcher_matched_index(context);
+      fprintf(fout, "%.*s(%d) - %s\n",
               (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
+//      fprintf(fout, "[%zu,%zu] %.*s(%d) - %s\n",
+//              context->out_eo - idx->length, context->out_eo,
+//              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
     };
 
 //        if (count % 100 == 0) {
@@ -42,7 +46,7 @@ int main() {
 //        }
   }
 
-  long long end = system_millisecond();
+  sint64_t end = current_milliseconds();
   double time = (double) (end - start) / 1000;
   printf("time: %lfs\n", time);
   printf("line: %d\n", count);
@@ -64,8 +68,8 @@ int main2() {
   context_t context = matcher_alloc_context(matcher);
   matcher_reset_context(context, content, strlen(content));
   while (matcher_next(context)) {
-    match_dict_index_t idx = matcher_matched_index(context);
-    fprintf(stdout, "%.*s(%zu) - %s\n",
+    mdi_t idx = matcher_matched_index(context);
+    fprintf(stdout, "%.*s(%d) - %s\n",
             (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
   };
   matcher_free_context(context);

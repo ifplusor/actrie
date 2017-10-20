@@ -1,4 +1,5 @@
 #include "acdat.h"
+#include "list.h"
 
 /* Trie 内部接口，仅限 Double-Array Trie 使用 */
 size_t trie_size(trie_t self);
@@ -42,7 +43,7 @@ static void dat_alloc_nodepool(datrie_t self, size_t region) {
   int i;
 
   dat_node_t pnode =
-      (dat_node_t) malloc(sizeof(dat_node_s) * POOL_POSITION_SIZE);
+      (dat_node_t) amalloc(sizeof(dat_node_s) * POOL_POSITION_SIZE);
   if (pnode == NULL) {
     fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
     exit(-1);
@@ -80,6 +81,7 @@ static void dat_construct_by_dfs(datrie_t self, trie_t origin,
 
   dat_node_t pDatNode = dat_access_node(self, datindex);
   pDatNode->dat_dictidx = pNode->trie_dictidx;
+  aobj_retain(pDatNode->dat_dictidx);
 
   if (pNode->trie_child == 0) return;
 
@@ -149,7 +151,7 @@ static void dat_post_construct(datrie_t self) {
     fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
     exit(-1);
   } else {
-    dat_node_t pnode = (dat_node_t) malloc(sizeof(dat_node_s) * 256);
+    dat_node_t pnode = (dat_node_t) amalloc(sizeof(dat_node_s) * 256);
     if (pnode == NULL) {
       fprintf(stderr, "alloc datnodepool failed.\nexit.\n");
       exit(-1);
@@ -165,16 +167,16 @@ datrie_t dat_alloc() {
   datrie_t p;
   size_t i;
 
-  pnode = (dat_node_t) malloc(sizeof(dat_node_s) * POOL_POSITION_SIZE);
+  pnode = (dat_node_t) amalloc(sizeof(dat_node_s) * POOL_POSITION_SIZE);
   if (pnode == NULL) {
     fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
     return NULL;
   }
   memset(pnode, 0, sizeof(dat_node_s) * POOL_POSITION_SIZE);
 
-  p = (datrie_t) malloc(sizeof(datrie_s));
+  p = (datrie_t) amalloc(sizeof(datrie_s));
   if (p == NULL) {
-    free(pnode);
+    afree(pnode);
     return NULL;
   }
 
@@ -247,10 +249,12 @@ bool dat_destruct(datrie_t p) {
     int i;
     if (p->_dict != NULL) dict_release(p->_dict);
     for (i = 0; i < POOL_REGION_SIZE; ++i) {
-      if (p->_nodepool[i] != NULL)
-        free(p->_nodepool[i]);
+      if (p->_nodepool[i] != NULL) {
+        // TODO: release mdi
+        afree(p->_nodepool[i]);
+      }
     }
-    free(p);
+    afree(p);
     return true;
   }
 
@@ -291,7 +295,7 @@ datrie_t dat_construct(vocab_t vocab, bool enable_automation) {
 // ===================================================
 
 dat_context_t dat_alloc_context(datrie_t matcher) {
-  dat_context_t ctx = malloc(sizeof(dat_context_s));
+  dat_context_t ctx = amalloc(sizeof(dat_context_s));
   if (ctx == NULL) {
     return NULL;
   }
@@ -303,7 +307,7 @@ dat_context_t dat_alloc_context(datrie_t matcher) {
 
 bool dat_free_context(dat_context_t context) {
   if (context != NULL) {
-    free(context);
+    afree(context);
   }
 
   return true;
@@ -320,16 +324,19 @@ bool dat_reset_context(dat_context_t context, unsigned char content[],
   context->_i = 0;
   context->_iCursor = DAT_ROOT_IDX;
   context->_pCursor = context->trie->root;
-  context->out_matched = context->trie->root;
+  context->_matched = context->trie->root;
+  context->_list = NULL;
 
   return true;
 }
 
 bool dat_next_on_index(dat_context_t ctx) {
-  if (ctx->header.out_matched_index != NULL) {
-    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
-    if (ctx->header.out_matched_index != NULL)
+  if (ctx->_list != NULL) {
+    ctx->_list = cdr(ctx->_list);
+    if (ctx->_list != NULL) {
+      ctx->header.out_matched_index = car(ctx->_list);
       return true;
+    }
   }
 
   for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
@@ -341,8 +348,9 @@ bool dat_next_on_index(dat_context_t ctx) {
     ctx->_iCursor = iNext;
     ctx->_pCursor = pNext;
     if (pNext->dat_dictidx != NULL) {
-      ctx->out_matched = pNext;
-      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+      ctx->_matched = pNext;
+      ctx->_list = ctx->_matched->dat_dictidx;
+      ctx->header.out_matched_index = car(ctx->_list);
       ctx->header.out_eo++;
       return true;
     }
@@ -362,8 +370,9 @@ bool dat_next_on_index(dat_context_t ctx) {
       ctx->_iCursor = iNext;
       ctx->_pCursor = pNext;
       if (pNext->dat_dictidx != NULL) {
-        ctx->out_matched = pNext;
-        ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+        ctx->_matched = pNext;
+        ctx->_list = ctx->_matched->dat_dictidx;
+        ctx->header.out_matched_index = car(ctx->_list);
         ctx->header.out_eo++;
         return true;
       }
@@ -374,11 +383,12 @@ bool dat_next_on_index(dat_context_t ctx) {
 
 bool dat_ac_next_on_node(dat_context_t ctx) {
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
-  while (ctx->out_matched != ctx->trie->root) {
-    ctx->out_matched =
-        dat_access_node(ctx->trie, ctx->out_matched->dat_failed);
-    if (ctx->out_matched->dat_dictidx != NULL) {
-      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+  while (ctx->_matched != ctx->trie->root) {
+    ctx->_matched =
+        dat_access_node(ctx->trie, ctx->_matched->dat_failed);
+    if (ctx->_matched->dat_dictidx != NULL) {
+      ctx->_list = ctx->_matched->dat_dictidx;
+      ctx->header.out_matched_index = car(ctx->_list);
       return true;
     }
   }
@@ -401,8 +411,9 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
       ctx->_pCursor = pNext;
       while (pNext != ctx->trie->root) {
         if (pNext->dat_dictidx != NULL) {
-          ctx->out_matched = pNext;
-          ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+          ctx->_matched = pNext;
+          ctx->_list = ctx->_matched->dat_dictidx;
+          ctx->header.out_matched_index = car(ctx->_list);
           ctx->header.out_eo++;
           return true;
         }
@@ -415,18 +426,21 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
 
 bool dat_ac_next_on_index(dat_context_t ctx) {
   /* 检查 index 列表 */
-  if (ctx->header.out_matched_index != NULL) {
-    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
-    if (ctx->header.out_matched_index != NULL)
+  if (ctx->_list != NULL) {
+    ctx->_list = cdr(ctx->_list);
+    if (ctx->_list != NULL) {
+      ctx->header.out_matched_index = car(ctx->_list);
       return true;
+    }
   }
 
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
-  while (ctx->out_matched != ctx->trie->root) {
-    ctx->out_matched =
-        dat_access_node(ctx->trie, ctx->out_matched->dat_failed);
-    if (ctx->out_matched->dat_dictidx != NULL) {
-      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+  while (ctx->_matched != ctx->trie->root) {
+    ctx->_matched =
+        dat_access_node(ctx->trie, ctx->_matched->dat_failed);
+    if (ctx->_matched->dat_dictidx != NULL) {
+      ctx->_list = ctx->_matched->dat_dictidx;
+      ctx->header.out_matched_index = car(ctx->_list);
       return true;
     }
   }
@@ -449,8 +463,9 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
       ctx->_pCursor = pNext;
       while (pNext != ctx->trie->root) {
         if (pNext->dat_dictidx != NULL) {
-          ctx->out_matched = pNext;
-          ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+          ctx->_matched = pNext;
+          ctx->_list = ctx->_matched->dat_dictidx;
+          ctx->header.out_matched_index = car(ctx->_list);
           ctx->header.out_eo++;
           return true;
         }
@@ -463,10 +478,12 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
 
 bool dat_prefix_next_on_index(dat_context_t ctx) {
   /* 检查 index 列表 */
-  if (ctx->header.out_matched_index != NULL) {
-    ctx->header.out_matched_index = ctx->header.out_matched_index->_next;
-    if (ctx->header.out_matched_index != NULL)
+  if (ctx->_list != NULL) {
+    ctx->_list = cdr(ctx->_list);
+    if (ctx->_list != NULL) {
+      ctx->header.out_matched_index = car(ctx->_list);
       return true;
+    }
   }
 
   /* 执行匹配 */
@@ -478,8 +495,9 @@ bool dat_prefix_next_on_index(dat_context_t ctx) {
     ctx->_iCursor = iNext;
     ctx->_pCursor = pNext;
     if (pNext->dat_dictidx != NULL) {
-      ctx->out_matched = pNext;
-      ctx->header.out_matched_index = ctx->out_matched->dat_dictidx;
+      ctx->_matched = pNext;
+      ctx->_list = ctx->_matched->dat_dictidx;
+      ctx->header.out_matched_index = car(ctx->_list);
       ctx->header.out_eo++;
       return true;
     }

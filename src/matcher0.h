@@ -2,8 +2,8 @@
 // Created by james on 9/25/17.
 //
 
-#ifndef _MATCH_MATCHER0_H_
-#define _MATCH_MATCHER0_H_
+#ifndef _ACTRIE_MATCHER0_H_
+#define _ACTRIE_MATCHER0_H_
 
 #include <matcher.h>
 
@@ -43,7 +43,7 @@ typedef struct _context {
   unsigned char *content;
   size_t len;
 
-  match_dict_index_t out_matched_index;  /* volatile, need deep copy */
+  mdi_t out_matched_index;  /* volatile, need deep copy */
   size_t out_eo;               /* end offset of current matched word */
 } context_s;
 
@@ -51,4 +51,4 @@ typedef struct _context {
 }
 #endif /* __cplusplus */
 
-#endif // _MATCH_MATCHER0_H_
+#endif // _ACTRIE_MATCHER0_H_

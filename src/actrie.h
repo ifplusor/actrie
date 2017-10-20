@@ -1,5 +1,5 @@
-#ifndef _MATCH_ACTRIE_H_
-#define _MATCH_ACTRIE_H_
+#ifndef _ACTRIE_ACTRIE_H_
+#define _ACTRIE_ACTRIE_H_
 
 #include "dict0.h"
 
@@ -26,7 +26,7 @@ typedef struct trie_node { /* 十字链表实现字典树 */
 #define trie_parent   trie_pd.parent
 #define trie_datidx   trie_pd.datidx
   union {
-    match_dict_index_t dictidx;
+    aobj dictidx;
     size_t placeholder;
   } trie_dp;
 #define trie_dictidx  trie_dp.dictidx
@@ -52,12 +52,12 @@ void trie_destruct(trie_t self);
 
 trie_t trie_alloc();
 bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
-                      match_dict_index_t index);
-void *trie_search(trie_t self, const unsigned char keyword[], size_t len);
+                      mdi_t index);
+aobj trie_search(trie_t self, const unsigned char keyword[], size_t len);
 void trie_rebuild_parent_relation(trie_t self);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_ACTRIE_H_ */
+#endif /* _ACTRIE_ACTRIE_H_ */

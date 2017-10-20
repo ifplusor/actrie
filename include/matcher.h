@@ -2,8 +2,8 @@
 // Created by james on 6/16/17.
 //
 
-#ifndef _MATCH_MATCHER_H_
-#define _MATCH_MATCHER_H_
+#ifndef _ACTRIE_MATCHER_H_
+#define _ACTRIE_MATCHER_H_
 
 #include <dict.h>
 
@@ -19,7 +19,6 @@ typedef enum matcher_type {
   matcher_type_acdat,
   matcher_type_ambi,
   matcher_type_distance,
-  matcher_type_ultimate,
   matcher_type_size
 } matcher_type_e;
 
@@ -43,7 +42,7 @@ bool matcher_free_context(context_t context);
 bool matcher_reset_context(context_t context, char content[], size_t len);
 bool matcher_next(context_t context);
 
-match_dict_index_t matcher_matched_index(context_t context);
+mdi_t matcher_matched_index(context_t context);
 strpos_s matcher_matched_pos(context_t context);
 
 // utils
@@ -66,4 +65,4 @@ idx_pos_s *matcher_match_with_sort(context_t context, char *content,
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_MATCHER_H_ */
+#endif /* _ACTRIE_MATCHER_H_ */

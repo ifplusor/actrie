@@ -1,6 +1,7 @@
 #include "dict0.h"
 #include "utf8.h"
 #include "actrie.h"
+#include "list.h"
 
 const char tokens_delimiter = '|';
 const char left_parentheses = '(';
@@ -66,7 +67,7 @@ const bool number_bitmap[256] = {
 void dict_add_index_filter_free(dict_add_indix_filter filter) {
   while (filter != NULL) {
     dict_add_indix_filter next = filter->next;
-    free(filter);
+    afree(filter);
     filter = next;
   }
 }
@@ -74,7 +75,7 @@ void dict_add_index_filter_free(dict_add_indix_filter filter) {
 dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
                                                  dict_add_index_func func) {
   dict_add_indix_filter node =
-      malloc(sizeof(struct match_dict_add_index_filter));
+      amalloc(sizeof(struct match_dict_add_index_filter));
   if (node == NULL) return NULL;
 
   node->add_index = func;
@@ -85,7 +86,7 @@ dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
 match_dict_t dict_alloc() {
   match_dict_t p = NULL;
   do {
-    p = (match_dict_t) malloc(sizeof(match_dict_s));
+    p = (match_dict_t) amalloc(sizeof(match_dict_s));
     if (p == NULL) break;
 
     p->_map = NULL;
@@ -110,7 +111,7 @@ match_dict_t dict_alloc() {
 
   if (p != NULL) {
     dynabuf_free(p->buffer);
-    free(p);
+    afree(p);
   }
 
   return NULL;
@@ -130,7 +131,7 @@ void dict_release(match_dict_t dict) {
       free(dict->index);
       dynabuf_free(dict->buffer);
       dict_add_index_filter_free(dict->add_index_filter);
-      free(dict);
+      afree(dict);
     }
   }
 }
@@ -146,7 +147,7 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   // reset
   dict->idx_count = 0;
   dict->idx_size = index_count + 1;
-  dict->index = malloc(sizeof(match_dict_index_s) * dict->idx_size);
+  dict->index = malloc(sizeof(mdi_s) * dict->idx_size);
   if (dict->index == NULL)
     return false;
 
@@ -156,7 +157,7 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
     return false;
   }
 
-  memset(dict->index, 0, sizeof(match_dict_index_s) * dict->idx_size);
+  memset(dict->index, 0, sizeof(mdi_s) * dict->idx_size);
   dict->max_key_length = 0;
   dict->max_extra_length = 0;
 
@@ -180,24 +181,26 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
     memset(dict->index + dict->idx_count, 0, sizeof(match_dict_s) * 100);
   }
 
-  dict->index[dict->idx_count]._next = NULL;
-  dict->index[dict->idx_count].length = keyword.len;
-  dict->index[dict->idx_count].wlen =
+  // NOTE: mdi.length is uint16_t
+  dict->index[dict->idx_count].length = (uint16_t) keyword.len;
+  dict->index[dict->idx_count].wlen = (uint16_t)
       utf8_word_length(keyword.ptr, keyword.len);
 
   // because we use standard c string, must use dynabuf_write_with_zero
 
   if (prop & mdi_prop_bufkey) {
-    key_cur.ptr = trie_search(dict->_map, keyword.ptr, keyword.len);
-    if (key_cur.ptr == NULL) {
+    aobj list = trie_search(dict->_map, keyword.ptr, keyword.len);
+    if (list == NULL) {
       key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
       // store suffix
       for (size_t i = 0; i < 1/*keyword.len*/; i++) {
         trie_add_keyword(dict->_map, keyword.ptr + i, keyword.len,
-                         key_cur.ptr + i);
+                         TAG_INTEGER(key_cur.idx + i));
       }
       if (keyword.len > dict->max_key_length)
         dict->max_key_length = keyword.len;
+    } else {
+      key_cur.idx = GET_INTEGER(car(list));
     }
   } else {
     key_cur.ptr = keyword.ptr;
@@ -208,16 +211,18 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
     if (extra.len == 0) {
       extra_cur = dynabuf_empty_cur(dict->buffer);
     } else {
-      extra_cur.ptr = trie_search(dict->_map, extra.ptr, extra.len);
-      if (extra_cur.ptr == NULL) {
+      aobj list = trie_search(dict->_map, extra.ptr, extra.len);
+      if (list == NULL) {
         extra_cur = dynabuf_write_with_zero(dict->buffer, extra.ptr, extra.len);
         // store suffix
         for (size_t i = 0; i < 1/*keyword.len*/; i++) {
           trie_add_keyword(dict->_map, extra.ptr + i, keyword.len,
-                           extra_cur.ptr + i);
+                           TAG_INTEGER(extra_cur.ptr + i));
         }
         if (extra.len > dict->max_extra_length)
           dict->max_extra_length = extra.len;
+      } else {
+        extra_cur.idx = GET_INTEGER(car(list));
       }
     }
   } else {
@@ -327,7 +332,7 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
 
   // post-process: change idx to ptr
   for (size_t i = 0; i < self->idx_count; i++) {
-    match_dict_index_t idx = self->index + i;
+    mdi_t idx = self->index + i;
     if (idx->prop & mdi_prop_bufkey)
       idx->_keyword = dynabuf_cur2ptr(self->buffer, idx->_keyword);
     if (idx->prop & mdi_prop_bufextra) {

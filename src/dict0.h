@@ -2,8 +2,8 @@
 // Created by james on 9/29/17.
 //
 
-#ifndef _MATCH_DICT0_H_
-#define _MATCH_DICT0_H_
+#ifndef _ACTRIE_DICT0_H_
+#define _ACTRIE_DICT0_H_
 
 #include <dict.h>
 #include "dynabuf.h"
@@ -35,7 +35,7 @@ struct match_dict_add_index_filter {
 };
 
 typedef struct match_dict {
-  match_dict_index_t index;
+  mdi_t index;
   size_t idx_size, idx_count;
 
   dynabuf_t buffer; /* the content in buffer is const*/
@@ -85,5 +85,5 @@ bool dict_parse(match_dict_t self, vocab_t vocab);
 }
 #endif /* __cplusplus */
 
-#endif /* _MATCH_DICT0_H_ */
+#endif /* _ACTRIE_DICT0_H_ */
 

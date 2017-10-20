@@ -2,10 +2,10 @@
 // Created by james on 9/30/17.
 //
 
-#ifndef _MATCH_VOCAB_H_
-#define _MATCH_VOCAB_H_
+#ifndef _ACTRIE_VOCAB_H_
+#define _ACTRIE_VOCAB_H_
 
-#include <common.h>
+#include "acom.h"
 #include "dynabuf.h"
 #include "stream.h"
 
@@ -37,4 +37,4 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra);
 };
 #endif
 
-#endif //_MATCH_VOCAB_H_
+#endif //_ACTRIE_VOCAB_H_

@@ -5,12 +5,12 @@
 #include "vocab.h"
 
 vocab_t vocab_alloc() {
-  return malloc(sizeof(vocab_s));
+  return amalloc(sizeof(vocab_s));
 }
 
 bool vocab_free(vocab_t self) {
   if (self == NULL) return false;
-  free(self);
+  afree(self);
   return true;
 }
 
@@ -49,7 +49,7 @@ bool vocab_destruct(vocab_t self) {
   if (self == NULL) return false;
   stream_destruct(self->_stream);
   dynabuf_clean(&self->_buf);
-  free(self);
+  afree(self);
   return true;
 }
 
