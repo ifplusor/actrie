@@ -78,6 +78,8 @@ set(ALIB_SOURCE_FILES
         ${ALIB_DIR}/src/dynabuf.c
         ${ALIB_DIR}/src/utf8.c)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 add_executable(test_profile
         ${ALIB_SOURCE_FILES}
         ${ACTRIE_SOURCE_FILES}
@@ -85,5 +87,3 @@ add_executable(test_profile
 target_include_directories(test_profile
         PRIVATE ${ALIB_DIR}/include
         PRIVATE include)
-target_compile_options(test_profile
-        PRIVATE -pg)

@@ -328,7 +328,7 @@ bool dist_reset_context(dist_context_t context, unsigned char content[],
 
   context->_state = dist_match_state_new_round;
 
-  return false;
+  return true;
 }
 
 bool dist_construct_out(dist_context_t ctx, size_t _eo) {
@@ -381,7 +381,7 @@ bool dist_next_on_index(dist_context_t ctx) {
 
   switch (ctx->_state) {
   case dist_match_state_new_round:
-    while (dat_ac_next_on_index((dat_context_t) hctx)) {
+    while (matcher_next(hctx)) {
       // check single
       if (hctx->out_matched_index->prop & mdi_prop_single) {
         ctx->header.out_matched_index = hctx->out_matched_index;

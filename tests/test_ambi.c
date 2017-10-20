@@ -35,7 +35,7 @@ int main() {
       mdi_t idx = matcher_matched_index(ctx1);
       fprintf(fout, "[%zu,%zu] %.*s(%d) - %s\n",
               ctx1->out_eo - idx->length, ctx1->out_eo,
-              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
+              (int) idx->length, idx->mdi_keyword, idx->wlen, idx->mdi_extra);
       c++;
     }
 //  }

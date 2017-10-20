@@ -35,7 +35,7 @@ int main() {
     while (matcher_next(context)) {
       mdi_t idx = matcher_matched_index(context);
       fprintf(fout, "%.*s(%d) - %s\n",
-              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
+              (int) idx->length, idx->mdi_keyword, idx->wlen, idx->mdi_extra);
 //      fprintf(fout, "[%zu,%zu] %.*s(%d) - %s\n",
 //              context->out_eo - idx->length, context->out_eo,
 //              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
@@ -70,7 +70,7 @@ int main2() {
   while (matcher_next(context)) {
     mdi_t idx = matcher_matched_index(context);
     fprintf(stdout, "%.*s(%d) - %s\n",
-            (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
+            (int) idx->length, idx->mdi_keyword, idx->wlen, idx->mdi_extra);
   };
   matcher_free_context(context);
   matcher_destruct(matcher);
