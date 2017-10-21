@@ -28,7 +28,26 @@ typedef struct mdi_map_node {
   deque_node_s deque_elem; // queue for context out
 } mdim_node_s;
 
-typedef avl_t mdimap_t;
+typedef enum mdim_bucket_type {
+  mdim_bucket_type_empty = 0,
+  mdim_bucket_type_direct = 1,
+  mdim_bucket_type_avl = 2
+} mdim_bucket_type_e;
+
+typedef struct mdi_map_bucket {
+  union {
+    avl_t avl;
+    mdim_node_t data;
+  } store;
+  mdim_bucket_type_e type;
+} mdim_bucket_s, *mdim_bucket_t;
+
+typedef struct mdi_map {
+  mdim_bucket_s *bucket;
+  size_t size, len, rank;
+  bool replace;
+  bool rehash;
+} mdimap_s, *mdimap_t;
 
 mdimap_t mdimap_construct(bool replace);
 bool mdimap_destruct(mdimap_t map);

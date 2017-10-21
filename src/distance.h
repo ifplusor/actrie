@@ -46,6 +46,7 @@ typedef struct dist_context {
   deque_node_s _tail_cache;
   mdimap_t _tail_map;
   mdim_node_t _tail_node;
+  size_t _tail_so;
 
   context_t _head_ctx, _tail_ctx, _digit_ctx;
   dist_match_state _state;

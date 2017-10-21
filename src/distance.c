@@ -398,11 +398,12 @@ bool dist_next_on_index(dist_context_t ctx) {
           if (!number_bitmap[content[tail_so]])break;
         }
         // check prefix
+        ctx->_tail_so = tail_so;
         matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
   case dist_match_state_check_prefix:
         while (dat_prefix_next_on_index((dat_context_t) dctx)) {
           if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-            return dist_construct_out(ctx, tail_so + dctx->out_eo);
+            return dist_construct_out(ctx, ctx->_tail_so + dctx->out_eo);
         }
         ctx->_state = dist_match_state_new_round;
         continue; // next round
