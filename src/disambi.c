@@ -92,7 +92,8 @@ ambi_matcher_t ambi_construct_by_dict(match_dict_t dict,
   trie_t trie = NULL;
 
   do {
-    trie = trie_construct_by_dict(dict, filter, false);
+    trie_config_s config = {.filter=filter, enable_automation=false};
+    trie = trie_construct_by_dict(dict, &config);
     if (trie == NULL) break;
 
     matcher = amalloc(sizeof(struct ambi_matcher));

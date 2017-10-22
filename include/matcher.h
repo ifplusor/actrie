@@ -18,7 +18,7 @@ typedef enum matcher_type {
   matcher_type_dat = 0,
   matcher_type_acdat,
   matcher_type_ambi,
-  matcher_type_distance,
+  matcher_type_dist,
   matcher_type_size
 } matcher_type_e;
 

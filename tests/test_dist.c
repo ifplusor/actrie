@@ -7,7 +7,7 @@
 int main() {
   char content[150000] = "苹果的果实134较饱满 较饱满";
 
-  matcher_t matcher = matcher_construct_by_file(matcher_type_distance,
+  matcher_t matcher = matcher_construct_by_file(matcher_type_dist,
                                                 "rule");
 //                                                "n.dict");
 //  FILE *fp = fopen("split.dict","w");

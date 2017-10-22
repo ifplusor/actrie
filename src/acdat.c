@@ -80,8 +80,8 @@ static void dat_construct_by_dfs(datrie_t self, trie_t origin,
   size_t pos;
 
   dat_node_t pDatNode = dat_access_node(self, datindex);
-  pDatNode->dat_idxlist = pNode->trie_dictidx;
-  aobj_retain(pDatNode->dat_idxlist);
+  pDatNode->dat_idxlist = pNode->trie_idxlist;
+  _retain(pDatNode->dat_idxlist);
 
   if (pNode->trie_child == 0) return;
 
@@ -249,10 +249,15 @@ bool dat_destruct(datrie_t p) {
     int i;
     if (p->_dict != NULL) dict_release(p->_dict);
     for (i = 0; i < POOL_REGION_SIZE; ++i) {
-      if (p->_nodepool[i] != NULL) {
-        // TODO: release mdi
-        afree(p->_nodepool[i]);
+      if (p->_nodepool[i] == NULL) break;
+      if (p->_nodepool[i + 1] != NULL) {
+        // release list
+        for (size_t j = 0; j < POOL_POSITION_SIZE; j++) {
+          if (p->_nodepool[i][j].check == 0) continue;
+          _release(p->_nodepool[i][j].dat_idxlist);
+        }
       }
+      afree(p->_nodepool[i]);
     }
     afree(p);
     return true;
@@ -331,9 +336,9 @@ bool dat_reset_context(dat_context_t context, unsigned char content[],
 
 bool dat_next_on_index(dat_context_t ctx) {
   if (ctx->_list != NULL) {
-    ctx->_list = cdr(ctx->_list);
+    ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       return true;
     }
   }
@@ -349,7 +354,7 @@ bool dat_next_on_index(dat_context_t ctx) {
     if (pNext->dat_idxlist != NULL) {
       ctx->_matched = pNext;
       ctx->_list = ctx->_matched->dat_idxlist;
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       ctx->header.out_eo++;
       return true;
     }
@@ -370,7 +375,7 @@ bool dat_next_on_index(dat_context_t ctx) {
       if (pNext->dat_idxlist != NULL) {
         ctx->_matched = pNext;
         ctx->_list = ctx->_matched->dat_idxlist;
-        ctx->header.out_matched_index = car(ctx->_list);
+        ctx->header.out_matched_index = _(list, ctx->_list, car);
         ctx->header.out_eo++;
         return true;
       }
@@ -385,7 +390,7 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->dat_failed);
     if (ctx->_matched->dat_idxlist != NULL) {
       ctx->_list = ctx->_matched->dat_idxlist;
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       return true;
     }
   }
@@ -408,7 +413,7 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
         if (pNext->dat_idxlist != NULL) {
           ctx->_matched = pNext;
           ctx->_list = ctx->_matched->dat_idxlist;
-          ctx->header.out_matched_index = car(ctx->_list);
+          ctx->header.out_matched_index = _(list, ctx->_list, car);
           ctx->header.out_eo++;
           return true;
         }
@@ -422,9 +427,9 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
 bool dat_ac_next_on_index(dat_context_t ctx) {
   /* 检查 index 列表 */
   if (ctx->_list != NULL) {
-    ctx->_list = cdr(ctx->_list);
+    ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       return true;
     }
   }
@@ -434,7 +439,7 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->dat_failed);
     if (ctx->_matched->dat_idxlist != NULL) {
       ctx->_list = ctx->_matched->dat_idxlist;
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       return true;
     }
   }
@@ -457,7 +462,7 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
         if (pNext->dat_idxlist != NULL) {
           ctx->_matched = pNext;
           ctx->_list = ctx->_matched->dat_idxlist;
-          ctx->header.out_matched_index = car(ctx->_list);
+          ctx->header.out_matched_index = _(list, ctx->_list, car);
           ctx->header.out_eo++;
           return true;
         }
@@ -471,9 +476,9 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
 bool dat_prefix_next_on_index(dat_context_t ctx) {
   /* 检查 index 列表 */
   if (ctx->_list != NULL) {
-    ctx->_list = cdr(ctx->_list);
+    ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       return true;
     }
   }
@@ -489,7 +494,7 @@ bool dat_prefix_next_on_index(dat_context_t ctx) {
     if (pNext->dat_idxlist != NULL) {
       ctx->_matched = pNext;
       ctx->_list = ctx->_matched->dat_idxlist;
-      ctx->header.out_matched_index = car(ctx->_list);
+      ctx->header.out_matched_index = _(list, ctx->_list, car);
       ctx->header.out_eo++;
       return true;
     }

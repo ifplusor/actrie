@@ -15,7 +15,7 @@ ELSEIF (UNIX)
     add_compile_options(-fPIC)
     IF (NOT CMAKE_BUILD_TYPE)
         message("not defined CMAKE_BUILD_TYPE, use -O2")
-        add_compile_options(-O2 -Wall)
+        add_compile_options(-g -Wall)
     ENDIF ()
 ENDIF ()
 
@@ -69,6 +69,7 @@ set(ALIB_SOURCE_FILES
         ${ALIB_DIR}/src/amem.c
         ${ALIB_DIR}/src/aobj.c
         ${ALIB_DIR}/src/astr.c
+        ${ALIB_DIR}/src/dynastr.c
         ${ALIB_DIR}/src/acom.c
         ${ALIB_DIR}/src/list.c
         ${ALIB_DIR}/src/dlnk.c
@@ -78,8 +79,8 @@ set(ALIB_SOURCE_FILES
         ${ALIB_DIR}/src/dynabuf.c
         ${ALIB_DIR}/src/utf8.c)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 add_executable(test_profile
         ${ALIB_SOURCE_FILES}
         ${ACTRIE_SOURCE_FILES}

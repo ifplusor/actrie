@@ -90,11 +90,11 @@ match_dict_t dict_alloc() {
     if (p == NULL) break;
 
     p->_map = NULL;
-    p->buffer = dynabuf_alloc();
-    if (p->buffer == NULL) break;
+//    p->buffer = dynabuf_alloc();
+//    if (p->buffer == NULL) break;
 
-    if (!dynabuf_init(p->buffer, 0, true))
-      break;
+//    if (!dynabuf_init(p->buffer, 0, true))
+//      break;
 
     p->index = NULL;
     p->_ref_count = 1;
@@ -110,7 +110,7 @@ match_dict_t dict_alloc() {
   } while (0);
 
   if (p != NULL) {
-    dynabuf_free(p->buffer);
+//    dynabuf_free(p->buffer);
     afree(p);
   }
 
@@ -124,12 +124,28 @@ match_dict_t dict_retain(match_dict_t dict) {
   return dict;
 }
 
+bool dict_clean(match_dict_t dict) {
+  if (dict == NULL) return false;
+  for (size_t i = 0; i < dict->idx_count; i++) {
+    mdi_t idx = &dict->index[i];
+    if (idx->prop & mdi_prop_bufkey) {
+      _release(cstr2dstr(idx->_keyword));
+    }
+    if (idx->prop & mdi_prop_bufextra) {
+      _release(cstr2dstr(idx->_extra));
+    }
+  }
+  free(dict->index);
+  dict->index = NULL;
+
+  return true;
+}
+
 void dict_release(match_dict_t dict) {
   if (dict != NULL) {
     dict->_ref_count--;
     if (dict->_ref_count == 0) {
-      free(dict->index);
-      dynabuf_free(dict->buffer);
+      dict_clean(dict);
       dict_add_index_filter_free(dict->add_index_filter);
       afree(dict);
     }
@@ -141,8 +157,7 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
     dict->before_reset(dict, &index_count, &buffer_size);
 
   // free memory
-  free(dict->index);
-  dynabuf_clean(dict->buffer);
+  dict_clean(dict);
 
   // reset
   dict->idx_count = 0;
@@ -150,12 +165,6 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   dict->index = malloc(sizeof(mdi_s) * dict->idx_size);
   if (dict->index == NULL)
     return false;
-
-  /* 增加缓存大小, 防止溢出 */
-  if (!dynabuf_init(dict->buffer, buffer_size + 3, false)) {
-    free(dict->index);
-    return false;
-  }
 
   memset(dict->index, 0, sizeof(mdi_s) * dict->idx_size);
   dict->max_key_length = 0;
@@ -167,7 +176,6 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
 bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
                     strlen_s keyword, strlen_s extra, void *tag,
                     mdi_prop_f prop) {
-  strcur_s key_cur, extra_cur;
 
   if (dict->idx_count == dict->idx_size) {
     // extend memory
@@ -188,47 +196,44 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
 
   // because we use standard c string, must use dynabuf_write_with_zero
 
+  aobj ds = NULL;
   if (prop & mdi_prop_bufkey) {
     aobj list = trie_search(dict->_map, keyword.ptr, keyword.len);
     if (list == NULL) {
-      key_cur = dynabuf_write_with_zero(dict->buffer, keyword.ptr, keyword.len);
+      ds = dstr(keyword.ptr, keyword.len);
       // store suffix
-      for (size_t i = 0; i < 1/*keyword.len*/; i++) {
-        trie_add_keyword(dict->_map, keyword.ptr + i, keyword.len,
-                         TAG_INTEGER(key_cur.idx + i));
-      }
+      trie_add_keyword(dict->_map, keyword.ptr, keyword.len, ds);
       if (keyword.len > dict->max_key_length)
         dict->max_key_length = keyword.len;
     } else {
-      key_cur.idx = GET_INTEGER(car(list));
+      ds = _(list, list, car);
+      _retain(ds);
     }
   } else {
-    key_cur.ptr = keyword.ptr;
+    ds = keyword.ptr;
   }
-  dict->index[dict->idx_count]._keyword = key_cur;
+  dict->index[dict->idx_count]._keyword = ds; // key_cur;
 
   if (prop & mdi_prop_bufextra) {
     if (extra.len == 0) {
-      extra_cur = dynabuf_empty_cur(dict->buffer);
+      ds = NULL;
     } else {
       aobj list = trie_search(dict->_map, extra.ptr, extra.len);
       if (list == NULL) {
-        extra_cur = dynabuf_write_with_zero(dict->buffer, extra.ptr, extra.len);
+        ds = dstr(extra.ptr, extra.len);
         // store suffix
-        for (size_t i = 0; i < 1/*keyword.len*/; i++) {
-          trie_add_keyword(dict->_map, extra.ptr + i, keyword.len,
-                           TAG_INTEGER(extra_cur.ptr + i));
-        }
+        trie_add_keyword(dict->_map, extra.ptr, extra.len, ds);
         if (extra.len > dict->max_extra_length)
           dict->max_extra_length = extra.len;
       } else {
-        extra_cur.idx = GET_INTEGER(car(list));
+        ds = _(list, list, car);
+        _retain(ds);
       }
     }
   } else {
-    extra_cur.ptr = extra.ptr;
+    ds = extra.ptr;
   }
-  dict->index[dict->idx_count]._extra = extra_cur;
+  dict->index[dict->idx_count]._extra = ds;
 
   dict->index[dict->idx_count]._tag = tag;
   dict->index[dict->idx_count].prop = prop;
@@ -330,20 +335,19 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
   trie_destruct(self->_map);
   self->_map = NULL;
 
-  // post-process: change idx to ptr
+  // post-process: change dstr to cstr
   for (size_t i = 0; i < self->idx_count; i++) {
     mdi_t idx = self->index + i;
     if (idx->prop & mdi_prop_bufkey)
-      idx->_keyword = dynabuf_cur2ptr(self->buffer, idx->_keyword);
+      idx->_keyword = dstr2cstr(idx->_keyword);
     if (idx->prop & mdi_prop_bufextra) {
-      idx->_extra = dynabuf_cur2ptr(self->buffer, idx->_extra);
+      idx->_extra = dstr2cstr(idx->_extra);
       // replace NULL with ""
       if (idx->mdi_extra == NULL) idx->mdi_extra = str_empty;
     }
     if (idx->prop & mdi_prop_tag_id)
       idx->_tag = self->index + (size_t) idx->_tag;
   }
-  self->buffer->_prop |= dynabuf_prop_fixed;
 
   return true;
 }

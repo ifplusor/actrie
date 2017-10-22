@@ -12,14 +12,14 @@ const matcher_func_t const matcher_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_matcher_func,
     [matcher_type_acdat] = &dat_matcher_func,
     [matcher_type_ambi] = &ambi_matcher_func,
-    [matcher_type_distance] = &dist_matcher_func,
+    [matcher_type_dist] = &dist_matcher_func,
 };
 
 const context_func_t const context_func_table[matcher_type_size] = {
     [matcher_type_dat] = &dat_context_func,
     [matcher_type_acdat] = &acdat_context_func,
     [matcher_type_ambi] = &ambi_context_func,
-    [matcher_type_distance] = &dist_context_func,
+    [matcher_type_dist] = &dist_context_func,
 };
 
 matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
@@ -37,7 +37,7 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
       matcher = (matcher_t)
           ambi_construct(vocab, mdi_prop_normal | mdi_prop_ambi, true);
       break;
-    case matcher_type_distance:
+    case matcher_type_dist:
       matcher = (matcher_t) dist_construct(vocab, true);
       break;
     default:break;

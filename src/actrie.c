@@ -58,8 +58,7 @@ trie_node_t trie_access_node_export(trie_t self, size_t index) {
   return &self->_nodepool[region][position];
 }
 
-bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
-                      mdi_t index) {
+bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, aobj obj) {
   trie_node_t pNode = self->root;
   size_t iNode = 0; /* iParent保存pNode的index */
   size_t i = 0;
@@ -123,7 +122,9 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
 
   /* 头插法链接 dict_index */
   // NOTE: 注意内存泄漏
-  pNode->trie_dictidx = cons(index, pNode->trie_dictidx);
+  aobj list = pNode->trie_idxlist;
+  pNode->trie_idxlist = _(list, obj, cons, list);
+  _release(list);
 
   return true;
 }
@@ -357,7 +358,7 @@ void trie_destruct(trie_t self) {
     for (int i = 0; i < POOL_REGION_SIZE; i++) {
       if (self->_nodepool[i] != NULL) {
         for (int j = 0; j < POOL_POSITION_SIZE; j++) {
-          aobj_release(self->_nodepool[i][j].trie_dictidx);
+          _release(self->_nodepool[i][j].trie_idxlist);
         }
         afree(self->_nodepool[i]);
       }
@@ -366,55 +367,41 @@ void trie_destruct(trie_t self) {
   }
 }
 
-trie_t trie_construct_by_dict(match_dict_t dict,
-                              mdi_prop_f filter,
-                              bool enable_automation) {
-#ifdef DEBUG
-  long long t0, t1, t2, t3, t4;
-#endif
-  trie_t prime_trie = trie_alloc();
-  if (prime_trie == NULL) return NULL;
+trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config) {
+  trie_t prime_trie = NULL;
 
-  prime_trie->_dict = dict_retain(dict);
-#ifdef DEBUG
-  t0 = system_millisecond();
-#endif
-  for (size_t i = 0; i < dict->idx_count; i++) {
-    mdi_t index = &dict->index[i];
-    if ((index->prop & filter) == 0) continue;
-    if (!trie_add_keyword(prime_trie,
-                          dynabuf_content(dict->buffer, index->_keyword),
-                          index->length,
-                          index)) {
-      fprintf(stderr, "%s(%d) - fatal: encounter error when add keywords!\n",
-              __FILE__, __LINE__);
-      trie_destruct(prime_trie);
-      prime_trie = NULL;
-      break;
+  do {
+    prime_trie = trie_alloc();
+    if (prime_trie == NULL) break;
+
+    prime_trie->_dict = dict_retain(dict);
+
+    size_t i = 0;
+    for (; i < dict->idx_count; i++) {
+      mdi_t index = &dict->index[i];
+      if ((index->prop & config->filter) == 0) continue;
+      if (!trie_add_keyword(prime_trie, index->_keyword, index->length, index)) {
+        fprintf(stderr, "%s(%d) - error: encounter error when add keywords!\n",
+                __FILE__, __LINE__);
+        break;
+      }
     }
-  }
-#ifdef DEBUG
-  t1 = system_millisecond();
-  fprintf(stderr, "s1: %ld ms\n", t1 - t0);
-#endif
-  if (prime_trie != NULL) {
+    if (i != dict->idx_count) break;
+
     trie_sort_to_line(prime_trie);  /* sort node for bfs and binary-search */
-#ifdef DEBUG
-    t2 = system_millisecond();
-    fprintf(stderr, "s2: %ld ms\n", t2 - t1);
-#endif
-    if (enable_automation) {
+
+    if (config->enable_automation)
       trie_construct_automation(prime_trie);        /* 构建自动机 */
-#ifdef DEBUG
-      t3 = system_millisecond();
-      fprintf(stderr, "s3: %ld ms\n", t3 - t2);
-#endif
-    }
-  }
-  return prime_trie;
+
+    return prime_trie;
+  } while (0);
+
+  trie_destruct(prime_trie);
+
+  return NULL;
 }
 
-trie_t trie_construct(vocab_t vocab, bool enable_automation) {
+trie_t trie_construct(vocab_t vocab, trie_config_t config) {
   trie_t prime_trie = NULL;
   match_dict_t dict = NULL;
 
@@ -424,15 +411,12 @@ trie_t trie_construct(vocab_t vocab, bool enable_automation) {
   if (dict == NULL) return NULL;
 
   if (dict_parse(dict, vocab)) {
-    prime_trie = trie_construct_by_dict(dict,
-                                        mdi_prop_reserved,
-                                        enable_automation);
+    prime_trie = trie_construct_by_dict(dict, config);
   }
 
   dict_release(dict);
 
-  fprintf(stderr,
-          "construct trie %s!\n",
+  fprintf(stderr, "construct trie %s!\n",
           prime_trie != NULL ? "success" : "failed");
   return prime_trie;
 }
@@ -463,5 +447,5 @@ aobj trie_search(trie_t self, const unsigned char keyword[], size_t len) {
     }
   }
 
-  return pNode->trie_dictidx;
+  return pNode->trie_idxlist;
 }

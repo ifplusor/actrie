@@ -189,10 +189,18 @@ dist_matcher_t dist_construct_by_dict(match_dict_t dict,
   trie_t tail_trie = NULL;
 
   do {
-    head_trie = trie_construct_by_dict(dict, mdi_prop_head | mdi_prop_single, false);
+    trie_config_s config = {
+        .filter = mdi_prop_head | mdi_prop_single,
+        .enable_automation = false
+    };
+    head_trie = trie_construct_by_dict(dict, &config);
     if (head_trie == NULL) break;
 
-    tail_trie = trie_construct_by_dict(dict, mdi_prop_tail, false);
+    config = (trie_config_s) {
+        .filter = mdi_prop_tail,
+        .enable_automation = false
+    };
+    tail_trie = trie_construct_by_dict(dict, &config);
     if (tail_trie == NULL) break;
 
     matcher = amalloc(sizeof(struct dist_matcher));

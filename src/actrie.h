@@ -26,10 +26,10 @@ typedef struct trie_node { /* 十字链表实现字典树 */
 #define trie_parent   trie_pd.parent
 #define trie_datidx   trie_pd.datidx
   union {
-    aobj dictidx;
+    aobj idxlist;
     size_t placeholder;
   } trie_dp;
-#define trie_dictidx  trie_dp.dictidx
+#define trie_idxlist  trie_dp.idxlist
 #define trie_p0       trie_dp.placeholder
   unsigned char len;  /* 一个结点只存储 1 byte 数据 */
   unsigned char key;
@@ -44,15 +44,17 @@ typedef struct trie {
   match_dict_t _dict;
 } trie_s, *trie_t;
 
-trie_t trie_construct_by_dict(match_dict_t dict,
-                              mdi_prop_f filter,
-                              bool enable_automation);
-trie_t trie_construct(vocab_t vocab, bool enable_automation);
+typedef struct trie_config {
+  mdi_prop_f filter;
+  bool enable_automation;
+} trie_config_s, *trie_config_t;
+
+trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config);
+trie_t trie_construct(vocab_t vocab, trie_config_t config);
 void trie_destruct(trie_t self);
 
 trie_t trie_alloc();
-bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len,
-                      mdi_t index);
+bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, aobj obj);
 aobj trie_search(trie_t self, const unsigned char keyword[], size_t len);
 void trie_rebuild_parent_relation(trie_t self);
 

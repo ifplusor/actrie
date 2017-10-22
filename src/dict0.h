@@ -38,7 +38,6 @@ typedef struct match_dict {
   mdi_t index;
   size_t idx_size, idx_count;
 
-  dynabuf_t buffer; /* the content in buffer is const*/
   void *_map;       /* reserved, duplicate checking for buffer */
 
   size_t max_key_length, max_extra_length;
