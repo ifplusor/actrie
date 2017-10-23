@@ -33,7 +33,7 @@ const context_func_l dist_context_func = {
  * - A.{0,5}B
  */
 static const char
-    *pattern = "(.*)(\\.\\*\\?|(\\\\d|\\.)\\{0,([0-9]|1[0-5])\\})(.*)";
+    *pattern = "^(.*)(\\.\\*\\?|(\\\\d|\\.)\\{0,([0-9]|1[0-5])\\})(.*)$";
 static regex_t reg;
 static bool pattern_compiled = false;
 
@@ -83,12 +83,12 @@ size_t max_alternation_length(strlen_s keyword, bool nest) {
   return max;
 }
 
-bool dist_dict_add_index(match_dict_t dict,
-                         dict_add_indix_filter filter,
-                         strlen_s keyword,
-                         strlen_s extra,
-                         void * tag,
+bool dist_dict_add_index(match_dict_t dict, matcher_config_t config,
+                         strlen_s keyword, strlen_s extra, void * tag,
                          mdi_prop_f prop) {
+  dist_config_t dist_config = config->config;
+  matcher_config_t head_config = dist_config->head;
+  matcher_config_t tail_config = dist_config->tail;
   int err;
 
   if (!pattern_compiled) {
@@ -106,11 +106,13 @@ bool dist_dict_add_index(match_dict_t dict,
   if (keyword.len == 0) return true;
 
   regmatch_t pmatch[6];
-  err = regexec(&reg, keyword.ptr, 6, pmatch, 0);
+  char *dup = astrndup(keyword.ptr, keyword.len);
+  err = regexec(&reg, dup, 6, pmatch, 0);
+  afree(dup);
   if (err == REG_NOMATCH) {
     // single
-    filter->add_index(dict, filter->next, keyword, extra, tag,
-                      mdi_prop_single | prop);
+    head_config->add_index(dict, head_config, keyword, extra, tag,
+                           mdi_prop_single | prop);
     return true;
   } else if (err != REG_NOERROR) {
     return false;
@@ -145,7 +147,7 @@ bool dist_dict_add_index(match_dict_t dict,
 
   // store original keyword
   void *key_tag = (void *) dict->idx_count;
-  dict_add_index(dict, NULL, keyword, extra, tag, prop);
+  dict_add_index(dict, config, keyword, extra, tag, prop);
 
   // store processed keyword
   strlen_s head = {
@@ -160,15 +162,31 @@ bool dist_dict_add_index(match_dict_t dict,
 
   size_t tail_max_len = max_alternation_length(tail, true);
 
-  filter->add_index(dict, filter->next, head,
-                    (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
-                    key_tag, mdi_prop_head | base_prop);
+  head_config->add_index(dict, head_config, head,
+                         (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
+                         key_tag, mdi_prop_head | base_prop);
 
-  filter->add_index(dict, filter->next, tail,
-                    (strlen_s) {.ptr = (char *) distance, .len = 0},
-                    key_tag, mdi_prop_tail | base_prop);
+  tail_config->add_index(dict, tail_config, tail,
+                         (strlen_s) {.ptr = (char *) distance, .len = 0},
+                         key_tag, mdi_prop_tail | base_prop);
 
   return true;
+}
+
+matcher_config_t dist_matcher_config(uint8_t id, matcher_config_t head,
+                                     matcher_config_t tail) {
+  matcher_config_t config =
+      amalloc(sizeof(matcher_config_s) + sizeof(dist_config_s));
+  if (config != NULL) {
+    config->id = id;
+    config->type = matcher_type_dist;
+    config->add_index = dist_dict_add_index;
+    config->config = config->buf;
+    dist_config_t dist_config = (dist_config_t) config->buf;
+    dist_config->head = head;
+    dist_config->tail = tail;
+  }
+  return config;
 }
 
 bool dist_destruct(dist_matcher_t self) {
@@ -182,80 +200,38 @@ bool dist_destruct(dist_matcher_t self) {
   return false;
 }
 
-dist_matcher_t dist_construct_by_dict(match_dict_t dict,
-                                      bool enable_automation) {
+matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
   dist_matcher_t matcher = NULL;
-  trie_t head_trie = NULL;
-  trie_t tail_trie = NULL;
+  matcher_t head_matcher = NULL;
+  matcher_t tail_matcher = NULL;
+  dist_config_t dist_config = conf->config;
 
   do {
-    trie_config_s config = {
-        .filter = mdi_prop_head | mdi_prop_single,
-        .enable_automation = false
-    };
-    head_trie = trie_construct_by_dict(dict, &config);
-    if (head_trie == NULL) break;
+    head_matcher = matcher_construct_by_dict(dict, dist_config->head);
+    if (head_matcher == NULL) break;
 
-    config = (trie_config_s) {
-        .filter = mdi_prop_tail,
-        .enable_automation = false
-    };
-    tail_trie = trie_construct_by_dict(dict, &config);
-    if (tail_trie == NULL) break;
+    tail_matcher = matcher_construct_by_dict(dict, dist_config->tail);
+    if (tail_matcher == NULL) break;
 
     matcher = amalloc(sizeof(struct dist_matcher));
     if (matcher == NULL) break;
 
     matcher->_dict = dict_retain(dict);
 
-    matcher->_head_matcher = (matcher_t)
-        dat_construct_by_trie(head_trie, enable_automation);
-    matcher->_head_matcher->_func = dat_matcher_func;
-    matcher->_head_matcher->_type =
-        enable_automation ? matcher_type_acdat : matcher_type_dat;
-    trie_destruct(head_trie);
+    matcher->_head_matcher = head_matcher;
+    matcher->_tail_matcher = tail_matcher;
 
-    matcher->_tail_matcher = (matcher_t)
-        dat_construct_by_trie(tail_trie, enable_automation);
-    matcher->_tail_matcher->_func = dat_matcher_func;
-    matcher->_tail_matcher->_type =
-        enable_automation ? matcher_type_acdat : matcher_type_dat;
-    trie_destruct(tail_trie);
+    matcher->header._type = conf->type;
+    matcher->header._func = dist_matcher_func;
 
-    return matcher;
+    return (matcher_t) matcher;
   } while(0);
 
   // clean
-  trie_destruct(head_trie);
-  trie_destruct(tail_trie);
+  matcher_destruct(head_matcher);
+  matcher_destruct(tail_matcher);
 
   return NULL;
-}
-
-dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation) {
-  dist_matcher_t dist_matcher = NULL;
-  match_dict_t dict = NULL;
-
-  if (vocab == NULL) return NULL;
-
-  dict = dict_alloc();
-  if (dict == NULL) return NULL;
-  dict->add_index_filter =
-      dict_add_index_filter_wrap(dict->add_index_filter, dict_add_alternation_index);
-  dict->add_index_filter =
-      dict_add_index_filter_wrap(dict->add_index_filter, dist_dict_add_index);
-  dict->before_reset = dist_dict_before_reset;
-
-  if (dict_parse(dict, vocab)) {
-    dist_matcher = dist_construct_by_dict(dict, enable_automation);
-  }
-
-  dict_release(dict);
-
-  fprintf(stderr,
-          "construct trie %s!\n",
-          dist_matcher != NULL ? "success" : "failed");
-  return dist_matcher;
 }
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher) {
@@ -282,6 +258,9 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher) {
     if (ctx->_mdiqn_pool == NULL) break;
     ctx->_tail_map = mdimap_construct(false);
     if (ctx->_tail_map == NULL) break;
+
+    ctx->header._type = matcher->header._type;
+    ctx->header._func = dist_context_func;
 
     return ctx;
   } while (0);
@@ -399,20 +378,20 @@ bool dist_next_on_index(dist_context_t ctx) {
       // check number
       size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
       if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
-        ctx->_state = dist_match_state_check_prefix;
-        // skip number
-        size_t tail_so = hctx->out_eo;
-        while (dist--) { tail_so++;
-          if (!number_bitmap[content[tail_so]])break;
-        }
-        // check prefix
-        ctx->_tail_so = tail_so;
-        matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
-  case dist_match_state_check_prefix:
-        while (dat_prefix_next_on_index((dat_context_t) dctx)) {
-          if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-            return dist_construct_out(ctx, ctx->_tail_so + dctx->out_eo);
-        }
+//        ctx->_state = dist_match_state_check_prefix;
+//        // skip number
+//        size_t tail_so = hctx->out_eo;
+//        while (dist--) { tail_so++;
+//          if (!number_bitmap[content[tail_so]])break;
+//        }
+//        // check prefix
+//        ctx->_tail_so = tail_so;
+//        matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
+//  case dist_match_state_check_prefix:
+//        while (dat_prefix_next_on_index((dat_context_t) dctx)) {
+//          if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
+//            return dist_construct_out(ctx, ctx->_tail_so + dctx->out_eo);
+//        }
         ctx->_state = dist_match_state_new_round;
         continue; // next round
       }

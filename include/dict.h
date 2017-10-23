@@ -8,54 +8,60 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef enum match_dict_index_prop {
-  mdi_prop_empty = 0x00,
-  mdi_prop_reserved = 0x01,
+#define mdi_prop_empty = (0x00)
+#define mdi_prop_reserved (0x01)
 
-  // store attr
-  mdi_prop_bufkey = 0x01 << 1,
-  mdi_prop_bufextra = 0x01 << 2,
+// store attr
+#define mdi_prop_bufkey (0x01 << 1)
+#define mdi_prop_bufextra (0x01 << 2)
 
-  // word attr
-  mdi_prop_word = 0x01 << 3,
-  mdi_prop_alnum = 0x01 << 4,
+// word attr
+#define mdi_prop_word (0x01 << 3)
+#define mdi_prop_alnum (0x01 << 4)
 
-  // ambi attr
-  mdi_prop_normal = 0x01 << 5,
-  mdi_prop_ambi = 0x01 << 6,
+// ambi attr
+#define mdi_prop_clearly (0x01 << 5)
+#define mdi_prop_normal (0x01 << 6)
+#define mdi_prop_ambi (0x01 << 7)
 
-  // dist attr
-  mdi_prop_single = 0x01 << 7,
-  mdi_prop_head = 0x01 << 8,
-  mdi_prop_tail = 0x01 << 9,
-  mdi_prop_dist_digit = 0x01 << 10,
+// dist attr
+#define mdi_prop_single (0x01 << 8)
+#define mdi_prop_head (0x01 << 9)
+#define mdi_prop_tail (0x01 << 10)
+#define mdi_prop_dist_digit (0x01 << 11)
 
-  // post process attr
-  mdi_prop_tag_id = 0x01 << 11,
+// post process attr
+#define mdi_prop_tag_id (0x01 << 12)
 
-} mdi_prop_f;
+#define mdi_prop_matcher_mask 0xFF
+#define mdi_prop_get_matcher(prop) (((prop) >> 16) & mdi_prop_matcher_mask)
+#define mdi_prop_set_matcher(prop, matcher) ((prop) | (((matcher) & mdi_prop_matcher_mask) << 16))
 
-typedef struct mdi_prop_bitmap {
-  int reserved : 1;
+typedef uint32_t mdi_prop_f;
 
-  int bufkey : 1;
-  int bufextra : 1;
-
-  int word : 1;
-  int alnum : 1;
-
-  int normal : 1;
-  int ambi : 1;
-
-  int single : 1;
-  int head : 1;
-  int tail : 1;
-  int dist_digit : 1;
-
-  int tag_id : 1;
-
-  int placeholder : 24;
-} mdi_prop_bp;
+//struct mdi_prop_bitmap {
+//  uint32_t reserved : 1;
+//
+//  uint32_t bufkey : 1;
+//  uint32_t bufextra : 1;
+//
+//  uint32_t word : 1;
+//  uint32_t alnum : 1;
+//
+//  uint32_t normal : 1;
+//  uint32_t ambi : 1;
+//
+//  uint32_t single : 1;
+//  uint32_t head : 1;
+//  uint32_t tail : 1;
+//  uint32_t dist_digit : 1;
+//
+//  uint32_t tag_id : 1;
+//
+//  uint32_t        : 0;
+//
+//  uint32_t matcher : 8;
+//};
 
 /*
  * optimize for cache:

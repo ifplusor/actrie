@@ -5,6 +5,7 @@
 #ifndef _ACTRIE_MATCHER_H_
 #define _ACTRIE_MATCHER_H_
 
+#include "../src/configure.h"
 #include <dict.h>
 
 #ifdef __cplusplus
@@ -13,14 +14,6 @@ extern "C" {
 
 // matcher API
 // ==============
-
-typedef enum matcher_type {
-  matcher_type_dat = 0,
-  matcher_type_acdat,
-  matcher_type_ambi,
-  matcher_type_dist,
-  matcher_type_size
-} matcher_type_e;
 
 struct _matcher;
 typedef struct _matcher *matcher_t;

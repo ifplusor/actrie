@@ -8,45 +8,80 @@
 #include "disambi.h"
 #include "distance.h"
 
-const matcher_func_t const matcher_func_table[matcher_type_size] = {
-    [matcher_type_dat] = &dat_matcher_func,
-    [matcher_type_acdat] = &dat_matcher_func,
-    [matcher_type_ambi] = &ambi_matcher_func,
-    [matcher_type_dist] = &dist_matcher_func,
-};
+matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_config_t conf) {
+  matcher_t matcher = NULL;
+  switch (conf->type) {
+    case matcher_type_alteration:
+      matcher = matcher_construct_by_dict(dict, conf->config);
+      break;
+    case matcher_type_acdat:
+    case matcher_type_dat:
+      matcher = dat_construct(dict, conf);
+      break;
+    case matcher_type_ambi:
+      matcher = ambi_construct(dict, conf);
+      break;
+    case matcher_type_dist:
+      matcher = dist_construct(dict, conf);
+      break;
+    default:
+      break;
+  }
+  return matcher;
+}
 
-const context_func_t const context_func_table[matcher_type_size] = {
-    [matcher_type_dat] = &dat_context_func,
-    [matcher_type_acdat] = &acdat_context_func,
-    [matcher_type_ambi] = &ambi_context_func,
-    [matcher_type_dist] = &dist_context_func,
-};
+matcher_t matcher_construct_by_vocab(vocab_t vocab, matcher_config_t conf) {
+  match_dict_t dict = NULL;
+  matcher_t matcher = NULL;
+
+  do {
+    dict = dict_alloc();
+    if (dict == NULL) break;
+
+    if (!dict_parse(dict, vocab, conf)) break;
+
+    matcher = matcher_construct_by_dict(dict, conf);
+  } while (0);
+
+  dict_release(dict);
+
+  return matcher;
+}
 
 matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
   matcher_t matcher = NULL;
+  matcher_config_t dist_config = NULL;
+  matcher_config_t head_config = NULL;
+  matcher_config_t tail_config = NULL;
   if (vocab == NULL) return NULL;
 
-  switch (type) {
-    case matcher_type_dat:
-      matcher = (matcher_t) dat_construct(vocab, false);
-      break;
-    case matcher_type_acdat:
-      matcher = (matcher_t) dat_construct(vocab, true);
-      break;
-    case matcher_type_ambi:
-      matcher = (matcher_t)
-          ambi_construct(vocab, mdi_prop_normal | mdi_prop_ambi, true);
-      break;
-    case matcher_type_dist:
-      matcher = (matcher_t) dist_construct(vocab, true);
-      break;
-    default:break;
-  }
+  uint8_t matcher_id = 0;
+  do {
+    matcher_id++;
+    head_config = matcher_stub_config(matcher_id, NULL);
+    head_config = matcher_wordattr_config(matcher_id, head_config);
+    head_config = dat_matcher_config(matcher_id, true, head_config);
+    head_config = matcher_alternation_config(matcher_id, head_config);
 
-  if (matcher != NULL) {
-    matcher->_type = type;
-    matcher->_func = *matcher_func_table[type];
-  }
+    matcher_id++;
+    head_config = ambi_matcher_config(matcher_id, head_config);
+    head_config = matcher_alternation_config(matcher_id, head_config);
+
+    matcher_id++;
+    tail_config = matcher_stub_config(matcher_id, NULL);
+    tail_config = matcher_wordattr_config(matcher_id, tail_config);
+    tail_config = dat_matcher_config(matcher_id, true, tail_config);
+    tail_config = matcher_alternation_config(matcher_id, tail_config);
+
+    matcher_id++;
+    tail_config = ambi_matcher_config(matcher_id, tail_config);
+    tail_config = matcher_alternation_config(matcher_id, tail_config);
+
+    matcher_id++;
+    dist_config = dist_matcher_config(matcher_id, head_config, tail_config);
+
+    matcher = matcher_construct_by_vocab(vocab, dist_config);
+  } while (0);
 
   return matcher;
 }
@@ -66,44 +101,28 @@ matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
 }
 
 bool matcher_destruct(matcher_t matcher) {
-  if (matcher == NULL) {
-    return false;
-  }
+  if (matcher == NULL) return false;
   return matcher->_func.destruct(matcher);
 }
 
 context_t matcher_alloc_context(matcher_t matcher) {
-  context_t context = NULL;
-  if (matcher == NULL) {
-    return NULL;
-  }
-  context = matcher->_func.alloc_context(matcher);
-  if (context != NULL) {
-    context->_type = matcher->_type;
-    context->_func = context_func_table[context->_type];
-  }
-  return context;
+  if (matcher == NULL) return NULL;
+  return matcher->_func.alloc_context(matcher);
 }
 
 bool matcher_free_context(context_t context) {
-  if (context == NULL) {
-    return false;
-  }
-  return context->_func->free_context(context);
+  if (context == NULL) return false;
+  return context->_func.free_context(context);
 }
 
 bool matcher_reset_context(context_t context, char content[], size_t len) {
-  if (context == NULL) {
-    return false;
-  }
-  return context->_func->reset_context(context, content, len);
+  if (context == NULL) return false;
+  return context->_func.reset_context(context, content, len);
 }
 
 bool matcher_next(context_t context) {
-  if (context == NULL) {
-    return false;
-  }
-  return context->_func->next(context);
+  if (context == NULL) return false;
+  return context->_func.next(context);
 }
 
 inline mdi_t matcher_matched_index(context_t context) {

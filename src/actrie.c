@@ -367,7 +367,7 @@ void trie_destruct(trie_t self) {
   }
 }
 
-trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config) {
+trie_t trie_construct(match_dict_t dict, trie_config_t config) {
   trie_t prime_trie = NULL;
 
   do {
@@ -379,7 +379,7 @@ trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config) {
     size_t i = 0;
     for (; i < dict->idx_count; i++) {
       mdi_t index = &dict->index[i];
-      if ((index->prop & config->filter) == 0) continue;
+      if (mdi_prop_get_matcher(index->prop) != config->filter) continue;
       if (!trie_add_keyword(prime_trie, index->_keyword, index->length, index)) {
         fprintf(stderr, "%s(%d) - error: encounter error when add keywords!\n",
                 __FILE__, __LINE__);
@@ -401,46 +401,23 @@ trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config) {
   return NULL;
 }
 
-trie_t trie_construct(vocab_t vocab, trie_config_t config) {
-  trie_t prime_trie = NULL;
-  match_dict_t dict = NULL;
-
-  if (vocab == NULL) return NULL;
-
-  dict = dict_alloc();
-  if (dict == NULL) return NULL;
-
-  if (dict_parse(dict, vocab)) {
-    prime_trie = trie_construct_by_dict(dict, config);
-  }
-
-  dict_release(dict);
-
-  fprintf(stderr, "construct trie %s!\n",
-          prime_trie != NULL ? "success" : "failed");
-  return prime_trie;
-}
-
 aobj trie_search(trie_t self, const unsigned char keyword[], size_t len) {
   trie_node_t pNode = self->root;
-  size_t iNode = 0; /* iParent保存pNode的index */
   size_t i = 0;
 
   for (i = 0; i < len; ++i) {
     /* 当创建时，使用插入排序的方法，以保证子节点链接关系有序 */
-    size_t iChild = pNode->trie_child, iBrother = 0; // iBrother跟踪iChild
+    size_t iChild = pNode->trie_child; // iBrother跟踪iChild
     trie_node_t pChild = NULL;
     while (iChild != 0) {
       /* 从所有孩子中查找 */
       pChild = trie_access_node(self, iChild);
       if (pChild->key >= keyword[i]) break;
-      iBrother = iChild;
       iChild = pChild->trie_brother;
     }
 
     if (iChild != 0 && pChild->key == keyword[i]) {
       /* 找到 */
-      iNode = iChild;
       pNode = pChild;
     } else {
       return NULL;

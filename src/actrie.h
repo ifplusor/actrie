@@ -45,12 +45,11 @@ typedef struct trie {
 } trie_s, *trie_t;
 
 typedef struct trie_config {
-  mdi_prop_f filter;
+  uint8_t filter;
   bool enable_automation;
 } trie_config_s, *trie_config_t;
 
-trie_t trie_construct_by_dict(match_dict_t dict, trie_config_t config);
-trie_t trie_construct(vocab_t vocab, trie_config_t config);
+trie_t trie_construct(match_dict_t dict, trie_config_t config);
 void trie_destruct(trie_t self);
 
 trie_t trie_alloc();

@@ -64,25 +64,6 @@ const bool number_bitmap[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-void dict_add_index_filter_free(dict_add_indix_filter filter) {
-  while (filter != NULL) {
-    dict_add_indix_filter next = filter->next;
-    afree(filter);
-    filter = next;
-  }
-}
-
-dict_add_indix_filter dict_add_index_filter_wrap(dict_add_indix_filter filter,
-                                                 dict_add_index_func func) {
-  dict_add_indix_filter node =
-      amalloc(sizeof(struct match_dict_add_index_filter));
-  if (node == NULL) return NULL;
-
-  node->add_index = func;
-  node->next = filter;
-  return node;
-}
-
 match_dict_t dict_alloc() {
   match_dict_t p = NULL;
   do {
@@ -90,29 +71,13 @@ match_dict_t dict_alloc() {
     if (p == NULL) break;
 
     p->_map = NULL;
-//    p->buffer = dynabuf_alloc();
-//    if (p->buffer == NULL) break;
-
-//    if (!dynabuf_init(p->buffer, 0, true))
-//      break;
 
     p->index = NULL;
     p->_ref_count = 1;
-    p->add_index_filter = NULL;
     p->before_reset = NULL;
-
-    dict_add_indix_filter chain = p->add_index_filter;
-    chain = dict_add_index_filter_wrap(chain, dict_add_index);
-    chain = dict_add_index_filter_wrap(chain, dict_add_wordattr_index);
-    p->add_index_filter = chain;
 
     return p;
   } while (0);
-
-  if (p != NULL) {
-//    dynabuf_free(p->buffer);
-    afree(p);
-  }
 
   return NULL;
 }
@@ -146,7 +111,6 @@ void dict_release(match_dict_t dict) {
     dict->_ref_count--;
     if (dict->_ref_count == 0) {
       dict_clean(dict);
-      dict_add_index_filter_free(dict->add_index_filter);
       afree(dict);
     }
   }
@@ -173,7 +137,7 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   return true;
 }
 
-bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
+bool dict_add_index(match_dict_t dict, matcher_config_t config,
                     strlen_s keyword, strlen_s extra, void *tag,
                     mdi_prop_f prop) {
 
@@ -236,16 +200,17 @@ bool dict_add_index(match_dict_t dict, dict_add_indix_filter filter,
   dict->index[dict->idx_count]._extra = ds;
 
   dict->index[dict->idx_count]._tag = tag;
-  dict->index[dict->idx_count].prop = prop;
+  dict->index[dict->idx_count].prop = mdi_prop_set_matcher(prop, config->id);
   dict->idx_count++;
 
   return true;
 }
 
-bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
+bool dict_add_wordattr_index(match_dict_t dict, matcher_config_t config,
                              strlen_s keyword, strlen_s extra, void *tag,
                              mdi_prop_f prop) {
-  mdi_prop_f type = mdi_prop_alnum;
+  matcher_config_t stub_config = config->config;
+  uint32_t type = mdi_prop_alnum;
 
   if (keyword.len == 0) return true;
 
@@ -257,13 +222,14 @@ bool dict_add_wordattr_index(match_dict_t dict, dict_add_indix_filter filter,
     }
   }
 
-  return filter->add_index(dict, filter->next, keyword, extra, tag, type | prop);
+  return stub_config->add_index(dict, stub_config, keyword, extra, tag,
+                                type | prop);
 }
 
-bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
+bool dict_add_alternation_index(match_dict_t dict, matcher_config_t config,
                                 strlen_s keyword, strlen_s extra, void *tag,
                                 mdi_prop_f prop) {
-
+  matcher_config_t stub_config = config->config;
   if (keyword.len == 0) return true;
 
   size_t so = 0, eo = keyword.len - 1;
@@ -271,7 +237,7 @@ bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
       && keyword.ptr[eo] != right_parentheses)
       || (keyword.ptr[so] != left_parentheses
           && keyword.ptr[eo] == right_parentheses)) {
-    filter->add_index(dict, filter->next, keyword, extra, tag, prop);
+    stub_config->add_index(dict, stub_config, keyword, extra, tag, prop);
   } else {
     // 脱括号
     if (keyword.ptr[so] == left_parentheses
@@ -287,7 +253,7 @@ bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
               .ptr = keyword.ptr + cur,
               .len = i - cur,
           };
-          filter->add_index(dict, filter->next, key, extra, tag, prop);
+          stub_config->add_index(dict, stub_config, key, extra, tag, prop);
           cur = i + 1;
         }
       } else if (keyword.ptr[i] == left_parentheses) {
@@ -301,14 +267,14 @@ bool dict_add_alternation_index(match_dict_t dict, dict_add_indix_filter filter,
           .ptr = keyword.ptr + cur,
           .len = i - cur,
       };
-      filter->add_index(dict, filter->next, key, extra, tag, prop);
+      stub_config->add_index(dict, stub_config, key, extra, tag, prop);
     }
   }
 
   return true;
 }
 
-bool dict_parse(match_dict_t self, vocab_t vocab) {
+bool dict_parse(match_dict_t self, vocab_t vocab, matcher_config_t conf) {
   if (self == NULL || vocab == NULL) {
     return false;
   }
@@ -326,8 +292,8 @@ bool dict_parse(match_dict_t self, vocab_t vocab) {
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
     // store keyword and extra in buffer
-    if (!self->add_index_filter
-        ->add_index(self, self->add_index_filter->next, keyword, extra, NULL,
+    if (!conf
+        ->add_index(self, conf, keyword, extra, NULL,
                     mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
       return false;
     }

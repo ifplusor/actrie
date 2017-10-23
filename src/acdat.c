@@ -30,6 +30,30 @@ const context_func_l acdat_context_func = {
     .next = (matcher_next_func) dat_ac_next_on_index
 };
 
+bool dat_dict_add_index(match_dict_t dict, matcher_config_t config,
+                        strlen_s keyword, strlen_s extra, void *tag,
+                        mdi_prop_f prop) {
+  dat_config_t dat_config = config->config;
+  matcher_config_t stub_config = dat_config->stub;
+  return stub_config->add_index(dict, stub_config, keyword, extra, tag, prop);
+}
+
+matcher_config_t dat_matcher_config(uint8_t id, bool enable_automation,
+                                    matcher_config_t stub) {
+  matcher_config_t config =
+      amalloc(sizeof(matcher_config_s) + sizeof(dat_config_s));
+  if (config != NULL) {
+    config->id = id;
+    config->type = matcher_type_dat;
+    config->add_index = dat_dict_add_index;
+    config->config = config->buf;
+    dat_config_t dat_config = (dat_config_t) config->buf;
+    dat_config->enable_automation = enable_automation;
+    dat_config->stub = stub;
+  }
+  return config;
+}
+
 const size_t DAT_ROOT_IDX = 255;
 
 static inline dat_node_t dat_access_node(datrie_t self, size_t index) {
@@ -282,17 +306,29 @@ datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
   return p;
 }
 
-datrie_t dat_construct(vocab_t vocab, bool enable_automation) {
-  trie_t prime_trie;
-  datrie_t pdat;
+matcher_t dat_construct(match_dict_t dict, matcher_config_t conf) {
+  trie_t prime_trie = NULL;
+  datrie_t pdat = NULL;
+  dat_config_t dat_config = conf->config;
 
-  prime_trie = trie_construct(vocab, false);       /* 建立字典树 */
-  if (prime_trie == NULL) return NULL;
-  pdat = dat_construct_by_trie(prime_trie,
-                               enable_automation); /* 建立 Double-Array Trie */
-  trie_destruct(prime_trie);                       /* 释放字典树 */
+  do {
+    trie_config_s trie_config = {
+        .filter = conf->id,
+        .enable_automation = false
+    };
+    prime_trie = trie_construct(dict, &trie_config);
+    if (prime_trie == NULL) break;
 
-  return pdat;
+    pdat = dat_construct_by_trie(prime_trie, dat_config->enable_automation);
+    if (pdat == NULL) break;
+
+    pdat->header._type = conf->type;
+    pdat->header._func = dat_matcher_func;
+  } while (0);
+
+  trie_destruct(prime_trie);
+
+  return (matcher_t) pdat;
 }
 
 
@@ -306,6 +342,9 @@ dat_context_t dat_alloc_context(datrie_t matcher) {
   }
 
   ctx->trie = matcher;
+
+  ctx->header._type = matcher->header._type;
+  ctx->header._func = acdat_context_func;
 
   return ctx;
 }

@@ -37,12 +37,13 @@ typedef struct ambi_context {
 
 } ambi_context_s, *ambi_context_t;
 
-extern const matcher_func_l ambi_matcher_func;
-extern const context_func_l ambi_context_func;
+typedef struct ambi_config {
+  matcher_config_t pure;
+} ambi_config_s, *ambi_config_t;
 
-ambi_matcher_t ambi_construct(vocab_t vocab,
-                              mdi_prop_f filter,
-                              bool enable_automation);
+matcher_config_t ambi_matcher_config(uint8_t id, matcher_config_t pure);
+
+matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf);
 bool ambi_destruct(ambi_matcher_t self);
 
 ambi_context_t ambi_alloc_context(ambi_matcher_t matcher);

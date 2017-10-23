@@ -20,16 +20,15 @@ const context_func_l ambi_context_func = {
  * pattern will match:
  * - A(?&!D1|D2)
  */
-static const char *pattern = "([^()]*?)(\\(\\?&!(.*?)\\))?";
+static const char *pattern = "^(.*)\\(\\?&!(.*)\\)$";
 static regex_t reg;
 static bool pattern_compiled = false;
 
-bool ambi_dict_add_index(match_dict_t dict,
-                         dict_add_indix_filter filter,
-                         strlen_s keyword,
-                         strlen_s extra,
-                         void *tag,
+bool ambi_dict_add_index(match_dict_t dict, matcher_config_t config,
+                         strlen_s keyword, strlen_s extra, void *tag,
                          mdi_prop_f prop) {
+  ambi_config_t dist_config = config->config;
+  matcher_config_t pure_config = dist_config->pure;
   int err;
 
   if (!pattern_compiled) {
@@ -46,12 +45,14 @@ bool ambi_dict_add_index(match_dict_t dict,
 
   if (keyword.len == 0) return true;
 
-  regmatch_t pmatch[4];
-  err = regexec(&reg, keyword.ptr, 4, pmatch, 0);
+  regmatch_t pmatch[3];
+  char *dup = astrndup(keyword.ptr, keyword.len);
+  err = regexec(&reg, dup, 3, pmatch, 0);
+  afree(dup);
   if (err == REG_NOMATCH) {
     // non-ambi
-    filter->add_index(dict, filter->next, keyword, extra, tag,
-                      mdi_prop_normal | prop);
+    pure_config->add_index(dict, pure_config, keyword, extra, tag,
+                           mdi_prop_clearly | prop);
     return true;
   } else if (err != REG_NOERROR) {
     return false;
@@ -61,7 +62,7 @@ bool ambi_dict_add_index(match_dict_t dict,
 
   // store original keyword
   void *key_tag = (void *) dict->idx_count;
-  dict_add_index(dict, NULL, keyword, extra, tag, prop);
+  dict_add_index(dict, config, keyword, extra, tag, prop);
 
   // store processed keyword
   strlen_s key = {
@@ -70,78 +71,59 @@ bool ambi_dict_add_index(match_dict_t dict,
   };
 
   strlen_s ambi = {
-      .ptr = keyword.ptr + pmatch[3].rm_so,
-      .len = (size_t) (pmatch[3].rm_eo - pmatch[3].rm_so),
+      .ptr = keyword.ptr + pmatch[2].rm_so,
+      .len = (size_t) (pmatch[2].rm_eo - pmatch[2].rm_so),
   };
 
-  filter->add_index(dict, filter->next, key, strlen_empty, key_tag,
-                    mdi_prop_normal | base_prop);
+  pure_config->add_index(dict, pure_config, key, strlen_empty, key_tag,
+                         mdi_prop_normal | base_prop);
 
-  filter->add_index(dict, filter->next, ambi, strlen_empty, key_tag,
-                    mdi_prop_ambi | base_prop);
+  pure_config->add_index(dict, pure_config, ambi, strlen_empty, key_tag,
+                         mdi_prop_ambi | base_prop);
 
   return true;
 }
 
-mdi_prop_f base_flag = mdi_prop_ambi;
+matcher_config_t ambi_matcher_config(uint8_t id, matcher_config_t pure) {
+  matcher_config_t config =
+      amalloc(sizeof(matcher_config_s) + sizeof(ambi_config_s));
+  if (config != NULL) {
+    config->id = id;
+    config->type = matcher_type_ambi;
+    config->add_index = ambi_dict_add_index;
+    config->config = config->buf;
+    ambi_config_t ambi_config = (ambi_config_t) config->buf;
+    ambi_config->pure = pure;
+  }
+  return config;
+}
 
-ambi_matcher_t ambi_construct_by_dict(match_dict_t dict,
-                                      mdi_prop_f filter,
-                                      bool enable_automation) {
+matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf) {
   ambi_matcher_t matcher = NULL;
-  trie_t trie = NULL;
+  matcher_t pure_matcher = NULL;
+  ambi_config_t ambi_config = conf->config;
 
   do {
-    trie_config_s config = {.filter=filter, enable_automation=false};
-    trie = trie_construct_by_dict(dict, &config);
-    if (trie == NULL) break;
+    pure_matcher = matcher_construct_by_dict(dict, ambi_config->pure);
+    if (pure_matcher == NULL) break;
 
     matcher = amalloc(sizeof(struct ambi_matcher));
     if (matcher == NULL) break;
 
     matcher->_dict = dict_retain(dict);
 
-    matcher->_pure_matcher = (matcher_t)
-        dat_construct_by_trie(trie, enable_automation);
-    matcher->_pure_matcher->_func = dat_matcher_func;
-    matcher->_pure_matcher->_type =
-        enable_automation ? matcher_type_acdat : matcher_type_dat;
-    trie_destruct(trie);
+    matcher->_pure_matcher = pure_matcher;
 
-    return matcher;
+    matcher->header._type = conf->type;
+    matcher->header._func = ambi_matcher_func;
+
+    return (matcher_t) matcher;
   } while (0);
 
   // clean
-  trie_destruct(trie);
+  matcher_destruct(pure_matcher);
 
-  return matcher;
-}
-
-ambi_matcher_t ambi_construct(vocab_t vocab,
-                              mdi_prop_f filter,
-                              bool enable_automation) {
-  ambi_matcher_t ambi_matcher = NULL;
-  match_dict_t dict = NULL;
-
-  if (vocab == NULL) return NULL;
-
-  dict = dict_alloc();
-  if (dict == NULL) return NULL;
-  dict->add_index_filter =
-      dict_add_index_filter_wrap(dict->add_index_filter, dict_add_alternation_index);
-  dict->add_index_filter =
-      dict_add_index_filter_wrap(dict->add_index_filter, ambi_dict_add_index);
-
-  if (dict_parse(dict, vocab)) {
-    ambi_matcher = ambi_construct_by_dict(dict, filter, enable_automation);
-  }
-
-  dict_release(dict);
-
-  fprintf(stderr, "construct disambi %s!\n",
-          ambi_matcher != NULL ? "success" : "failed");
-
-  return ambi_matcher;
+  return NULL;
 }
 
 bool ambi_destruct(ambi_matcher_t self) {
@@ -177,6 +159,9 @@ ambi_context_t ambi_alloc_context(ambi_matcher_t matcher) {
     if (ctx->_word_map == NULL) break;
     ctx->_ambi_map = mdimap_construct(true);
     if (ctx->_ambi_map == NULL) break;
+
+    ctx->header._type = matcher->header._type;
+    ctx->header._func = ambi_context_func;
 
     return ctx;
   } while (0);
@@ -226,7 +211,12 @@ bool ambi_next_on_index(ambi_context_t ctx) {
     // get matched sequence
     while (matcher_next(pctx)) {
       mdi_t mdi = matcher_matched_index(pctx);
-      if (mdi->prop & mdi_prop_normal) {
+      if (mdi->prop & mdi_prop_clearly) {
+        mdim_node_t node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
+        node->pos = matcher_matched_pos(pctx);
+        node->idx = matcher_matched_index(pctx);
+        deque_push_back(&ctx->_out_buffer, node, mdim_node_s, deque_elem);
+      } else if (mdi->prop & mdi_prop_normal) {
         // matched word, check last ambi for w-l
         mdim_node_t last_ambi = mdimap_search(ctx->_ambi_map, mdi->_tag);
         if (last_ambi == NULL
@@ -267,7 +257,11 @@ bool ambi_next_on_index(ambi_context_t ctx) {
 
   // pop from queue
   mdim_node_t node = deque_pop_front(&ctx->_out_buffer, mdim_node_s, deque_elem);
-  ctx->header.out_matched_index = node->idx;
+  if (node->idx->prop & mdi_prop_normal) {
+    ctx->header.out_matched_index = node->idx->_tag;
+  } else {
+    ctx->header.out_matched_index = node->idx;
+  }
   ctx->header.out_eo = node->pos.eo;
 
   return true;

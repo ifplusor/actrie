@@ -53,10 +53,15 @@ typedef struct dist_context {
 
 } *dist_context_t;
 
-extern const matcher_func_l dist_matcher_func;
-extern const context_func_l dist_context_func;
+typedef struct dist_config {
+  matcher_config_t head;
+  matcher_config_t tail;
+} dist_config_s, *dist_config_t;
 
-dist_matcher_t dist_construct(vocab_t vocab, bool enable_automation);
+matcher_config_t dist_matcher_config(uint8_t id, matcher_config_t head,
+                                     matcher_config_t tail);
+
+matcher_t dist_construct(match_dict_t dict, matcher_config_t conf);
 bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);

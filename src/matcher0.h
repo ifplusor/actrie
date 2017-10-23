@@ -38,7 +38,7 @@ typedef struct _context_func {
 
 typedef struct _context {
   matcher_type_e _type;
-  context_func_t _func;
+  context_func_l _func;
 
   unsigned char *content;
   size_t len;
@@ -46,6 +46,8 @@ typedef struct _context {
   mdi_t out_matched_index;  /* volatile, need deep copy */
   size_t out_eo;               /* end offset of current matched word */
 } context_s;
+
+matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_config_t conf);
 
 #ifdef __cplusplus
 }

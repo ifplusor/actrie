@@ -35,6 +35,7 @@ endif()
 add_subdirectory(${ALIB_DIR} alib)
 
 set(ACTRIE_HEADER_FILES
+        src/configure.h
         include/dict.h
         include/matcher.h
         src/vocab.h
@@ -47,6 +48,7 @@ set(ACTRIE_HEADER_FILES
         src/distance.h)
 
 set(ACTRIE_SOURCE_FILES
+        src/configure.c
         src/vocab.c
         src/dict.c
         src/actrie.c
