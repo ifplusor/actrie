@@ -5,7 +5,7 @@
 #ifndef _ACTRIE_MATCHER0_H_
 #define _ACTRIE_MATCHER0_H_
 
-#include <matcher.h>
+#include "configure.h"
 
 #ifdef __cplusplus
 extern "C" {

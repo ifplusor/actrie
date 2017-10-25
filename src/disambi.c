@@ -129,6 +129,7 @@ matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf) {
 bool ambi_destruct(ambi_matcher_t self) {
   if (self == NULL) return false;
   matcher_destruct(self->_pure_matcher);
+  dict_release(self->_dict);
   afree(self);
   return true;
 }
@@ -204,55 +205,76 @@ bool ambi_next_on_index(ambi_context_t ctx) {
 
   // not cache
   if (deque_empty(&ctx->_out_buffer)) {
+    // optimize for useless reset
+    if (dat_match_end((dat_context_t) pctx)) return false;
+
     mdimap_reset(ctx->_word_map);
     mdimap_reset(ctx->_ambi_map);
     dynapool_reset(ctx->_mdiqn_pool);
 
-    // get matched sequence
-    while (matcher_next(pctx)) {
-      mdi_t mdi = matcher_matched_index(pctx);
-      if (mdi->prop & mdi_prop_clearly) {
-        mdim_node_t node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
-        node->pos = matcher_matched_pos(pctx);
-        node->idx = matcher_matched_index(pctx);
-        deque_push_back(&ctx->_out_buffer, node, mdim_node_s, deque_elem);
-      } else if (mdi->prop & mdi_prop_normal) {
-        // matched word, check last ambi for w-l
-        mdim_node_t last_ambi = mdimap_search(ctx->_ambi_map, mdi->_tag);
-        if (last_ambi == NULL
-            || !strpos_wlc(matcher_matched_pos(pctx), last_ambi->pos)) {
-          // don't match ambi present, add word to map
-          mdim_node_t node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
+    int normal = 0;
+    while (1) {
+      // get matched sequence
+      while (matcher_next(pctx)) {
+        mdi_t mdi = matcher_matched_index(pctx);
+        if (mdi->prop & mdi_prop_clearly) {
+          mdim_node_t
+              node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
           node->pos = matcher_matched_pos(pctx);
           node->idx = matcher_matched_index(pctx);
-          mdimap_insert(ctx->_word_map, node);
           deque_push_back(&ctx->_out_buffer, node, mdim_node_s, deque_elem);
-        }
-      } else if (mdi->prop & mdi_prop_ambi) {
-        // matched ambi, check word list by desc order for w-r and w-c
-        mdim_node_t last_word = mdimap_search(ctx->_word_map, mdi->_tag);
-        while (last_word != NULL) {
-          if (strpos_wrc(last_word->pos, matcher_matched_pos(pctx))) {
-            // matched ambi, delete word
-            // 1. remove from map
-            mdimap_delete(ctx->_word_map, last_word);
-            // 2. remove from queue
-            deque_delete(&ctx->_out_buffer, last_word, mdim_node_s, deque_elem);
-            // 3. free memory
-            dynapool_free_node(ctx->_mdiqn_pool, last_word);
+        } else if (mdi->prop & mdi_prop_normal) {
+          // matched word, check last ambi for w-l
+          mdim_node_t last_ambi = mdimap_search(ctx->_ambi_map, mdi->_tag);
+          if (last_ambi == NULL
+              || !strpos_wlc(matcher_matched_pos(pctx), last_ambi->pos)) {
+            // don't match ambi present, add word to map
+            mdim_node_t
+                node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
+            node->pos = matcher_matched_pos(pctx);
+            node->idx = matcher_matched_index(pctx);
+            mdimap_insert(ctx->_word_map, node);
+            deque_push_back(&ctx->_out_buffer, node, mdim_node_s, deque_elem);
+            normal++;
           }
-          if (last_word->pos.eo <= pctx->out_eo - mdi->length) break;
-          last_word = last_word->next;
+        } else if (mdi->prop & mdi_prop_ambi) {
+          // matched ambi, check word list by desc order for w-r and w-c
+          mdim_node_t last_word = mdimap_search(ctx->_word_map, mdi->_tag);
+          while (last_word != NULL) {
+            if (strpos_wrc(last_word->pos, matcher_matched_pos(pctx))) {
+              // matched ambi, delete word
+              // 1. remove from map
+              mdimap_delete(ctx->_word_map, last_word);
+              // 2. remove from queue
+              deque_delete(&ctx->_out_buffer,
+                           last_word,
+                           mdim_node_s,
+                           deque_elem);
+              // 3. free memory
+              dynapool_free_node(ctx->_mdiqn_pool, last_word);
+              normal--;
+            }
+            if (last_word->pos.eo <= pctx->out_eo - mdi->length) break;
+            last_word = last_word->next;
+          }
+          mdim_node_t
+              node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
+          node->pos = matcher_matched_pos(pctx);
+          node->idx = matcher_matched_index(pctx);
+          mdimap_insert(ctx->_ambi_map, node);
         }
-        mdim_node_t node = (mdim_node_t) dynapool_alloc_node(ctx->_mdiqn_pool);
-        node->pos = matcher_matched_pos(pctx);
-        node->idx = matcher_matched_index(pctx);
-        mdimap_insert(ctx->_ambi_map, node);
+      }
+
+      if (normal > 0) break;
+
+      // not matched
+      if (dat_match_end((dat_context_t) pctx)) {
+        if (deque_empty(&ctx->_out_buffer))
+          return false;
+        else
+          break;
       }
     }
-
-    // not matched
-    if (deque_empty(&ctx->_out_buffer)) return false;
   }
 
   // pop from queue

@@ -47,7 +47,6 @@ typedef struct dat_context {
 } dat_context_s, *dat_context_t;
 
 typedef struct dat_config {
-  bool enable_automation;
   matcher_config_t stub;
 } dat_config_s, *dat_config_t;
 
@@ -61,15 +60,14 @@ bool dat_destruct(datrie_t p);
 dat_context_t dat_alloc_context(datrie_t matcher);
 bool dat_free_context(dat_context_t context);
 bool dat_reset_context(dat_context_t context,
-                       unsigned char content[],
-                       size_t len);
+                       unsigned char content[], size_t len);
+
+bool dat_match_end(dat_context_t ctx);
 
 bool dat_next_on_index(dat_context_t ctx);
-
 bool dat_ac_next_on_node(dat_context_t ctx);
-
 bool dat_ac_next_on_index(dat_context_t ctx);
-
+bool dat_seg_ac_next_on_index(dat_context_t ctx);
 bool dat_prefix_next_on_index(dat_context_t ctx);
 
 #ifdef __cplusplus

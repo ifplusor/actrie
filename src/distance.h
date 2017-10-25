@@ -19,7 +19,7 @@ extern "C" {
 typedef struct dist_matcher {
   matcher_s header;
 
-  matcher_t _head_matcher, _tail_matcher;
+  matcher_t _head_matcher, _tail_matcher, _digit_matcher;
   match_dict_t _dict;
 } *dist_matcher_t;
 
@@ -56,10 +56,12 @@ typedef struct dist_context {
 typedef struct dist_config {
   matcher_config_t head;
   matcher_config_t tail;
+  matcher_config_t digit;
 } dist_config_s, *dist_config_t;
 
-matcher_config_t dist_matcher_config(uint8_t id, matcher_config_t head,
-                                     matcher_config_t tail);
+matcher_config_t
+dist_matcher_config(uint8_t id, matcher_config_t head, matcher_config_t tail,
+                    matcher_config_t digit);
 
 matcher_t dist_construct(match_dict_t dict, matcher_config_t conf);
 bool dist_destruct(dist_matcher_t self);

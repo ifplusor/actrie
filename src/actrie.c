@@ -354,7 +354,6 @@ void trie_construct_automation(trie_t self) {
 
 void trie_destruct(trie_t self) {
   if (self != NULL) {
-    dict_release(self->_dict);
     for (int i = 0; i < POOL_REGION_SIZE; i++) {
       if (self->_nodepool[i] != NULL) {
         for (int j = 0; j < POOL_POSITION_SIZE; j++) {
@@ -363,6 +362,7 @@ void trie_destruct(trie_t self) {
         afree(self->_nodepool[i]);
       }
     }
+    dict_release(self->_dict);
     afree(self);
   }
 }

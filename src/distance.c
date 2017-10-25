@@ -89,6 +89,7 @@ bool dist_dict_add_index(match_dict_t dict, matcher_config_t config,
   dist_config_t dist_config = config->config;
   matcher_config_t head_config = dist_config->head;
   matcher_config_t tail_config = dist_config->tail;
+  matcher_config_t digit_config = dist_config->digit;
   int err;
 
   if (!pattern_compiled) {
@@ -160,21 +161,30 @@ bool dist_dict_add_index(match_dict_t dict, matcher_config_t config,
       .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
   };
 
-  size_t tail_max_len = max_alternation_length(tail, true);
+  if (base_prop & mdi_prop_dist_digit) {
+    head_config->add_index(dict, head_config, head,
+                           (strlen_s) {.ptr = (char *) distance, .len = 0},
+                           key_tag, mdi_prop_head | base_prop);
+    digit_config->add_index(dict, digit_config, tail,
+                            (strlen_s) {.ptr = (char *) distance, .len = 0},
+                            key_tag, mdi_prop_tail | base_prop);
+  } else {
+    size_t tail_max_len = max_alternation_length(tail, true);
 
-  head_config->add_index(dict, head_config, head,
-                         (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
-                         key_tag, mdi_prop_head | base_prop);
-
-  tail_config->add_index(dict, tail_config, tail,
-                         (strlen_s) {.ptr = (char *) distance, .len = 0},
-                         key_tag, mdi_prop_tail | base_prop);
+    head_config->add_index(dict, head_config, head,
+                           (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
+                           key_tag, mdi_prop_head | base_prop);
+    tail_config->add_index(dict, tail_config, tail,
+                           (strlen_s) {.ptr = (char *) distance, .len = 0},
+                           key_tag, mdi_prop_tail | base_prop);
+  }
 
   return true;
 }
 
-matcher_config_t dist_matcher_config(uint8_t id, matcher_config_t head,
-                                     matcher_config_t tail) {
+matcher_config_t
+dist_matcher_config(uint8_t id, matcher_config_t head, matcher_config_t tail,
+                    matcher_config_t digit) {
   matcher_config_t config =
       amalloc(sizeof(matcher_config_s) + sizeof(dist_config_s));
   if (config != NULL) {
@@ -185,15 +195,17 @@ matcher_config_t dist_matcher_config(uint8_t id, matcher_config_t head,
     dist_config_t dist_config = (dist_config_t) config->buf;
     dist_config->head = head;
     dist_config->tail = tail;
+    dist_config->digit = digit;
   }
   return config;
 }
 
 bool dist_destruct(dist_matcher_t self) {
   if (self != NULL) {
-    if (self->_head_matcher != NULL) dat_destruct((datrie_t) self->_head_matcher);
-    if (self->_tail_matcher != NULL) dat_destruct((datrie_t) self->_tail_matcher);
-    if (self->_dict != NULL) dict_release(self->_dict);
+    matcher_destruct(self->_head_matcher);
+    matcher_destruct(self->_tail_matcher);
+    matcher_destruct(self->_digit_matcher);
+    dict_release(self->_dict);
     afree(self);
     return true;
   }
@@ -204,6 +216,7 @@ matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
   dist_matcher_t matcher = NULL;
   matcher_t head_matcher = NULL;
   matcher_t tail_matcher = NULL;
+  matcher_t digit_matcher = NULL;
   dist_config_t dist_config = conf->config;
 
   do {
@@ -213,6 +226,9 @@ matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
     tail_matcher = matcher_construct_by_dict(dict, dist_config->tail);
     if (tail_matcher == NULL) break;
 
+    digit_matcher = matcher_construct_by_dict(dict, dist_config->digit);
+    if (digit_matcher == NULL) break;
+
     matcher = amalloc(sizeof(struct dist_matcher));
     if (matcher == NULL) break;
 
@@ -220,6 +236,7 @@ matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
 
     matcher->_head_matcher = head_matcher;
     matcher->_tail_matcher = tail_matcher;
+    matcher->_digit_matcher = digit_matcher;
 
     matcher->header._type = conf->type;
     matcher->header._func = dist_matcher_func;
@@ -230,6 +247,7 @@ matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
   // clean
   matcher_destruct(head_matcher);
   matcher_destruct(tail_matcher);
+  matcher_destruct(digit_matcher);
 
   return NULL;
 }
@@ -251,7 +269,7 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher) {
     if (ctx->_head_ctx == NULL) break;
     ctx->_tail_ctx = matcher_alloc_context(matcher->_tail_matcher);
     if (ctx->_tail_ctx == NULL) break;
-    ctx->_digit_ctx = matcher_alloc_context(matcher->_tail_matcher);
+    ctx->_digit_ctx = matcher_alloc_context(matcher->_digit_matcher);
     if (ctx->_digit_ctx == NULL) break;
 
     ctx->_mdiqn_pool = dynapool_construct_with_type(mdim_node_s);
@@ -378,20 +396,23 @@ bool dist_next_on_index(dist_context_t ctx) {
       // check number
       size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
       if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
-//        ctx->_state = dist_match_state_check_prefix;
-//        // skip number
-//        size_t tail_so = hctx->out_eo;
-//        while (dist--) { tail_so++;
-//          if (!number_bitmap[content[tail_so]])break;
-//        }
-//        // check prefix
-//        ctx->_tail_so = tail_so;
-//        matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
-//  case dist_match_state_check_prefix:
-//        while (dat_prefix_next_on_index((dat_context_t) dctx)) {
-//          if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
-//            return dist_construct_out(ctx, ctx->_tail_so + dctx->out_eo);
-//        }
+        ctx->_state = dist_match_state_check_prefix;
+        // skip number
+        size_t tail_so = hctx->out_eo;
+        if (number_bitmap[content[tail_so]]) {
+          while (dist--) {
+            if (!number_bitmap[content[tail_so]])break;
+            tail_so++;
+          }
+          // check prefix
+          ctx->_tail_so = tail_so;
+          matcher_reset_context(dctx, &content[tail_so], ctx->header.len - tail_so);
+  case dist_match_state_check_prefix:
+          while (matcher_next(dctx)) {
+            if (dctx->out_matched_index->_tag == hctx->out_matched_index->_tag)
+              return dist_construct_out(ctx, ctx->_tail_so + dctx->out_eo);
+          }
+        }
         ctx->_state = dist_match_state_new_round;
         continue; // next round
       }

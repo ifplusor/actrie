@@ -5,11 +5,13 @@
 #include "mdimap.h"
 
 size_t size_rank[] = {
-    257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071, 262147
+    /*31, 67,*/ 127, 257, 509, 1021, 2053, 4099,
+    8191, 16381, 32771, 65537, 131071, 262147
 };
 
 size_t size_threshold[] = {
-    205, 407, 817, 1745, 3480, 6962, 13924, 29494, 58982, 117964, SIZE_MAX
+    /*25, 54,*/ 102, 205, 407, 817, 1745, 3480,
+    6962, 13924, 29494, 58982, 117964, SIZE_MAX
 };
 
 sptr_t mdimap_compare(avl_node_t node, void *key) {
@@ -94,6 +96,7 @@ bool mdimap_destruct(mdimap_t map) {
 
 bool mdimap_reset(mdimap_t map) {
   if (map == NULL) return false;
+  if (map->len == 0 && map->size == 0) return true;
   for (size_t i = 0; i < size_rank[map->rank]; i++) {
     if (map->bucket[i].type == mdim_bucket_type_avl) {
       avl_destruct(map->bucket[i].store.avl);
@@ -148,6 +151,7 @@ bool mdimap_insert_without_extend(mdimap_t map, mdim_node_t node) {
       avl_insert(avl, node->idx->_tag, &node->avl_elem);
       bucket->store.avl = avl;
       bucket->type = mdim_bucket_type_avl;
+      map->len++;
     }
   } else {
     // avl
@@ -210,6 +214,8 @@ bool mdimap_rehash_bucket(mdimap_t map, mdim_bucket_t new, size_t nrank) {
     }
   }
   map->rehash = false;
+
+  return true;
 }
 
 bool mdimap_insert(mdimap_t map, mdim_node_t node) {

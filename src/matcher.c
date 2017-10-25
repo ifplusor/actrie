@@ -14,14 +14,17 @@ matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_config_t conf) {
     case matcher_type_alteration:
       matcher = matcher_construct_by_dict(dict, conf->config);
       break;
-    case matcher_type_acdat:
     case matcher_type_dat:
+    case matcher_type_acdat:
+    case matcher_type_seg_acdat:
+    case matcher_type_prefix_acdat:
       matcher = dat_construct(dict, conf);
       break;
     case matcher_type_ambi:
       matcher = ambi_construct(dict, conf);
       break;
     case matcher_type_dist:
+    case matcher_type_ultimate:
       matcher = dist_construct(dict, conf);
       break;
     default:
@@ -48,39 +51,66 @@ matcher_t matcher_construct_by_vocab(vocab_t vocab, matcher_config_t conf) {
   return matcher;
 }
 
-matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
-  matcher_t matcher = NULL;
+matcher_config_t matcher_ultimate_config() {
   matcher_config_t dist_config = NULL;
   matcher_config_t head_config = NULL;
   matcher_config_t tail_config = NULL;
-  if (vocab == NULL) return NULL;
-
+  matcher_config_t digit_config = NULL;
   uint8_t matcher_id = 0;
+
+  matcher_id++;
+  head_config = matcher_stub_config(matcher_id, NULL);
+  head_config = matcher_wordattr_config(matcher_id, head_config);
+  head_config = dat_matcher_config(matcher_id, true, head_config);
+  head_config->type = matcher_type_seg_acdat;
+  head_config = matcher_alternation_config(matcher_id, head_config);
+
+  matcher_id++;
+  head_config = ambi_matcher_config(matcher_id, head_config);
+  head_config = matcher_alternation_config(matcher_id, head_config);
+
+  matcher_id++;
+  tail_config = matcher_stub_config(matcher_id, NULL);
+  tail_config = matcher_wordattr_config(matcher_id, tail_config);
+  tail_config = dat_matcher_config(matcher_id, true, tail_config);
+  tail_config->type = matcher_type_seg_acdat;
+  tail_config = matcher_alternation_config(matcher_id, tail_config);
+
+  matcher_id++;
+  tail_config = ambi_matcher_config(matcher_id, tail_config);
+  tail_config = matcher_alternation_config(matcher_id, tail_config);
+
+  matcher_id++;
+  digit_config = matcher_stub_config(matcher_id, NULL);
+  digit_config = matcher_wordattr_config(matcher_id, digit_config);
+  digit_config = dat_matcher_config(matcher_id, true, digit_config);
+  digit_config->type = matcher_type_prefix_acdat;
+  digit_config = matcher_alternation_config(matcher_id, digit_config);
+
+  matcher_id++;
+  dist_config =
+      dist_matcher_config(matcher_id, head_config, tail_config, digit_config);
+
+  return dist_config;
+}
+
+matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
+  matcher_t matcher = NULL;
+  matcher_config_t config = NULL;
+
   do {
-    matcher_id++;
-    head_config = matcher_stub_config(matcher_id, NULL);
-    head_config = matcher_wordattr_config(matcher_id, head_config);
-    head_config = dat_matcher_config(matcher_id, true, head_config);
-    head_config = matcher_alternation_config(matcher_id, head_config);
+    if (vocab == NULL) break;
 
-    matcher_id++;
-    head_config = ambi_matcher_config(matcher_id, head_config);
-    head_config = matcher_alternation_config(matcher_id, head_config);
+    switch (type) {
+      case matcher_type_ultimate:
+        config = matcher_ultimate_config();
+        break;
+      default:break;
+    }
 
-    matcher_id++;
-    tail_config = matcher_stub_config(matcher_id, NULL);
-    tail_config = matcher_wordattr_config(matcher_id, tail_config);
-    tail_config = dat_matcher_config(matcher_id, true, tail_config);
-    tail_config = matcher_alternation_config(matcher_id, tail_config);
+    if (config == NULL) break;
 
-    matcher_id++;
-    tail_config = ambi_matcher_config(matcher_id, tail_config);
-    tail_config = matcher_alternation_config(matcher_id, tail_config);
-
-    matcher_id++;
-    dist_config = dist_matcher_config(matcher_id, head_config, tail_config);
-
-    matcher = matcher_construct_by_vocab(vocab, dist_config);
+    matcher = matcher_construct_by_vocab(vocab, config);
   } while (0);
 
   return matcher;

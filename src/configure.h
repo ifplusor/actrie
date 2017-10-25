@@ -6,21 +6,11 @@
 #define _ACTRIE_CONFIGURE_H_
 
 #include "dict.h"
+#include "matcher.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-typedef enum matcher_type {
-  matcher_type_stub = 0,
-  matcher_type_wordattr,
-  matcher_type_alteration,
-  matcher_type_dat,
-  matcher_type_acdat,
-  matcher_type_ambi,
-  matcher_type_dist,
-  matcher_type_ultimate
-} matcher_type_e;
 
 struct matcher_config;
 typedef struct matcher_config *matcher_config_t;
