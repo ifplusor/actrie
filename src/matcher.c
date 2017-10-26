@@ -8,11 +8,12 @@
 #include "disambi.h"
 #include "distance.h"
 
-matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_config_t conf) {
+matcher_t matcher_construct_by_dict(match_dict_t dict, aobj conf) {
+  matcher_config_t config = GET_AOBJECT(conf);
   matcher_t matcher = NULL;
-  switch (conf->type) {
+  switch (config->type) {
     case matcher_type_alteration:
-      matcher = matcher_construct_by_dict(dict, conf->config);
+      matcher = matcher_construct_by_dict(dict, ((stub_config_t)config->buf)->stub);
       break;
     case matcher_type_dat:
     case matcher_type_acdat:
@@ -33,7 +34,7 @@ matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_config_t conf) {
   return matcher;
 }
 
-matcher_t matcher_construct_by_vocab(vocab_t vocab, matcher_config_t conf) {
+matcher_t matcher_construct_by_vocab(vocab_t vocab, aobj conf) {
   match_dict_t dict = NULL;
   matcher_t matcher = NULL;
 
@@ -51,66 +52,63 @@ matcher_t matcher_construct_by_vocab(vocab_t vocab, matcher_config_t conf) {
   return matcher;
 }
 
-matcher_config_t matcher_ultimate_config() {
-  matcher_config_t dist_config = NULL;
-  matcher_config_t head_config = NULL;
-  matcher_config_t tail_config = NULL;
-  matcher_config_t digit_config = NULL;
+aobj matcher_ultimate_conf() {
+  aobj dist_conf = NULL;
+  aobj head_conf = NULL;
+  aobj tail_conf = NULL;
+  aobj digit_conf = NULL;
   uint8_t matcher_id = 0;
 
   matcher_id++;
-  head_config = matcher_stub_config(matcher_id, NULL);
-  head_config = matcher_wordattr_config(matcher_id, head_config);
-  head_config = dat_matcher_config(matcher_id, true, head_config);
-  head_config->type = matcher_type_seg_acdat;
-  head_config = matcher_alternation_config(matcher_id, head_config);
+  head_conf = matcher_root_conf(matcher_id);
+  head_conf = matcher_wordattr_conf(matcher_id, head_conf);
+  head_conf = dat_matcher_conf(matcher_id, matcher_type_seg_acdat, head_conf);
+  head_conf = matcher_alternation_conf(matcher_id, head_conf);
 
   matcher_id++;
-  head_config = ambi_matcher_config(matcher_id, head_config);
-  head_config = matcher_alternation_config(matcher_id, head_config);
+  head_conf = ambi_matcher_conf(matcher_id, head_conf);
+  head_conf = matcher_alternation_conf(matcher_id, head_conf);
 
   matcher_id++;
-  tail_config = matcher_stub_config(matcher_id, NULL);
-  tail_config = matcher_wordattr_config(matcher_id, tail_config);
-  tail_config = dat_matcher_config(matcher_id, true, tail_config);
-  tail_config->type = matcher_type_seg_acdat;
-  tail_config = matcher_alternation_config(matcher_id, tail_config);
+  tail_conf = matcher_root_conf(matcher_id);
+  tail_conf = matcher_wordattr_conf(matcher_id, tail_conf);
+  tail_conf = dat_matcher_conf(matcher_id, matcher_type_seg_acdat, tail_conf);
+  tail_conf = matcher_alternation_conf(matcher_id, tail_conf);
 
   matcher_id++;
-  tail_config = ambi_matcher_config(matcher_id, tail_config);
-  tail_config = matcher_alternation_config(matcher_id, tail_config);
+  tail_conf = ambi_matcher_conf(matcher_id, tail_conf);
+  tail_conf = matcher_alternation_conf(matcher_id, tail_conf);
 
   matcher_id++;
-  digit_config = matcher_stub_config(matcher_id, NULL);
-  digit_config = matcher_wordattr_config(matcher_id, digit_config);
-  digit_config = dat_matcher_config(matcher_id, true, digit_config);
-  digit_config->type = matcher_type_prefix_acdat;
-  digit_config = matcher_alternation_config(matcher_id, digit_config);
+  digit_conf = matcher_root_conf(matcher_id);
+  digit_conf = matcher_wordattr_conf(matcher_id, digit_conf);
+  digit_conf = dat_matcher_conf(matcher_id, matcher_type_prefix_acdat, digit_conf);
+  digit_conf = matcher_alternation_conf(matcher_id, digit_conf);
 
   matcher_id++;
-  dist_config =
-      dist_matcher_config(matcher_id, head_config, tail_config, digit_config);
+  dist_conf = dist_matcher_conf(matcher_id, head_conf, tail_conf, digit_conf);
 
-  return dist_config;
+  return dist_conf;
 }
 
 matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
   matcher_t matcher = NULL;
-  matcher_config_t config = NULL;
+  aobj conf = NULL;
 
   do {
     if (vocab == NULL) break;
 
     switch (type) {
       case matcher_type_ultimate:
-        config = matcher_ultimate_config();
+        conf = matcher_ultimate_conf();
         break;
       default:break;
     }
 
-    if (config == NULL) break;
+    if (conf == NULL) break;
 
-    matcher = matcher_construct_by_vocab(vocab, config);
+    matcher = matcher_construct_by_vocab(vocab, conf);
+    _release(conf);
   } while (0);
 
   return matcher;

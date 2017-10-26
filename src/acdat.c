@@ -30,27 +30,23 @@ const context_func_l acdat_context_func = {
     .next = (matcher_next_func) dat_ac_next_on_index
 };
 
-bool dat_dict_add_index(match_dict_t dict, matcher_config_t config,
-                        strlen_s keyword, strlen_s extra, void *tag,
-                        mdi_prop_f prop) {
-  dat_config_t dat_config = config->config;
-  matcher_config_t stub_config = dat_config->stub;
-  return stub_config->add_index(dict, stub_config, keyword, extra, tag, prop);
+bool dat_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+                        strlen_s extra, void *tag, mdi_prop_f prop) {
+  matcher_config_t config = GET_AOBJECT(conf);
+  aobj stub_conf = ((stub_config_t) config->buf)->stub;
+  matcher_config_t stub_config = GET_AOBJECT(stub_conf);
+  return stub_config->add_index(dict, stub_conf, keyword, extra, tag, prop);
 }
 
-matcher_config_t dat_matcher_config(uint8_t id, bool enable_automation,
-                                    matcher_config_t stub) {
-  matcher_config_t config =
-      amalloc(sizeof(matcher_config_s) + sizeof(dat_config_s));
-  if (config != NULL) {
-    config->id = id;
-    config->type = matcher_type_dat;
-    config->add_index = dat_dict_add_index;
-    config->config = config->buf;
-    dat_config_t dat_config = (dat_config_t) config->buf;
-    dat_config->stub = stub;
+aobj dat_matcher_conf(uint8_t id, matcher_type_e type, aobj stub) {
+  aobj conf = matcher_conf(id, type, dat_dict_add_index, sizeof(stub_config_s));
+  if (conf) {
+    matcher_config_t config = GET_AOBJECT(conf);
+    config->clean = stub_config_clean;
+    stub_config_t stub_config = (stub_config_t) config->buf;
+    stub_config->stub = stub;
   }
-  return config;
+  return conf;
 }
 
 const size_t DAT_ROOT_IDX = 255;
@@ -304,27 +300,27 @@ datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
   return p;
 }
 
-matcher_t dat_construct(match_dict_t dict, matcher_config_t conf) {
+matcher_t dat_construct(match_dict_t dict, aobj conf) {
+  matcher_config_t config = GET_AOBJECT(conf);
   trie_t prime_trie = NULL;
   datrie_t pdat = NULL;
-  dat_config_t dat_config = conf->config;
 
   do {
     trie_config_s trie_config = {
-        .filter = conf->id,
+        .filter = config->id,
         .enable_automation = false
     };
     prime_trie = trie_construct(dict, &trie_config);
     if (prime_trie == NULL) break;
 
-    if (conf->type == matcher_type_dat) {
+    if (config->type == matcher_type_dat) {
       pdat = dat_construct_by_trie(prime_trie, false);
     } else {
       pdat = dat_construct_by_trie(prime_trie, true);
     }
     if (pdat == NULL) break;
 
-    pdat->header._type = conf->type;
+    pdat->header._type = config->type;
     pdat->header._func = dat_matcher_func;
   } while (0);
 

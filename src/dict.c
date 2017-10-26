@@ -137,9 +137,9 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   return true;
 }
 
-bool dict_add_index(match_dict_t dict, matcher_config_t config,
-                    strlen_s keyword, strlen_s extra, void *tag,
-                    mdi_prop_f prop) {
+bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+                    strlen_s extra, void *tag, mdi_prop_f prop) {
+  matcher_config_t config = GET_AOBJECT(conf);
 
   if (dict->idx_count == dict->idx_size) {
     // extend memory
@@ -206,10 +206,11 @@ bool dict_add_index(match_dict_t dict, matcher_config_t config,
   return true;
 }
 
-bool dict_add_wordattr_index(match_dict_t dict, matcher_config_t config,
-                             strlen_s keyword, strlen_s extra, void *tag,
-                             mdi_prop_f prop) {
-  matcher_config_t stub_config = config->config;
+bool dict_add_wordattr_index(match_dict_t dict, aobj conf, strlen_s keyword,
+                             strlen_s extra, void *tag, mdi_prop_f prop) {
+  matcher_config_t config = GET_AOBJECT(conf);
+  aobj stub_conf = ((stub_config_t) config->buf)->stub;
+  matcher_config_t stub_config = GET_AOBJECT(stub_conf);
   uint32_t type = mdi_prop_alnum;
 
   if (keyword.len == 0) return true;
@@ -222,14 +223,15 @@ bool dict_add_wordattr_index(match_dict_t dict, matcher_config_t config,
     }
   }
 
-  return stub_config->add_index(dict, stub_config, keyword, extra, tag,
-                                type | prop);
+  return stub_config->add_index(dict, stub_conf, keyword, extra, tag, type | prop);
 }
 
-bool dict_add_alternation_index(match_dict_t dict, matcher_config_t config,
-                                strlen_s keyword, strlen_s extra, void *tag,
-                                mdi_prop_f prop) {
-  matcher_config_t stub_config = config->config;
+bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
+                                strlen_s extra, void *tag, mdi_prop_f prop) {
+  matcher_config_t config = GET_AOBJECT(conf);
+  aobj stub_conf = ((stub_config_t) config->buf)->stub;
+  matcher_config_t stub_config = GET_AOBJECT(stub_conf);
+
   if (keyword.len == 0) return true;
 
   size_t so = 0, eo = keyword.len - 1;
@@ -237,7 +239,7 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_config_t config,
       && keyword.ptr[eo] != right_parentheses)
       || (keyword.ptr[so] != left_parentheses
           && keyword.ptr[eo] == right_parentheses)) {
-    stub_config->add_index(dict, stub_config, keyword, extra, tag, prop);
+    stub_config->add_index(dict, stub_conf, keyword, extra, tag, prop);
   } else {
     // 脱括号
     if (keyword.ptr[so] == left_parentheses
@@ -253,7 +255,7 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_config_t config,
               .ptr = keyword.ptr + cur,
               .len = i - cur,
           };
-          stub_config->add_index(dict, stub_config, key, extra, tag, prop);
+          stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
           cur = i + 1;
         }
       } else if (keyword.ptr[i] == left_parentheses) {
@@ -267,14 +269,15 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_config_t config,
           .ptr = keyword.ptr + cur,
           .len = i - cur,
       };
-      stub_config->add_index(dict, stub_config, key, extra, tag, prop);
+      stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
     }
   }
 
   return true;
 }
 
-bool dict_parse(match_dict_t self, vocab_t vocab, matcher_config_t conf) {
+bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf) {
+  matcher_config_t config = GET_AOBJECT(conf);
   if (self == NULL || vocab == NULL) {
     return false;
   }
@@ -292,9 +295,8 @@ bool dict_parse(match_dict_t self, vocab_t vocab, matcher_config_t conf) {
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
     // store keyword and extra in buffer
-    if (!conf
-        ->add_index(self, conf, keyword, extra, NULL,
-                    mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
+    if (!config->add_index(self, conf, keyword, extra, NULL,
+        mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
       return false;
     }
   }

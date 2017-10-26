@@ -5,7 +5,7 @@
 #ifndef _ACTRIE_CONFIGURE_H_
 #define _ACTRIE_CONFIGURE_H_
 
-#include "dict.h"
+#include "aobj.h"
 #include "matcher.h"
 
 #ifdef __cplusplus
@@ -18,21 +18,33 @@ typedef struct matcher_config *matcher_config_t;
 struct match_dict;
 typedef struct match_dict *match_dict_t;
 
-typedef bool(*dict_add_index_func)
-    (match_dict_t dict, matcher_config_t conf, strlen_s keyword,
-     strlen_s extra, void *tag, mdi_prop_f prop);
+typedef bool (*dict_add_index_func)(
+    match_dict_t dict, aobj conf, strlen_s keyword, strlen_s extra,
+    void *tag, mdi_prop_f prop);
+
+typedef void (*matcher_config_clean)(matcher_config_t config);
 
 typedef struct matcher_config {
   uint8_t id;
   matcher_type_e type;
   dict_add_index_func add_index;
-  void *config;
+  matcher_config_clean clean;
   char buf[0];
 } matcher_config_s;
 
-matcher_config_t matcher_stub_config(uint8_t id, matcher_config_t stub);
-matcher_config_t matcher_wordattr_config(uint8_t id, matcher_config_t stub);
-matcher_config_t matcher_alternation_config(uint8_t id, matcher_config_t stub);
+aobj matcher_conf(uint8_t id, matcher_type_e type,
+                  dict_add_index_func add_index, size_t extra);
+
+aobj matcher_root_conf(uint8_t id);
+
+typedef struct stub_config {
+  aobj stub;
+} stub_config_s, *stub_config_t;
+
+void stub_config_clean(matcher_config_t config);
+
+aobj matcher_wordattr_conf(uint8_t id, aobj stub);
+aobj matcher_alternation_conf(uint8_t id, aobj stub);
 
 #ifdef __cplusplus
 }

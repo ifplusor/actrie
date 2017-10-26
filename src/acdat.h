@@ -46,15 +46,10 @@ typedef struct dat_context {
 
 } dat_context_s, *dat_context_t;
 
-typedef struct dat_config {
-  matcher_config_t stub;
-} dat_config_s, *dat_config_t;
-
-matcher_config_t dat_matcher_config(uint8_t id, bool enable_automation,
-                                    matcher_config_t stub);
+aobj dat_matcher_conf(uint8_t id, matcher_type_e type, aobj stub);
 
 datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation);
-matcher_t dat_construct(match_dict_t dict, matcher_config_t conf);
+matcher_t dat_construct(match_dict_t dict, aobj conf);
 bool dat_destruct(datrie_t p);
 
 dat_context_t dat_alloc_context(datrie_t matcher);

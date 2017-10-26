@@ -15,7 +15,7 @@ ELSEIF (UNIX)
     add_compile_options(-fPIC)
     IF (NOT CMAKE_BUILD_TYPE)
         message("not defined CMAKE_BUILD_TYPE, use -O2")
-        add_compile_options(-g -Wall)
+        add_compile_options(-O2 -Wall)
     ENDIF ()
 ENDIF ()
 

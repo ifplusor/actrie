@@ -24,11 +24,11 @@ static const char *pattern = "^(.*)\\(\\?&!(.*)\\)$";
 static regex_t reg;
 static bool pattern_compiled = false;
 
-bool ambi_dict_add_index(match_dict_t dict, matcher_config_t config,
-                         strlen_s keyword, strlen_s extra, void *tag,
-                         mdi_prop_f prop) {
-  ambi_config_t dist_config = config->config;
-  matcher_config_t pure_config = dist_config->pure;
+bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+                         strlen_s extra, void *tag, mdi_prop_f prop) {
+  matcher_config_t config = GET_AOBJECT(conf);
+  aobj pure_conf = ((ambi_config_t)config->buf)->pure;
+  matcher_config_t pure_config = GET_AOBJECT(pure_conf);
   int err;
 
   if (!pattern_compiled) {
@@ -51,7 +51,7 @@ bool ambi_dict_add_index(match_dict_t dict, matcher_config_t config,
   afree(dup);
   if (err == REG_NOMATCH) {
     // non-ambi
-    pure_config->add_index(dict, pure_config, keyword, extra, tag,
+    pure_config->add_index(dict, pure_conf, keyword, extra, tag,
                            mdi_prop_clearly | prop);
     return true;
   } else if (err != REG_NOERROR) {
@@ -75,33 +75,39 @@ bool ambi_dict_add_index(match_dict_t dict, matcher_config_t config,
       .len = (size_t) (pmatch[2].rm_eo - pmatch[2].rm_so),
   };
 
-  pure_config->add_index(dict, pure_config, key, strlen_empty, key_tag,
+  pure_config->add_index(dict, pure_conf, key, strlen_empty, key_tag,
                          mdi_prop_normal | base_prop);
 
-  pure_config->add_index(dict, pure_config, ambi, strlen_empty, key_tag,
+  pure_config->add_index(dict, pure_conf, ambi, strlen_empty, key_tag,
                          mdi_prop_ambi | base_prop);
 
   return true;
 }
 
-matcher_config_t ambi_matcher_config(uint8_t id, matcher_config_t pure) {
-  matcher_config_t config =
-      amalloc(sizeof(matcher_config_s) + sizeof(ambi_config_s));
+void ambi_config_clean(matcher_config_t config) {
   if (config != NULL) {
-    config->id = id;
-    config->type = matcher_type_ambi;
-    config->add_index = ambi_dict_add_index;
-    config->config = config->buf;
+    ambi_config_t ambi_config = (ambi_config_t) config->buf;
+    _release(ambi_config->pure);
+  }
+}
+
+aobj ambi_matcher_conf(uint8_t id, aobj pure) {
+  aobj conf = matcher_conf(id, matcher_type_ambi, ambi_dict_add_index,
+                           sizeof(ambi_config_s));
+  if (conf) {
+    matcher_config_t config = GET_AOBJECT(conf);
+    config->clean = ambi_config_clean;
     ambi_config_t ambi_config = (ambi_config_t) config->buf;
     ambi_config->pure = pure;
   }
-  return config;
+  return conf;
 }
 
-matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf) {
+matcher_t ambi_construct(match_dict_t dict, aobj conf) {
+  matcher_config_t config = GET_AOBJECT(conf);
+  ambi_config_t ambi_config = (ambi_config_t) config->buf;
   ambi_matcher_t matcher = NULL;
   matcher_t pure_matcher = NULL;
-  ambi_config_t ambi_config = conf->config;
 
   do {
     pure_matcher = matcher_construct_by_dict(dict, ambi_config->pure);
@@ -114,7 +120,7 @@ matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf) {
 
     matcher->_pure_matcher = pure_matcher;
 
-    matcher->header._type = conf->type;
+    matcher->header._type = config->type;
     matcher->header._func = ambi_matcher_func;
 
     return (matcher_t) matcher;

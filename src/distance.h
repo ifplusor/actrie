@@ -54,23 +54,19 @@ typedef struct dist_context {
 } *dist_context_t;
 
 typedef struct dist_config {
-  matcher_config_t head;
-  matcher_config_t tail;
-  matcher_config_t digit;
+  aobj head;
+  aobj tail;
+  aobj digit;
 } dist_config_s, *dist_config_t;
 
-matcher_config_t
-dist_matcher_config(uint8_t id, matcher_config_t head, matcher_config_t tail,
-                    matcher_config_t digit);
+aobj dist_matcher_conf(uint8_t id, aobj head, aobj tail, aobj digit);
 
 matcher_t dist_construct(match_dict_t dict, matcher_config_t conf);
 bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);
 bool dist_free_context(dist_context_t context);
-bool dist_reset_context(dist_context_t context,
-                        unsigned char content[],
-                        size_t len);
+bool dist_reset_context(dist_context_t context, unsigned char content[], size_t len);
 
 bool dist_next_on_index(dist_context_t ctx);
 

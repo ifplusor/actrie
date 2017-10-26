@@ -39,19 +39,17 @@ typedef struct ambi_context {
 } ambi_context_s, *ambi_context_t;
 
 typedef struct ambi_config {
-  matcher_config_t pure;
+  aobj pure;
 } ambi_config_s, *ambi_config_t;
 
-matcher_config_t ambi_matcher_config(uint8_t id, matcher_config_t pure);
+aobj ambi_matcher_conf(uint8_t id, aobj pure);
 
-matcher_t ambi_construct(match_dict_t dict, matcher_config_t conf);
+matcher_t ambi_construct(match_dict_t dict, aobj conf);
 bool ambi_destruct(ambi_matcher_t self);
 
 ambi_context_t ambi_alloc_context(ambi_matcher_t matcher);
 bool ambi_free_context(ambi_context_t context);
-bool ambi_reset_context(ambi_context_t context,
-                        unsigned char content[],
-                        size_t len);
+bool ambi_reset_context(ambi_context_t context, unsigned char content[], size_t len);
 
 bool ambi_next_on_index(ambi_context_t ctx);
 

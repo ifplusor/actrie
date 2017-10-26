@@ -3,21 +3,12 @@
 //
 
 #include <matcher.h>
+#include "../src/matcher0.h"
 
 int main() {
-  char content[150000] = "苹果的果实134较饱满 较饱满";
+  char content[150000];
 
-  matcher_t matcher = matcher_construct_by_file(matcher_type_dist,
-                                                "rule");
-//                                                "n.dict");
-//  FILE *fp = fopen("split.dict","w");
-//  for (int i = 0; i < ((dist_matcher_t)matcher)->_dict->idx_count; i++) {
-//    mdi_t idx = ((dist_matcher_t)matcher)->_dict->index + i;
-////    if (idx->prop & mdi_prop_reserve)
-//      fprintf(fp, "%s %d\n", idx->_keyword, idx->prop);
-//  }
-//  fclose(fp);
-
+  matcher_t matcher = matcher_construct_by_file(matcher_type_ultimate, "rule");
   context_t context = matcher_alloc_context(matcher);
 
   FILE *fin = fopen("corpus.txt", "r");
@@ -36,14 +27,10 @@ int main() {
       mdi_t idx = matcher_matched_index(context);
       fprintf(fout, "%.*s(%d) - %s\n",
               (int) idx->length, idx->mdi_keyword, idx->wlen, idx->mdi_extra);
-//      fprintf(fout, "[%zu,%zu] %.*s(%d) - %s\n",
-//              context->out_eo - idx->length, context->out_eo,
+//      fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
+//              count, context->out_eo - idx->length, context->out_eo,
 //              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
     };
-
-//        if (count % 100 == 0) {
-//            printf("p: %d\n", count);
-//        }
   }
 
   sint64_t end = current_milliseconds();
@@ -56,6 +43,4 @@ int main() {
 
   fclose(fin);
   fclose(fout);
-
-//	getchar();
 }
