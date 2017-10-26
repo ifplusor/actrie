@@ -87,6 +87,7 @@ aobj matcher_ultimate_conf() {
 
   matcher_id++;
   dist_conf = dist_matcher_conf(matcher_id, head_conf, tail_conf, digit_conf);
+  dist_conf = matcher_alternation_conf(matcher_id, dist_conf);
 
   return dist_conf;
 }

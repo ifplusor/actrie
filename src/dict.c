@@ -235,42 +235,48 @@ bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
   if (keyword.len == 0) return true;
 
   size_t so = 0, eo = keyword.len - 1;
-  if ((keyword.ptr[so] == left_parentheses
-      && keyword.ptr[eo] != right_parentheses)
-      || (keyword.ptr[so] != left_parentheses
-          && keyword.ptr[eo] == right_parentheses)) {
-    stub_config->add_index(dict, stub_conf, keyword, extra, tag, prop);
-  } else {
-    // 脱括号
-    if (keyword.ptr[so] == left_parentheses
-        && keyword.ptr[eo] == right_parentheses) {
-      so++;
-      eo--;
-    }
-    size_t i, depth = 0, cur = so;
-    for (i = so; i <= eo; i++) {
-      if (keyword.ptr[i] == tokens_delimiter) {
-        if (depth == 0 && i > cur) {
-          strlen_s key = {
-              .ptr = keyword.ptr + cur,
-              .len = i - cur,
-          };
-          stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
-          cur = i + 1;
-        }
-      } else if (keyword.ptr[i] == left_parentheses) {
+  size_t i, depth = 0;
+
+  // 脱括号
+  while (keyword.ptr[so] == left_parentheses
+      && keyword.ptr[eo] == right_parentheses) {
+    for (i = so + 1; i <= eo - 1; i++) {
+      if (keyword.ptr[i] == left_parentheses) {
         depth++;
       } else if (keyword.ptr[i] == right_parentheses) {
+        if (depth <= 0) break; // error
         depth--;
       }
     }
-    if (i > cur) {
-      strlen_s key = {
-          .ptr = keyword.ptr + cur,
-          .len = i - cur,
-      };
-      stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
+    if (i < eo) break;
+    so++;
+    eo--;
+  }
+
+  depth = 0;
+  size_t cur = so;
+  for (i = so; i <= eo; i++) {
+    if (keyword.ptr[i] == tokens_delimiter) {
+      if (depth == 0 && i > cur) {
+        strlen_s key = {
+            .ptr = keyword.ptr + cur,
+            .len = i - cur,
+        };
+        stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
+        cur = i + 1;
+      }
+    } else if (keyword.ptr[i] == left_parentheses) {
+      depth++;
+    } else if (keyword.ptr[i] == right_parentheses) {
+      depth--;
     }
+  }
+  if (i > cur) {
+    strlen_s key = {
+        .ptr = keyword.ptr + cur,
+        .len = i - cur,
+    };
+    stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
   }
 
   return true;
