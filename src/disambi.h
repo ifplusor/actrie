@@ -34,6 +34,7 @@ typedef struct ambi_context {
   mdimap_t _ambi_map;
 
   deque_node_s _out_buffer;
+  mdi_s out_index;
 
 } ambi_context_s, *ambi_context_t;
 

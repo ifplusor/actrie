@@ -272,7 +272,7 @@ dist_context_t dist_alloc_context(dist_matcher_t matcher) {
     ctx->_digit_ctx = matcher_alloc_context(matcher->_digit_matcher);
     if (ctx->_digit_ctx == NULL) break;
 
-    ctx->_mdiqn_pool = dynapool_construct_with_type(mdim_node_s);
+    ctx->_mdiqn_pool = dynapool_construct(sizeof(mdim_node_s) + sizeof(mdi_s));
     if (ctx->_mdiqn_pool == NULL) break;
     ctx->_tail_map = mdimap_construct(false);
     if (ctx->_tail_map == NULL) break;
@@ -340,13 +340,11 @@ bool dist_construct_out(dist_context_t ctx, size_t _eo) {
   // alias
   unsigned char *content = ctx->header.content;
   context_t hctx = ctx->_head_ctx;
+  mdi_t matched_index = hctx->out_matched_index->_tag;
 
   ctx->header.out_eo = _eo;
 
-  mdi_t matched_index = hctx->out_matched_index->_tag;
-
   ctx->header.out_matched_index = &ctx->out_index;
-
   ctx->out_index.length = (uint16_t)
       ((ctx->header.out_eo - hctx->out_eo) + hctx->out_matched_index->length);
 #ifdef USE_SUBPATTERN_LENGTH
@@ -458,7 +456,8 @@ bool dist_next_on_index(dist_context_t ctx) {
 
         // record history
         tail_node = dynapool_alloc_node(ctx->_mdiqn_pool);
-        tail_node->idx = tctx->out_matched_index;
+        tail_node->idx = tail_node->buf;
+        *tail_node->idx = *tctx->out_matched_index;
         tail_node->pos = matcher_matched_pos(tctx);
         mdimap_insert(ctx->_tail_map, tail_node);
         deque_push_back(&ctx->_tail_cache, tail_node, mdim_node_s, deque_elem);

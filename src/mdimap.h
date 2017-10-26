@@ -26,6 +26,8 @@ typedef struct mdi_map_node {
 
   avl_node_s avl_elem;
   deque_node_s deque_elem; // queue for context out
+
+  mdi_s buf[0]; // dynamic size for idx buffer
 } mdim_node_s;
 
 typedef enum mdim_bucket_type {

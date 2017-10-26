@@ -182,9 +182,8 @@ bool ambi_free_context(ambi_context_t context) {
   return true;
 }
 
-bool ambi_reset_context(ambi_context_t ctx,
-                        unsigned char content[],
-                        size_t len) {
+bool
+ambi_reset_context(ambi_context_t ctx, unsigned char content[], size_t len) {
   ctx->header.content = content;
   ctx->header.len = len;
   ctx->header.out_matched_index = NULL;
@@ -196,6 +195,23 @@ bool ambi_reset_context(ambi_context_t ctx,
   mdimap_reset(ctx->_ambi_map);
   dynapool_reset(ctx->_mdiqn_pool);
   deque_init(&ctx->_out_buffer);
+
+  return true;
+}
+
+bool ambi_construct_out(ambi_context_t ctx, mdi_t matched_index, size_t _eo) {
+  // alias
+  mdi_t pidx = matched_index->_tag;
+
+  ctx->header.out_eo = _eo;
+
+  ctx->header.out_matched_index = &ctx->out_index;
+  ctx->out_index.length = matched_index->length;
+  ctx->out_index.wlen = matched_index->wlen;
+  ctx->out_index.mdi_keyword = matched_index->mdi_keyword;
+  ctx->out_index.mdi_extra = pidx->mdi_extra;
+  ctx->out_index._tag = pidx->_tag;
+  ctx->out_index.prop = pidx->prop;
 
   return true;
 }
@@ -279,12 +295,12 @@ bool ambi_next_on_index(ambi_context_t ctx) {
 
   // pop from queue
   mdim_node_t node = deque_pop_front(&ctx->_out_buffer, mdim_node_s, deque_elem);
-  if (node->idx->prop & mdi_prop_normal) {
-    ctx->header.out_matched_index = node->idx->_tag;
-  } else {
+  if (node->idx->prop & mdi_prop_clearly) {
     ctx->header.out_matched_index = node->idx;
+    ctx->header.out_eo = node->pos.eo;
+  } else {
+    ambi_construct_out(ctx, node->idx, node->pos.eo);
   }
-  ctx->header.out_eo = node->pos.eo;
 
   return true;
 }
