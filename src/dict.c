@@ -73,6 +73,7 @@ match_dict_t dict_alloc() {
     p->_map = NULL;
 
     p->index = NULL;
+    p->idx_count = 0;
     p->_ref_count = 1;
     p->before_reset = NULL;
 
@@ -97,7 +98,8 @@ bool dict_clean(match_dict_t dict) {
       _release(cstr2dstr(idx->_keyword));
     }
     if (idx->prop & mdi_prop_bufextra) {
-      _release(cstr2dstr(idx->_extra));
+      if (idx->mdi_extra != str_empty)
+        _release(cstr2dstr(idx->_extra));
     }
   }
   free(dict->index);
@@ -300,6 +302,8 @@ bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf) {
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
+    // TODO: check syntax
+
     // store keyword and extra in buffer
     if (!config->add_index(self, conf, keyword, extra, NULL,
         mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
