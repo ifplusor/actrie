@@ -260,7 +260,7 @@ void dat_construct_automation(datrie_t self, trie_t origin) {
           trie_access_node_export(origin, match)->trie_datidx;
     }
   }
-  fprintf(stderr, "construct AC automation succeed!\n");
+//  fprintf(stderr, "construct AC automation succeed!\n");
 }
 
 bool dat_destruct(datrie_t p) {
@@ -296,7 +296,7 @@ datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
   if (enable_automation)
     dat_construct_automation(p, origin);    /* 建立 AC 自动机 */
 
-  fprintf(stderr, "construct double-array trie succeed!\n");
+//  fprintf(stderr, "construct double-array trie succeed!\n");
   return p;
 }
 

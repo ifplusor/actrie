@@ -304,7 +304,7 @@ void trie_sort_to_line(trie_t self) {
       iTarget++;
     }
   }
-  fprintf(stderr, "sort succeed!\n");
+//  fprintf(stderr, "sort succeed!\n");
 }
 
 void trie_set_parent_by_dfs(trie_t self, size_t current, size_t parent) {
@@ -319,7 +319,7 @@ void trie_set_parent_by_dfs(trie_t self, size_t current, size_t parent) {
 void trie_rebuild_parent_relation(trie_t self) {
   if (self->root->trie_child != 0)
     trie_set_parent_by_dfs(self, self->root->trie_child, 0);
-  fprintf(stderr, "rebuild parent succeed!\n");
+//  fprintf(stderr, "rebuild parent succeed!\n");
 }
 
 void trie_construct_automation(trie_t self) {
@@ -349,7 +349,7 @@ void trie_construct_automation(trie_t self) {
       pChild->trie_failed = match;
     }
   }
-  fprintf(stderr, "construct AC automation succeed!\n");
+//  fprintf(stderr, "construct AC automation succeed!\n");
 }
 
 void trie_destruct(trie_t self) {

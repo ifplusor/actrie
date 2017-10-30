@@ -3,8 +3,8 @@ project(actrie)
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 message("buile type: " ${CMAKE_BUILD_TYPE})
 
@@ -30,11 +30,11 @@ if (GenProfile)
 endif ()
 
 if (NOT (DEFINED ALIB_DIR))
-    set(ALIB_DIR "${PROJECT_SOURCE_DIR}/../alib")
+    set(alib_DIR "${PROJECT_SOURCE_DIR}/../alib")
 endif()
-add_subdirectory(${ALIB_DIR} alib)
+add_subdirectory(${alib_DIR} alib)
 
-set(ACTRIE_HEADER_FILES
+set(actrie_HEADER_FILES
         src/configure.h
         include/dict.h
         include/matcher.h
@@ -47,7 +47,7 @@ set(ACTRIE_HEADER_FILES
         src/disambi.h
         src/distance.h)
 
-set(ACTRIE_SOURCE_FILES
+set(actrie_SOURCE_FILES
         src/configure.c
         src/vocab.c
         src/dict.c
@@ -59,34 +59,12 @@ set(ACTRIE_SOURCE_FILES
         src/matcher.c)
 
 add_library(actrie STATIC
-        ${ACTRIE_HEADER_FILES} ${ACTRIE_SOURCE_FILES})
+        ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})
 target_include_directories(actrie
         PUBLIC include)
 target_link_libraries(actrie
         PUBLIC alib)
 
+add_subdirectory(actrie)
+
 add_subdirectory(tests)
-
-set(ALIB_SOURCE_FILES
-        ${ALIB_DIR}/src/amem.c
-        ${ALIB_DIR}/src/aobj.c
-        ${ALIB_DIR}/src/astr.c
-        ${ALIB_DIR}/src/dynastr.c
-        ${ALIB_DIR}/src/acom.c
-        ${ALIB_DIR}/src/list.c
-        ${ALIB_DIR}/src/dlnk.c
-        ${ALIB_DIR}/src/dynapool.c
-        ${ALIB_DIR}/src/avl.c
-        ${ALIB_DIR}/src/stream.c
-        ${ALIB_DIR}/src/dynabuf.c
-        ${ALIB_DIR}/src/utf8.c)
-
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
-add_executable(test_profile
-        ${ALIB_SOURCE_FILES}
-        ${ACTRIE_SOURCE_FILES}
-        tests/test_dist.c)
-target_include_directories(test_profile
-        PRIVATE ${ALIB_DIR}/include
-        PRIVATE include)
