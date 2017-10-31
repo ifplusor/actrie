@@ -1,3 +1,19 @@
+/**
+ * description:
+ *   We will parsing arguments and building values in this file for convert
+ *   string between python and c.
+ *
+ *   For parse s,s#:
+ *     In python3, Unicode objects are converted to C strings using 'utf-8' encoding.
+ *     But in python2, Unicode objects pass back a pointer to the default encoded string
+ *       version of the object if such a conversion is possible. All other read-buffer
+ *       compatible objects pass back a reference to the raw internal data representation.
+ *
+ *   For build s#:
+ *     In python3, Convert a C string and its length to a Python str object using 'utf-8' encoding.
+ *     But in python2, Convert a C string and its length to a Python object.
+ */
+
 #include <Python.h>
 #include <matcher.h>
 
@@ -109,9 +125,9 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
   return Py_False;
 }
 
-inline PyObject *build_matched_output(mdi_t mdi, strpos_s pos) {
+static inline PyObject *build_matched_output(mdi_t mdi, strpos_s pos) {
   return Py_BuildValue(
-      "(s,i,i,s)", mdi->mdi_keyword, pos.so, pos.eo, mdi->mdi_extra);
+      "(s#,i,i,s)", mdi->mdi_keyword, mdi->length, pos.so, pos.eo, mdi->mdi_extra);
 }
 
 PyObject *wrap_next(PyObject *dummy, PyObject *args) {
@@ -191,9 +207,8 @@ PyMODINIT_FUNC init_actrie() {
 
 #ifdef IS_PY3K
   m = PyModule_Create(&matchModule);
+  return m;
 #else
   m = Py_InitModule("_actrie", wrapMethods);
 #endif
-
-  return m;
 }

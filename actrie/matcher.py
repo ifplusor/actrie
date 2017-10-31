@@ -1,9 +1,19 @@
 # coding=utf-8
 
 import os
+import sys
 
 from . import _actrie
 from .context import Context
+
+is_py3k = bool(sys.version_info[0] == 3)
+
+
+def convert2pass(obj):
+    # we only convert unicode in python2 to utf-8
+    if not is_py3k and isinstance(obj, unicode):
+        obj = obj.encode("utf8")
+    return obj
 
 
 class MatcherError(Exception):
@@ -35,8 +45,7 @@ class Matcher:
             return MatcherError("matcher is initialized")
         if not keyword:
             return False
-        # if isinstance(keyword, unicode):
-        #     keyword = keyword.encode("utf-8")
+        keyword = convert2pass(keyword)
         self._matcher = _actrie.ConstructByString(keyword)
         return self._matcher is not None
 
@@ -44,10 +53,11 @@ class Matcher:
         if self._matcher:
             return MatcherError("matcher is initialized")
         if isinstance(strings, list) or isinstance(strings, set):
+            # for utf-8 '\n' is 0x0a, in other words, utf-8 is ascii compatible.
+            # but in python3, str.join is only accept str as argument
             keywords = "\n".join(
-                [word.encode("utf8") if isinstance(word, unicode) else word
-                 for word in strings
-                 if isinstance(word, unicode) or isinstance(word, str)])
+                [convert2pass(word) for word in strings
+                 if convert2pass(word) is not None])
         else:
             raise MatcherError("should be list or set")
         return self.load_from_string(keywords)
