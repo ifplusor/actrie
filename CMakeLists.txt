@@ -3,7 +3,7 @@ project(actrie)
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
-#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 message("buile type: " ${CMAKE_BUILD_TYPE})
@@ -31,7 +31,7 @@ endif ()
 
 if (NOT (DEFINED ALIB_DIR))
     set(alib_DIR "${PROJECT_SOURCE_DIR}/../alib")
-endif()
+endif ()
 add_subdirectory(${alib_DIR} alib)
 
 set(actrie_HEADER_FILES
@@ -65,6 +65,8 @@ target_include_directories(actrie
 target_link_libraries(actrie
         PUBLIC alib)
 
-add_subdirectory(actrie)
+if (ENABLE_PYTHON)
+    add_subdirectory(actrie)
+endif ()
 
 add_subdirectory(tests)

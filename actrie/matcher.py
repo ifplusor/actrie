@@ -1,7 +1,9 @@
+# coding=utf-8
+
 import os
 
-import match
-from context import Context
+from . import _actrie
+from .context import Context
 
 
 class MatcherError(Exception):
@@ -18,14 +20,14 @@ class Matcher:
 
     def __del__(self):
         if self._matcher:
-            match.Destruct(self._matcher)
+            _actrie.Destruct(self._matcher)
 
     def load_from_file(self, path):
         if self._matcher:
             return MatcherError("matcher is initialized")
         if not os.path.isfile(path):
             return False
-        self._matcher = match.ConstructByFile(path)
+        self._matcher = _actrie.ConstructByFile(path)
         return self._matcher is not None
 
     def load_from_string(self, keyword):
@@ -33,9 +35,9 @@ class Matcher:
             return MatcherError("matcher is initialized")
         if not keyword:
             return False
-        if isinstance(keyword, unicode):
-            keyword = keyword.encode("utf-8")
-        self._matcher = match.ConstructByString(keyword)
+        # if isinstance(keyword, unicode):
+        #     keyword = keyword.encode("utf-8")
+        self._matcher = _actrie.ConstructByString(keyword)
         return self._matcher is not None
 
     def load_from_collection(self, strings):
@@ -53,7 +55,7 @@ class Matcher:
     def find_all(self, content):
         if not self._matcher:
             return MatcherError("matcher is not initialized")
-        return match.FindAll(self._matcher, content)
+        return _actrie.FindAll(self._matcher, content)
 
     def match(self, content):
         if not self._matcher:

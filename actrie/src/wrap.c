@@ -1,6 +1,10 @@
 #include <Python.h>
 #include <matcher.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 PyObject *wrap_construct_by_file(PyObject *dummy, PyObject *args) {
   const char *path;
   matcher_t matcher;
@@ -105,6 +109,11 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
   return Py_False;
 }
 
+inline PyObject *build_matched_output(mdi_t mdi, strpos_s pos) {
+  return Py_BuildValue(
+      "(s,i,i,s)", mdi->mdi_keyword, pos.so, pos.eo, mdi->mdi_extra);
+}
+
 PyObject *wrap_next(PyObject *dummy, PyObject *args) {
   unsigned long long temp;
   context_t context;
@@ -119,7 +128,7 @@ PyObject *wrap_next(PyObject *dummy, PyObject *args) {
   if (matcher_next(context)) {
     mdi_t mdi = matcher_matched_index(context);
     strpos_s pos = matcher_matched_pos(context);
-    return Py_BuildValue("(s,i,i,s)", mdi->mdi_keyword, pos.so, pos.eo, mdi->mdi_extra);
+    return build_matched_output(mdi, pos);
   }
 
   return Py_None;
@@ -149,26 +158,42 @@ PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
   while (matcher_next(context)) {
     mdi_t mdi = matcher_matched_index(context);
     strpos_s pos = matcher_matched_pos(context);
-    PyObject *item = Py_BuildValue("(s,i,i,s)", mdi->mdi_keyword, pos.so, pos.eo, mdi->mdi_extra);
+    PyObject *item = build_matched_output(mdi, pos);
     PyList_Append(list, item);
   }
 
   return list;
 }
 
-static PyMethodDef wrapMethods[] =
-    {
-        {"ConstructByFile", wrap_construct_by_file, METH_VARARGS, "construct matcher by file"},
-        {"ConstructByString", wrap_construct_by_string, METH_VARARGS, "construct matcher by string"},
-        {"Destruct", wrap_destroy, METH_VARARGS, "destruct matcher"},
-        {"AllocContext", wrap_alloc_context, METH_VARARGS, "alloc iterator context"},
-        {"FreeContext", wrap_free_context, METH_VARARGS, "free iterator context"},
-        {"ResetContext", wrap_reset_context, METH_VARARGS, "reset iterator context"},
-        {"Next", wrap_next, METH_VARARGS, "iterator next"},
-        {"FindAll", wrap_find_all, METH_VARARGS, "find all matched strings"},
-        {NULL, NULL}
-    };
+static PyMethodDef wrapMethods[] = {
+    {"ConstructByFile", wrap_construct_by_file, METH_VARARGS, "construct matcher by file"},
+    {"ConstructByString", wrap_construct_by_string, METH_VARARGS, "construct matcher by string"},
+    {"Destruct", wrap_destroy, METH_VARARGS, "destruct matcher"},
+    {"AllocContext", wrap_alloc_context, METH_VARARGS, "alloc iterator context"},
+    {"FreeContext", wrap_free_context, METH_VARARGS, "free iterator context"},
+    {"ResetContext", wrap_reset_context, METH_VARARGS, "reset iterator context"},
+    {"Next", wrap_next, METH_VARARGS, "iterator next"},
+    {"FindAll", wrap_find_all, METH_VARARGS, "find all matched strings"},
+    {NULL, NULL}
+};
 
-void initmatch() {
-  PyObject *m = Py_InitModule("match", wrapMethods);
+#ifdef IS_PY3K
+static PyModuleDef matchModule = {
+    PyModuleDef_HEAD_INIT, "_actrie", NULL, -1, wrapMethods
+};
+
+PyMODINIT_FUNC PyInit__actrie() {
+#else
+PyMODINIT_FUNC init_actrie() {
+#endif
+
+  PyObject *m;
+
+#ifdef IS_PY3K
+  m = PyModule_Create(&matchModule);
+#else
+  m = Py_InitModule("_actrie", wrapMethods);
+#endif
+
+  return m;
 }

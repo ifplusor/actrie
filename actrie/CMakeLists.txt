@@ -1,7 +1,11 @@
 if (NOT (DEFINED PythonVersion))
-    set(PythonVersion 3.6)
+    set(PythonVersion 3)
 endif ()
 
+find_package(PythonLibs ${PythonVersion} EXACT REQUIRED)
+if (NOT ${PYTHON_FOUND})
+    message(FATAL_ERROR "not found python lib!")
+endif ()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -13,14 +17,12 @@ set(HEADER_FILES
 set(SOURCE_FILES
         src/wrap.c)
 
-add_library(match SHARED
+add_library(_actrie SHARED
         ${HEADER_FILES} ${SOURCE_FILES})
-set_target_properties(match PROPERTIES PREFIX "")
-target_link_libraries(match
+set_target_properties(_actrie PROPERTIES PREFIX "")
+target_link_libraries(_actrie
         PRIVATE actrie)
-target_include_directories(match
-        PRIVATE /usr/include/python2.7
-        PRIVATE /usr/lib/python2.7/config)
-target_compile_options(match
+target_include_directories(_actrie
+        PRIVATE ${PYTHON_INCLUDE_DIR})
+target_compile_options(_actrie
         PRIVATE -fPIC)
-
