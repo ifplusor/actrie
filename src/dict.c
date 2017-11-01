@@ -239,7 +239,7 @@ bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
   size_t so = 0, eo = keyword.len - 1;
   size_t i, depth = 0;
 
-  // 脱括号
+  /* 脱括号 */
   while (keyword.ptr[so] == left_parentheses
       && keyword.ptr[eo] == right_parentheses) {
     for (i = so + 1; i <= eo - 1; i++) {

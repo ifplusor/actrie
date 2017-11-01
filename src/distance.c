@@ -2,7 +2,8 @@
 // Created by james on 6/19/17.
 //
 
-#include <regex.h>
+#include <pcre2posix.h>
+
 #include "utf8.h"
 #include "distance.h"
 #include "acdat.h"
@@ -117,7 +118,7 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
     head_config->add_index(dict, head_conf, keyword, extra, tag,
                            mdi_prop_single | prop);
     return true;
-  } else if (err != REG_NOERROR) {
+  } else if (err != 0) {
     return false;
   }
 

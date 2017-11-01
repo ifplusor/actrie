@@ -154,11 +154,11 @@ bool matcher_next(context_t context) {
   return context->_func.next(context);
 }
 
-inline mdi_t matcher_matched_index(context_t context) {
+mdi_t matcher_matched_index(context_t context) {
   return context->out_matched_index;
 }
 
-inline strpos_s matcher_matched_pos(context_t context) {
+strpos_s matcher_matched_pos(context_t context) {
   return (strpos_s) {
       .so = context->out_eo - context->out_matched_index->length,
       .eo = context->out_eo

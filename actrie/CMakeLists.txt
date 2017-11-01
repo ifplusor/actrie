@@ -24,5 +24,7 @@ target_link_libraries(_actrie
         PRIVATE actrie)
 target_include_directories(_actrie
         PRIVATE ${PYTHON_INCLUDE_DIR})
-target_compile_options(_actrie
-        PRIVATE -fPIC)
+if (UNIX)
+	target_compile_options(_actrie
+			PRIVATE -fPIC)
+endif ()

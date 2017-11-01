@@ -8,25 +8,28 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 
 message("buile type: " ${CMAKE_BUILD_TYPE})
 
-IF (WIN32)
-    MESSAGE("compile for win32")
-ELSEIF (UNIX)
-    MESSAGE("compile for unix-like OS, include OS X and Cygwin")
+if (UNIX)
+    message("compile for unix-like OS, include OS X and Cygwin")
     add_compile_options(-fPIC)
-    IF (NOT CMAKE_BUILD_TYPE)
+    if (NOT CMAKE_BUILD_TYPE)
         message("not defined CMAKE_BUILD_TYPE, use -O2")
         add_compile_options(-O2 -Wall)
-    ENDIF ()
-ENDIF ()
+    endif ()
+elseif (MSVC)
+    message("compile with MSVC")
+	add_compile_options(/utf-8 /NODEFAULTLIB:library)
+endif ()
 
 set(CMAKE_C_STANDARD 99)
 
-if (GenProfile)
-    MESSAGE("generate profile")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
-    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
-    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+# gprof
+option(ENABLE_PROFILE "Enable compile with profile information." OFF)
+if (ENABLE_PROFILE)
+    message("generate profile")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif ()
 
 if (NOT (DEFINED ALIB_DIR))
@@ -63,8 +66,11 @@ add_library(actrie STATIC
 target_include_directories(actrie
         PUBLIC include)
 target_link_libraries(actrie
-        PUBLIC alib)
+        PUBLIC alib
+        PUBLIC pcre2-posix)
 
+# python interface
+option (ENABLE_PYTHON "Enable compile python interface." OFF)
 if (ENABLE_PYTHON)
     add_subdirectory(actrie)
 endif ()

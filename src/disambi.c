@@ -2,7 +2,8 @@
 // Created by james on 9/27/17.
 //
 
-#include <regex.h>
+#include <pcre2posix.h>
+
 #include "disambi.h"
 
 const matcher_func_l ambi_matcher_func = {
@@ -54,7 +55,7 @@ bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
     pure_config->add_index(dict, pure_conf, keyword, extra, tag,
                            mdi_prop_clearly | prop);
     return true;
-  } else if (err != REG_NOERROR) {
+  } else if (err != 0) {
     return false;
   }
 

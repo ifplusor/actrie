@@ -12,7 +12,7 @@ print("build for python" + PYTHON_VERSION)
 # Arguments
 actrie_dir = ""
 alib_dir = ""
-extra_build = False
+extra_build = True
 
 
 def get_root_dir():
@@ -64,17 +64,19 @@ if not extra_build:
     libraries = []
 else:
     sources = warp_sources
-    build_library()
+    # build_library()
     library_dirs = [os.path.join(actrie_dir, 'lib')]
-    libraries = ['alib', 'actrie']
+    libraries = ['pcre2-8', 'pcre2-posix', 'alib', 'actrie']
 
 include_dir = [
     os.path.join(alib_dir, 'include'),
     os.path.join(actrie_dir, 'include'),
+	os.path.join(alib_dir, 'third_part/pcre2/include')
 ]
 
 actrie = Extension('actrie._actrie',
                    sources=sources,
+                   extra_compile_args=["/utf-8", "/NODEFAULTLIB:library"],
                    include_dirs=include_dir,
                    library_dirs=library_dirs,
                    libraries=libraries)
