@@ -1,5 +1,5 @@
 #include "acdat.h"
-#include "list.h"
+#include "obj/list.h"
 
 /* Trie 内部接口，仅限 Double-Array Trie 使用 */
 size_t trie_size(trie_t self);

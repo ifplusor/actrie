@@ -5,10 +5,11 @@
 #ifndef _ACTRIE_DISAMBI_H_
 #define _ACTRIE_DISAMBI_H_
 
-#include "acdat.h"
+#include "matcher0.h"
 #include "dynapool.h"
 #include "dlnk.h"
 #include "mdimap.h"
+#include <pcre.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,6 +41,7 @@ typedef struct ambi_context {
 
 typedef struct ambi_config {
   aobj pure;
+  pcre *regex;
 } ambi_config_s, *ambi_config_t;
 
 aobj ambi_matcher_conf(uint8_t id, aobj pure);

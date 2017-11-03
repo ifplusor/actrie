@@ -2,9 +2,8 @@
 // Created by james on 9/27/17.
 //
 
-#include <pcre2posix.h>
-
 #include "disambi.h"
+#include "acdat.h"
 
 const matcher_func_l ambi_matcher_func = {
     .destruct = (matcher_destruct_func) ambi_destruct,
@@ -22,40 +21,36 @@ const context_func_l ambi_context_func = {
  * - A(?&!D1|D2)
  */
 static const char *pattern = "^(.*)\\(\\?&!(.*)\\)$";
-static regex_t reg;
-static bool pattern_compiled = false;
 
 bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
                          strlen_s extra, void *tag, mdi_prop_f prop) {
   matcher_config_t config = GET_AOBJECT(conf);
-  aobj pure_conf = ((ambi_config_t)config->buf)->pure;
+  ambi_config_t ambi_config = (ambi_config_t) config->buf;
+  aobj pure_conf = ambi_config->pure;
   matcher_config_t pure_config = GET_AOBJECT(pure_conf);
-  int err;
 
-  if (!pattern_compiled) {
+  if (ambi_config->regex == NULL) {
     // compile pattern
-    err = regcomp(&reg, pattern, REG_EXTENDED | REG_NEWLINE);
-    if (err) {
-      fprintf(stderr, "%s(%d) - error: compile regex failed!\n",
-              __FILE__, __LINE__);
+    const char *errorptr;
+    int errorcode;
+    int erroffset;
+    ambi_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
+    if (ambi_config->regex == NULL) {
+      ALOG(ERROR, errorptr);
       exit(-1);
-    } else {
-      pattern_compiled = true;
     }
   }
 
   if (keyword.len == 0) return true;
 
-  regmatch_t pmatch[3];
-  char *dup = astrndup(keyword.ptr, keyword.len);
-  err = regexec(&reg, dup, 3, pmatch, 0);
-  afree(dup);
-  if (err == REG_NOMATCH) {
+  int ovector[9];
+  int rc = pcre_exec(ambi_config->regex, NULL, keyword.ptr, (int) keyword.len, 0, 0, ovector, 9);
+  if (rc == PCRE_ERROR_NOMATCH) {
     // non-ambi
     pure_config->add_index(dict, pure_conf, keyword, extra, tag,
                            mdi_prop_clearly | prop);
     return true;
-  } else if (err != 0) {
+  } else if (rc < 0) {
     return false;
   }
 
@@ -67,13 +62,13 @@ bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
 
   // store processed keyword
   strlen_s key = {
-      .ptr = keyword.ptr + pmatch[1].rm_so,
-      .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
+      .ptr = keyword.ptr + PCRE_VEC_SO(ovector, 1),
+      .len = (size_t) (PCRE_VEC_EO(ovector, 1) - PCRE_VEC_SO(ovector, 1)),
   };
 
   strlen_s ambi = {
-      .ptr = keyword.ptr + pmatch[2].rm_so,
-      .len = (size_t) (pmatch[2].rm_eo - pmatch[2].rm_so),
+      .ptr = keyword.ptr + PCRE_VEC_SO(ovector, 2),
+      .len = (size_t) (PCRE_VEC_EO(ovector, 2) - PCRE_VEC_SO(ovector, 2)),
   };
 
   pure_config->add_index(dict, pure_conf, key, strlen_empty, key_tag,
@@ -89,6 +84,7 @@ void ambi_config_clean(matcher_config_t config) {
   if (config != NULL) {
     ambi_config_t ambi_config = (ambi_config_t) config->buf;
     _release(ambi_config->pure);
+    free(ambi_config->regex);
   }
 }
 
@@ -100,6 +96,7 @@ aobj ambi_matcher_conf(uint8_t id, aobj pure) {
     config->clean = ambi_config_clean;
     ambi_config_t ambi_config = (ambi_config_t) config->buf;
     ambi_config->pure = pure;
+    ambi_config->regex = NULL;
   }
   return conf;
 }

@@ -5,8 +5,8 @@
 #ifndef _ACTRIE_CONFIGURE_H_
 #define _ACTRIE_CONFIGURE_H_
 
-#include "aobj.h"
-#include "matcher.h"
+#include <obj/aobj.h>
+#include <matcher.h>
 
 #ifdef __cplusplus
 extern "C" {

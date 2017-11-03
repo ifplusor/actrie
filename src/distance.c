@@ -2,11 +2,8 @@
 // Created by james on 6/19/17.
 //
 
-#include <pcre2posix.h>
-
 #include "utf8.h"
 #include "distance.h"
-#include "acdat.h"
 
 #define MAX_WORD_DISTANCE 15
 #define MAX_CHAR_DISTANCE (MAX_WORD_DISTANCE*3)
@@ -33,10 +30,7 @@ const context_func_l dist_context_func = {
  * - A\d{0,5}B
  * - A.{0,5}B
  */
-static const char
-    *pattern = "^(.*)(\\.\\*\\?|(\\\\d|\\.)\\{0,([0-9]|1[0-5])\\})(.*)$";
-static regex_t reg;
-static bool pattern_compiled = false;
+static const char *pattern = "^(.*)((\\\\d|\\.)\\{\\d+,(\\d+)\\})(.*)$";
 
 void dist_dict_before_reset(match_dict_t dict,
                             size_t *index_count,
@@ -47,6 +41,8 @@ void dist_dict_before_reset(match_dict_t dict,
 
 size_t max_alternation_length(strlen_s keyword, bool nest) {
   size_t max = 0;
+
+  if (keyword.len == 0) return 0;
 
   size_t so = 0, eo = keyword.len - 1;
   if ((keyword.ptr[so] == left_parentheses
@@ -87,66 +83,55 @@ size_t max_alternation_length(strlen_s keyword, bool nest) {
 bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
                          strlen_s extra, void * tag, mdi_prop_f prop) {
   matcher_config_t config = GET_AOBJECT(conf);
-  aobj head_conf = ((dist_config_t) config->buf)->head;
+  dist_config_t dist_config = (dist_config_t) config->buf;
+  aobj head_conf = dist_config->head;
   matcher_config_t head_config = GET_AOBJECT(head_conf);
-  aobj tail_conf = ((dist_config_t) config->buf)->tail;
+  aobj tail_conf = dist_config->tail;
   matcher_config_t tail_config = GET_AOBJECT(tail_conf);
-  aobj digit_conf = ((dist_config_t) config->buf)->digit;
+  aobj digit_conf = dist_config->digit;
   matcher_config_t digit_config = GET_AOBJECT(digit_conf);
-  int err;
 
-  if (!pattern_compiled) {
+  if (dist_config->regex == NULL) {
     // compile pattern
-    err = regcomp(&reg, pattern, REG_EXTENDED | REG_NEWLINE);
-    if (err) {
-      fprintf(stderr, "%s(%d) - error: compile regex failed!\n",
-              __FILE__, __LINE__);
+    const char *errorptr;
+    int errorcode;
+    int erroffset;
+    dist_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
+    if (dist_config->regex == NULL) {
+      ALOG(ERROR, errorptr);
       exit(-1);
-    } else {
-      pattern_compiled = true;
     }
   }
 
   if (keyword.len == 0) return true;
 
-  regmatch_t pmatch[6];
-  char *dup = astrndup(keyword.ptr, keyword.len);
-  err = regexec(&reg, dup, 6, pmatch, 0);
-  afree(dup);
-  if (err == REG_NOMATCH) {
+  int ovector[18];
+  int rc = pcre_exec(dist_config->regex, NULL, keyword.ptr, (int) keyword.len, 0, 0, ovector, 18);
+  if (rc == PCRE_ERROR_NOMATCH) {
     // single
     head_config->add_index(dict, head_conf, keyword, extra, tag,
                            mdi_prop_single | prop);
     return true;
-  } else if (err != 0) {
+  } else if (rc < 0) {
     return false;
   }
 
   mdi_prop_f base_prop = mdi_prop_tag_id | mdi_prop_bufkey;
 
-  size_t distance;
-  if (pmatch[3].rm_so == -1) {
-    // .*?
+  char *dist =
+      astrndup(keyword.ptr + PCRE_VEC_SO(ovector, 4),
+               (size_t) (PCRE_VEC_EO(ovector, 4) - PCRE_VEC_SO(ovector, 4)));
+  size_t distance = (size_t) strtol(dist, NULL, 10);
+  afree(dist);
+  if (distance > MAX_WORD_DISTANCE)
     distance = MAX_WORD_DISTANCE;
-  } else {
-    char dist[3];
-    if (pmatch[4].rm_so + 1 == pmatch[4].rm_eo) {
-      dist[0] = keyword.ptr[pmatch[4].rm_so];
-      dist[1] = '\0';
-    } else {
-      dist[0] = keyword.ptr[pmatch[4].rm_so];
-      dist[1] = keyword.ptr[pmatch[4].rm_so + 1];
-      dist[2] = '\0';
-    }
-    distance = (size_t) strtol(dist, NULL, 10);
+  else if (distance < 0)
+    distance = 0;
 
-    if (keyword.ptr[pmatch[3].rm_so] == '.') {
-      // .{0,n}
-      ;
-    } else {
-      // \d{0,n}
-      base_prop |= mdi_prop_dist_digit;
-    }
+  if (strncmp(keyword.ptr + PCRE_VEC_SO(ovector, 3), "\\d",
+              (size_t) (PCRE_VEC_EO(ovector, 3) - PCRE_VEC_SO(ovector, 3))) == 0) {
+    // \d{0,n}
+    base_prop |= mdi_prop_dist_digit;
   }
 
   // store original keyword
@@ -155,13 +140,13 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
 
   // store processed keyword
   strlen_s head = {
-      .ptr = keyword.ptr + pmatch[1].rm_so,
-      .len = (size_t) (pmatch[1].rm_eo - pmatch[1].rm_so),
+      .ptr = keyword.ptr + PCRE_VEC_SO(ovector, 1),
+      .len = (size_t) (PCRE_VEC_EO(ovector, 1) - PCRE_VEC_SO(ovector, 1)),
   };
 
   strlen_s tail = {
-      .ptr = keyword.ptr + pmatch[5].rm_so,
-      .len = (size_t) (pmatch[5].rm_eo - pmatch[5].rm_so),
+      .ptr = keyword.ptr + PCRE_VEC_SO(ovector, 5),
+      .len = (size_t) (PCRE_VEC_EO(ovector, 5) - PCRE_VEC_SO(ovector, 5)),
   };
 
   if (base_prop & mdi_prop_dist_digit) {
@@ -191,6 +176,7 @@ void dist_config_clean(matcher_config_t config) {
     _release(dist_config->head);
     _release(dist_config->tail);
     _release(dist_config->digit);
+    free(dist_config->regex);
   }
 }
 
@@ -204,6 +190,7 @@ aobj dist_matcher_conf(uint8_t id, aobj head, aobj tail, aobj digit) {
     dist_config->head = head;
     dist_config->tail = tail;
     dist_config->digit = digit;
+    dist_config->regex = NULL;
   }
   return conf;
 }

@@ -67,7 +67,7 @@ target_include_directories(actrie
         PUBLIC include)
 target_link_libraries(actrie
         PUBLIC alib
-        PUBLIC pcre2-posix)
+        PUBLIC pcre)
 
 # python interface
 option (ENABLE_PYTHON "Enable compile python interface." OFF)

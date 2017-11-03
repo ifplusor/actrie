@@ -1,8 +1,8 @@
 #ifndef _ACTRIE_DICT_H_
 #define _ACTRIE_DICT_H_
 
-#include "acom.h"
-#include "dynastr.h"
+#include <acom.h>
+#include <obj/dynastr.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,30 +39,6 @@ extern "C" {
 
 typedef uint32_t mdi_prop_f;
 
-//struct mdi_prop_bitmap {
-//  uint32_t reserved : 1;
-//
-//  uint32_t bufkey : 1;
-//  uint32_t bufextra : 1;
-//
-//  uint32_t word : 1;
-//  uint32_t alnum : 1;
-//
-//  uint32_t normal : 1;
-//  uint32_t ambi : 1;
-//
-//  uint32_t single : 1;
-//  uint32_t head : 1;
-//  uint32_t tail : 1;
-//  uint32_t dist_digit : 1;
-//
-//  uint32_t tag_id : 1;
-//
-//  uint32_t        : 0;
-//
-//  uint32_t matcher : 8;
-//};
-
 /*
  * optimize for cache:
  *      _tag   _keyword  _extra   length    wlen     prop
@@ -80,6 +56,9 @@ typedef struct match_dict_index {
   uint16_t wlen;                /* 文本的字节长度 */
   mdi_prop_f prop;
 } mdi_s, *mdi_t;
+
+#define PCRE_VEC_SO(vector, index) ((vector)[(index)*2])
+#define PCRE_VEC_EO(vector, index) ((vector)[(index)*2+1])
 
 #ifdef __cplusplus
 }

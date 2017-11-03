@@ -1,7 +1,7 @@
 #include "dict0.h"
 #include "utf8.h"
 #include "actrie.h"
-#include "list.h"
+#include "obj/list.h"
 
 const char tokens_delimiter = '|';
 const char left_parentheses = '(';

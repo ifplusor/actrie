@@ -9,8 +9,7 @@
 #include "dynapool.h"
 #include "dlnk.h"
 #include "mdimap.h"
-
-#define HISTORY_SIZE 50
+#include <pcre.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +56,7 @@ typedef struct dist_config {
   aobj head;
   aobj tail;
   aobj digit;
+  pcre *regex;
 } dist_config_s, *dist_config_t;
 
 aobj dist_matcher_conf(uint8_t id, aobj head, aobj tail, aobj digit);

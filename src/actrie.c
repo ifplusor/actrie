@@ -1,5 +1,5 @@
 #include "actrie.h"
-#include "list.h"
+#include "obj/list.h"
 
 
 // Prime Trie
