@@ -127,7 +127,7 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
 
 static inline PyObject *build_matched_output(mdi_t mdi, strpos_s pos) {
   return Py_BuildValue(
-      "(s#,i,i,s)", mdi->mdi_keyword, mdi->length, pos.so, pos.eo, mdi->mdi_extra);
+      "(s#,i,i,s)", mdi->keyword, mdi->length, pos.so, pos.eo, mdi->extra);
 }
 
 PyObject *wrap_next(PyObject *dummy, PyObject *args) {

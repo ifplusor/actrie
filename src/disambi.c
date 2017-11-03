@@ -36,8 +36,7 @@ bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
     int erroffset;
     ambi_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
     if (ambi_config->regex == NULL) {
-      ALOG(ERROR, errorptr);
-      exit(-1);
+      ALOG_FATAL(errorptr);
     }
   }
 
@@ -212,8 +211,8 @@ bool ambi_construct_out(ambi_context_t ctx, mdi_t matched_index, size_t _eo) {
   ctx->header.out_matched_index = &ctx->out_index;
   ctx->out_index.length = matched_index->length;
   ctx->out_index.wlen = matched_index->wlen;
-  ctx->out_index.mdi_keyword = matched_index->mdi_keyword;
-  ctx->out_index.mdi_extra = pidx->mdi_extra;
+  ctx->out_index.keyword = matched_index->keyword;
+  ctx->out_index.extra = pidx->extra;
   ctx->out_index._tag = pidx->_tag;
   ctx->out_index.prop = pidx->prop;
 

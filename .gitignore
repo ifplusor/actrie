@@ -1,7 +1,4 @@
-dict*
-sdict*
-corpus*
-rs*
+testdata/
 report*
 gmon.out
 
@@ -12,14 +9,12 @@ gmon.out
 
 *.swp
 
-!dict.[hc]
-!src/dict0.h
-
 .idea
 cmake-build-*
 
 .vs
 
+cmake-build
 build
 lib
 

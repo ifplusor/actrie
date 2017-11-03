@@ -13,7 +13,7 @@ if (UNIX)
     add_compile_options(-fPIC)
     if (NOT CMAKE_BUILD_TYPE)
         message("not defined CMAKE_BUILD_TYPE, use -O2")
-        add_compile_options(-O2 -Wall)
+        add_compile_options(-g -Wall)
     endif ()
 elseif (MSVC)
     message("compile with MSVC")
@@ -68,6 +68,8 @@ target_include_directories(actrie
 target_link_libraries(actrie
         PUBLIC alib
         PUBLIC pcre)
+target_compile_definitions(actrie
+        PUBLIC -DPCRE_STATIC) # we link pcre static lib, this is must in windows
 
 # python interface
 option (ENABLE_PYTHON "Enable compile python interface." OFF)

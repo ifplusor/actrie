@@ -71,7 +71,7 @@ else:
 include_dir = [
     os.path.join(alib_dir, 'include'),
     os.path.join(actrie_dir, 'include'),
-    os.path.join(alib_dir, 'third_part/pcre/include')
+    # os.path.join(alib_dir, 'third_part/pcre/include')
 ]
 
 actrie = Extension('actrie._actrie',

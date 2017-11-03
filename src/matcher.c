@@ -92,6 +92,18 @@ aobj matcher_ultimate_conf() {
   return dist_conf;
 }
 
+aobj matcher_acdat_conf() {
+  aobj acdat_conf = NULL;
+  uint8_t matcher_id = 0;
+
+  matcher_id++;
+  acdat_conf = matcher_root_conf(matcher_id);
+  acdat_conf = matcher_wordattr_conf(matcher_id, acdat_conf);
+  acdat_conf = dat_matcher_conf(matcher_id, matcher_type_acdat, acdat_conf);
+
+  return acdat_conf;
+}
+
 matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
   matcher_t matcher = NULL;
   aobj conf = NULL;
@@ -102,6 +114,9 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
     switch (type) {
       case matcher_type_ultimate:
         conf = matcher_ultimate_conf();
+        break;
+      case matcher_type_acdat:
+        conf = matcher_acdat_conf();
         break;
       default:break;
     }
@@ -184,8 +199,8 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
         if (new == NULL) break; else lst = new;
       }
       mdi_t p = context->out_matched_index;
-      lst[len].keyword = p->mdi_keyword;
-      lst[len].extra = p->mdi_extra;
+      lst[len].keyword = p->keyword;
+      lst[len].extra = p->extra;
       lst[len].length = p->length;
       lst[len].wlen = p->wlen;
       lst[len].eo = context->out_eo;

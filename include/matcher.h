@@ -15,16 +15,16 @@ extern "C" {
 // ==============
 
 typedef enum matcher_type {
-  matcher_type_stub = 0,
-  matcher_type_wordattr,
-  matcher_type_alteration,
-  matcher_type_dat,
-  matcher_type_acdat,
-  matcher_type_seg_acdat,
-  matcher_type_prefix_acdat,
-  matcher_type_ambi,
-  matcher_type_dist,
-  matcher_type_ultimate
+  matcher_type_stub = 0,     // dict store stub
+  matcher_type_wordattr,     // word attribute filter
+  matcher_type_alteration,   // alteration filter
+  matcher_type_dat,          // double-array trie matcher
+  matcher_type_acdat,        // double-array ac trie matcher
+  matcher_type_seg_acdat,    // segment acdat, hang-up when fail-cursor back to root
+  matcher_type_prefix_acdat, // prefix acdat, only match prefix
+  matcher_type_ambi,         // ambiguous matcher
+  matcher_type_dist,         // distance matcher
+  matcher_type_ultimate      // combined matcher
 } matcher_type_e;
 
 struct _matcher;

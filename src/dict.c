@@ -95,11 +95,11 @@ bool dict_clean(match_dict_t dict) {
   for (size_t i = 0; i < dict->idx_count; i++) {
     mdi_t idx = &dict->index[i];
     if (idx->prop & mdi_prop_bufkey) {
-      _release(cstr2dstr(idx->_keyword));
+      _release(cstr2dstr(idx->keyword));
     }
     if (idx->prop & mdi_prop_bufextra) {
-      if (idx->mdi_extra != str_empty)
-        _release(cstr2dstr(idx->_extra));
+      if (idx->extra != str_empty)
+        _release(cstr2dstr(idx->extra));
     }
   }
   free(dict->index);
@@ -178,7 +178,7 @@ bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   } else {
     ds = keyword.ptr;
   }
-  dict->index[dict->idx_count]._keyword = ds; // key_cur;
+  dict->index[dict->idx_count].keyword = ds; // key_cur;
 
   if (prop & mdi_prop_bufextra) {
     if (extra.len == 0) {
@@ -199,7 +199,7 @@ bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   } else {
     ds = extra.ptr;
   }
-  dict->index[dict->idx_count]._extra = ds;
+  dict->index[dict->idx_count].extra = ds;
 
   dict->index[dict->idx_count]._tag = tag;
   dict->index[dict->idx_count].prop = mdi_prop_set_matcher(prop, config->id);
@@ -317,11 +317,11 @@ bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf) {
   for (size_t i = 0; i < self->idx_count; i++) {
     mdi_t idx = self->index + i;
     if (idx->prop & mdi_prop_bufkey)
-      idx->_keyword = dstr2cstr(idx->_keyword);
+      idx->keyword = dstr2cstr(idx->keyword);
     if (idx->prop & mdi_prop_bufextra) {
-      idx->_extra = dstr2cstr(idx->_extra);
+      idx->extra = dstr2cstr(idx->extra);
       // replace NULL with ""
-      if (idx->mdi_extra == NULL) idx->mdi_extra = str_empty;
+      if (idx->extra == NULL) idx->extra = str_empty;
     }
     if (idx->prop & mdi_prop_tag_id)
       idx->_tag = self->index + (size_t) idx->_tag;

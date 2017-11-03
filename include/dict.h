@@ -48,10 +48,8 @@ typedef uint32_t mdi_prop_f;
  */
 typedef struct match_dict_index {
   void *_tag; // place in first for compare
-  ds _keyword;            /* 匹配的正文文本 */
-#define mdi_keyword _keyword
-  ds _extra;
-#define mdi_extra _extra
+  ds keyword;                   /* 匹配的正文文本 */
+  ds extra;
   uint16_t length;              /* 文本的字符长度 */
   uint16_t wlen;                /* 文本的字节长度 */
   mdi_prop_f prop;

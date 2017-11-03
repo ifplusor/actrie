@@ -98,8 +98,7 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
     int erroffset;
     dist_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
     if (dist_config->regex == NULL) {
-      ALOG(ERROR, errorptr);
-      exit(-1);
+      ALOG_FATAL(errorptr);
     }
   }
 
@@ -356,9 +355,9 @@ bool dist_construct_out(dist_context_t ctx, size_t _eo) {
   ctx->_c = content[ctx->header.out_eo];
   content[ctx->header.out_eo] = '\0';
 #endif
-  ctx->out_index.mdi_keyword =
+  ctx->out_index.keyword =
       (char *) &content[hctx->out_eo - hctx->out_matched_index->length];
-  ctx->out_index.mdi_extra = matched_index->mdi_keyword;
+  ctx->out_index.extra = matched_index->keyword;
   ctx->out_index._tag = matched_index->_tag;
   ctx->out_index.prop = matched_index->prop;
 
@@ -389,7 +388,7 @@ bool dist_next_on_index(dist_context_t ctx) {
       }
 
       // check number
-      size_t dist = (size_t) hctx->out_matched_index->mdi_extra;
+      size_t dist = (size_t) hctx->out_matched_index->extra;
       if (hctx->out_matched_index->prop & mdi_prop_dist_digit) {
         ctx->_state = dist_match_state_check_prefix;
         // skip number
@@ -428,9 +427,9 @@ bool dist_next_on_index(dist_context_t ctx) {
         mdi_t matched_index = tail_node->idx;
         long diff_pos = utf8_word_distance(ctx->_utf8_pos, hctx->out_eo, tail_node->pos.eo);
         long distance = diff_pos - matched_index->wlen;
-        if (distance < 0 || distance > (size_t) matched_index->mdi_extra) {
+        if (distance < 0 || distance > (size_t) matched_index->extra) {
           // if length of tail longer than max_tail_length, next round.
-          if (matched_index->wlen >= (size_t) hctx->out_matched_index->mdi_extra)
+          if (matched_index->wlen >= (size_t) hctx->out_matched_index->extra)
             break;
           tail_node = tail_node->next;
           continue;
@@ -461,14 +460,14 @@ bool dist_next_on_index(dist_context_t ctx) {
 
         // if diff of end_pos is longer than max_tail_length, next round.
         if (tctx->out_eo - hctx->out_eo > MAX_CHAR_DISTANCE
-            + (size_t) hctx->out_matched_index->mdi_extra) break;
+            + (size_t) hctx->out_matched_index->extra) break;
 
         if (matched_index->_tag != hctx->out_matched_index->_tag)
           continue;
 
-        if (distance > (size_t) matched_index->mdi_extra) {
+        if (distance > (size_t) matched_index->extra) {
           // if length of tail longer than max_tail_length, next round.
-          if (matched_index->wlen >= (size_t) hctx->out_matched_index->mdi_extra)
+          if (matched_index->wlen >= (size_t) hctx->out_matched_index->extra)
             break;
           continue;
         }

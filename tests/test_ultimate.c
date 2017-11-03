@@ -7,16 +7,19 @@
 
 int main() {
   char content[150000] = "abcdefg";
+//  char content[150000] = "我们华人的祖国是中华人民共和国";
 
-  matcher_t matcher = matcher_construct_by_file(matcher_type_ultimate, "rule");
-//  matcher_t matcher = matcher_construct_by_file(matcher_type_ultimate, "/home/james/Downloads/rule2");
+  matcher_t matcher = matcher_construct_by_file(matcher_type_ultimate, "testdata/rule_dist.txt");
 //  matcher_t matcher = matcher_construct_by_string(matcher_type_ultimate, "(f|(a|b).{0,5}(e(?&!ef)|g))");
+//  matcher_t matcher = matcher_construct_by_string(matcher_type_ultimate, "华人(?&!人民|中华)\n中华|共和国(?&!中华人民共和国)\n");
+
   context_t context = matcher_alloc_context(matcher);
 
-  FILE *fin = fopen("corpus.txt", "r");
+  FILE *fin = fopen("testdata/corpus.txt", "r");
   if (fin == NULL) exit(-1);
 
   FILE *fout = fopen("match.out", "w");
+  if (fout == NULL) exit(-1);
 //  FILE *fout = stdout;
 
   int count = 0;
@@ -29,7 +32,7 @@ int main() {
     while (matcher_next(context)) {
       mdi_t idx = matcher_matched_index(context);
       fprintf(fout, "%.*s(%d) - %s\n",
-              (int) idx->length, idx->mdi_keyword, idx->wlen, idx->mdi_extra);
+              (int) idx->length, idx->keyword, idx->wlen, idx->extra);
 //      fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
 //              count, context->out_eo - idx->length, context->out_eo,
 //              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
