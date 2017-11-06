@@ -38,15 +38,20 @@ PyObject *wrap_construct_by_file(PyObject *dummy, PyObject *args) {
 }
 
 PyObject *wrap_construct_by_string(PyObject *dummy, PyObject *args) {
-  const char *keywords;
+  const char *string;
+  int length;
   matcher_t matcher;
 
-  if (!PyArg_ParseTuple(args, "s", &keywords)) {
+  if (!PyArg_ParseTuple(args, "s#", &string, &length)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     return Py_None;
   }
 
-  matcher = matcher_construct_by_string(matcher_type_ultimate, keywords);
+  strlen_s vocab = {
+      .ptr = (char *) string,
+      .len = (size_t) length
+  };
+  matcher = matcher_construct_by_string(matcher_type_ultimate, &vocab);
   if (matcher == NULL)
     return Py_None;
 
