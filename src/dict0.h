@@ -50,16 +50,18 @@ void dict_release(match_dict_t dict);
  * if mdi_prop_bufextra is set, store extra in buffer; else record extra.ptr.
  * @note this is filter terminal, so next will be ignored.
  */
-bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+bool dict_add_index(match_dict_t dict, matcher_conf_t conf, strlen_s keyword,
                     strlen_s extra, void *tag, mdi_prop_f prop);
 
-bool dict_add_wordattr_index(match_dict_t dict, aobj conf, strlen_s keyword,
-                             strlen_s extra, void *tag, mdi_prop_f prop);
+bool dict_add_wordattr_index(match_dict_t dict, matcher_conf_t conf,
+                             strlen_s keyword, strlen_s extra, void *tag,
+                             mdi_prop_f prop);
 
-bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
-                                strlen_s extra, void *tag, mdi_prop_f prop);
+bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
+                                strlen_s keyword, strlen_s extra, void *tag,
+                                mdi_prop_f prop);
 
-bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf);
+bool dict_parse(match_dict_t self, vocab_t vocab, matcher_conf_t conf);
 
 #ifdef __cplusplus
 }

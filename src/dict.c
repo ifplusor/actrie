@@ -139,9 +139,8 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
   return true;
 }
 
-bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+bool dict_add_index(match_dict_t dict, matcher_conf_t conf, strlen_s keyword,
                     strlen_s extra, void *tag, mdi_prop_f prop) {
-  matcher_config_t config = GET_AOBJECT(conf);
 
   if (dict->idx_count == dict->idx_size) {
     // extend memory
@@ -166,7 +165,7 @@ bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   if (prop & mdi_prop_bufkey) {
     aobj list = trie_search(dict->_map, keyword.ptr, keyword.len);
     if (list == NULL) {
-      ds = dstr(keyword.ptr, keyword.len);
+      ds = dstr_with_buf(keyword.ptr, keyword.len);
       // store suffix
       trie_add_keyword(dict->_map, keyword.ptr, keyword.len, ds);
       if (keyword.len > dict->max_key_length)
@@ -186,7 +185,7 @@ bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
     } else {
       aobj list = trie_search(dict->_map, extra.ptr, extra.len);
       if (list == NULL) {
-        ds = dstr(extra.ptr, extra.len);
+        ds = dstr_with_buf(extra.ptr, extra.len);
         // store suffix
         trie_add_keyword(dict->_map, extra.ptr, extra.len, ds);
         if (extra.len > dict->max_extra_length)
@@ -202,17 +201,16 @@ bool dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   dict->index[dict->idx_count].extra = ds;
 
   dict->index[dict->idx_count]._tag = tag;
-  dict->index[dict->idx_count].prop = mdi_prop_set_matcher(prop, config->id);
+  dict->index[dict->idx_count].prop = mdi_prop_set_matcher(prop, conf->id);
   dict->idx_count++;
 
   return true;
 }
 
-bool dict_add_wordattr_index(match_dict_t dict, aobj conf, strlen_s keyword,
-                             strlen_s extra, void *tag, mdi_prop_f prop) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  aobj stub_conf = ((stub_config_t) config->buf)->stub;
-  matcher_config_t stub_config = GET_AOBJECT(stub_conf);
+bool dict_add_wordattr_index(match_dict_t dict, matcher_conf_t conf,
+                             strlen_s keyword, strlen_s extra, void *tag,
+                             mdi_prop_f prop) {
+  matcher_conf_t stub_conf = ((stub_conf_t) conf->buf)->stub;
   uint32_t type = mdi_prop_alnum;
 
   if (keyword.len == 0) return true;
@@ -225,14 +223,13 @@ bool dict_add_wordattr_index(match_dict_t dict, aobj conf, strlen_s keyword,
     }
   }
 
-  return stub_config->add_index(dict, stub_conf, keyword, extra, tag, type | prop);
+  return stub_conf->add_index(dict, stub_conf, keyword, extra, tag, type | prop);
 }
 
-bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
-                                strlen_s extra, void *tag, mdi_prop_f prop) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  aobj stub_conf = ((stub_config_t) config->buf)->stub;
-  matcher_config_t stub_config = GET_AOBJECT(stub_conf);
+bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
+                                strlen_s keyword, strlen_s extra, void *tag,
+                                mdi_prop_f prop) {
+  matcher_conf_t stub_conf = ((stub_conf_t) conf->buf)->stub;
 
   if (keyword.len == 0) return true;
 
@@ -264,7 +261,7 @@ bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
             .ptr = keyword.ptr + cur,
             .len = i - cur,
         };
-        stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
+        stub_conf->add_index(dict, stub_conf, key, extra, tag, prop);
         cur = i + 1;
       }
     } else if (keyword.ptr[i] == left_parentheses) {
@@ -278,14 +275,13 @@ bool dict_add_alternation_index(match_dict_t dict, aobj conf, strlen_s keyword,
         .ptr = keyword.ptr + cur,
         .len = i - cur,
     };
-    stub_config->add_index(dict, stub_conf, key, extra, tag, prop);
+    stub_conf->add_index(dict, stub_conf, key, extra, tag, prop);
   }
 
   return true;
 }
 
-bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf) {
-  matcher_config_t config = GET_AOBJECT(conf);
+bool dict_parse(match_dict_t self, vocab_t vocab, matcher_conf_t conf) {
   if (self == NULL || vocab == NULL) {
     return false;
   }
@@ -305,7 +301,7 @@ bool dict_parse(match_dict_t self, vocab_t vocab, aobj conf) {
     // TODO: check syntax
 
     // store keyword and extra in buffer
-    if (!config->add_index(self, conf, keyword, extra, NULL,
+    if (!conf->add_index(self, conf, keyword, extra, NULL,
         mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
       return false;
     }

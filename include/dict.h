@@ -47,6 +47,7 @@ typedef uint32_t mdi_prop_f;
  *   +--------+--------+--------+--------+--------+--------+
  */
 typedef struct match_dict_index {
+  // TODO: set magic?
   void *_tag; // place in first for compare
   ds keyword;                   /* 匹配的正文文本 */
   ds extra;

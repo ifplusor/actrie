@@ -52,16 +52,17 @@ typedef struct dist_context {
 
 } *dist_context_t;
 
-typedef struct dist_config {
-  aobj head;
-  aobj tail;
-  aobj digit;
+typedef struct dist_conf {
+  matcher_conf_t head;
+  matcher_conf_t tail;
+  matcher_conf_t digit;
   pcre *regex;
-} dist_config_s, *dist_config_t;
+} dist_conf_s, *dist_conf_t;
 
-aobj dist_matcher_conf(uint8_t id, aobj head, aobj tail, aobj digit);
+matcher_conf_t dist_matcher_conf(uint8_t id, matcher_conf_t head,
+                                 matcher_conf_t tail, matcher_conf_t digit);
 
-matcher_t dist_construct(match_dict_t dict, matcher_config_t conf);
+matcher_t dist_construct(match_dict_t dict, matcher_conf_t conf);
 bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);

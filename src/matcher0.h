@@ -47,7 +47,7 @@ typedef struct _context {
   size_t out_eo;               /* end offset of current matched word */
 } context_s;
 
-matcher_t matcher_construct_by_dict(match_dict_t dict, aobj conf);
+matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_conf_t conf);
 
 #ifdef __cplusplus
 }

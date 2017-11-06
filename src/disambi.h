@@ -39,14 +39,14 @@ typedef struct ambi_context {
 
 } ambi_context_s, *ambi_context_t;
 
-typedef struct ambi_config {
-  aobj pure;
+typedef struct ambi_conf {
+  matcher_conf_t pure;
   pcre *regex;
-} ambi_config_s, *ambi_config_t;
+} ambi_conf_s, *ambi_conf_t;
 
-aobj ambi_matcher_conf(uint8_t id, aobj pure);
+matcher_conf_t ambi_matcher_conf(uint8_t id, matcher_conf_t pure);
 
-matcher_t ambi_construct(match_dict_t dict, aobj conf);
+matcher_t ambi_construct(match_dict_t dict, matcher_conf_t config);
 bool ambi_destruct(ambi_matcher_t self);
 
 ambi_context_t ambi_alloc_context(ambi_matcher_t matcher);

@@ -14,7 +14,7 @@ bool vocab_free(vocab_t self) {
   return true;
 }
 
-vocab_t vocab_construct(stream_type_e type, const char *src) {
+vocab_t vocab_construct(stream_type_e type, void *src) {
   int ch, ch0;
   vocab_t vocab = vocab_alloc();
   do {

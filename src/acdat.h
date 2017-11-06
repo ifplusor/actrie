@@ -9,20 +9,12 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef struct dat_node {
-  size_t base;
   size_t check;
-  union {
-    size_t next; /* next free node */
-    size_t failed;
-  } dat_nf;
-#define dat_free_next   dat_nf.next
-#define dat_failed      dat_nf.failed
-  union {
-    size_t last; /* last free node */
-    mdi_t idxlist;  /* out 表 */
-  } dat_ld;
-#define dat_free_last   dat_ld.last
-#define dat_idxlist     dat_ld.idxlist
+  size_t base;
+  size_t failed;
+  aobj idxlist;  /* out 表 */
+#define dat_free_next base   /* next free node */
+#define dat_free_last failed /* last free node */
 } dat_node_s, *dat_node_t;
 
 typedef struct datrie {
@@ -46,10 +38,10 @@ typedef struct dat_context {
 
 } dat_context_s, *dat_context_t;
 
-aobj dat_matcher_conf(uint8_t id, matcher_type_e type, aobj stub);
+matcher_conf_t dat_matcher_conf(uint8_t id, matcher_type_e type, matcher_conf_t stub);
 
 datrie_t dat_construct_by_trie(trie_t origin, bool enable_automation);
-matcher_t dat_construct(match_dict_t dict, aobj conf);
+matcher_t dat_construct(match_dict_t dict, matcher_conf_t conf);
 bool dat_destruct(datrie_t p);
 
 dat_context_t dat_alloc_context(datrie_t matcher);

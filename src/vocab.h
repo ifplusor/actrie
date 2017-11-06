@@ -23,7 +23,7 @@ typedef struct vocab {
 vocab_t vocab_alloc();
 bool vocab_free(vocab_t self);
 
-vocab_t vocab_construct(stream_type_e type, const char *src);
+vocab_t vocab_construct(stream_type_e type, void *src);
 bool vocab_destruct(vocab_t self);
 
 size_t vocab_count(vocab_t self);

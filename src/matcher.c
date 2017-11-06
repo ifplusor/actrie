@@ -8,12 +8,11 @@
 #include "disambi.h"
 #include "distance.h"
 
-matcher_t matcher_construct_by_dict(match_dict_t dict, aobj conf) {
-  matcher_config_t config = GET_AOBJECT(conf);
+matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_conf_t conf) {
   matcher_t matcher = NULL;
-  switch (config->type) {
+  switch (conf->type) {
     case matcher_type_alteration:
-      matcher = matcher_construct_by_dict(dict, ((stub_config_t)config->buf)->stub);
+      matcher = matcher_construct_by_dict(dict, ((stub_conf_t)conf->buf)->stub);
       break;
     case matcher_type_dat:
     case matcher_type_acdat:
@@ -104,6 +103,17 @@ aobj matcher_acdat_conf() {
   return acdat_conf;
 }
 
+aobj matcher_dat_conf() {
+  aobj acdat_conf = NULL;
+  uint8_t matcher_id = 0;
+
+  matcher_id++;
+  acdat_conf = matcher_root_conf(matcher_id);
+  acdat_conf = dat_matcher_conf(matcher_id, matcher_type_dat, acdat_conf);
+
+  return acdat_conf;
+}
+
 matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
   matcher_t matcher = NULL;
   aobj conf = NULL;
@@ -118,6 +128,8 @@ matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
       case matcher_type_acdat:
         conf = matcher_acdat_conf();
         break;
+      case matcher_type_dat:
+        conf = matcher_dat_conf();
       default:break;
     }
 
@@ -137,7 +149,7 @@ matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(matcher_type_e type, const char *string) {
+matcher_t matcher_construct_by_string(matcher_type_e type, strlen_t string) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
   matcher_t matcher = matcher_construct(type, vocab);
   vocab_destruct(vocab);

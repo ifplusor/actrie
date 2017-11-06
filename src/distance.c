@@ -80,16 +80,12 @@ size_t max_alternation_length(strlen_s keyword, bool nest) {
   return max;
 }
 
-bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
-                         strlen_s extra, void * tag, mdi_prop_f prop) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  dist_config_t dist_config = (dist_config_t) config->buf;
-  aobj head_conf = dist_config->head;
-  matcher_config_t head_config = GET_AOBJECT(head_conf);
-  aobj tail_conf = dist_config->tail;
-  matcher_config_t tail_config = GET_AOBJECT(tail_conf);
-  aobj digit_conf = dist_config->digit;
-  matcher_config_t digit_config = GET_AOBJECT(digit_conf);
+bool dist_dict_add_index(match_dict_t dict, matcher_conf_t config,
+                         strlen_s keyword, strlen_s extra, void * tag, mdi_prop_f prop) {
+  dist_conf_t dist_config = (dist_conf_t) config->buf;
+  matcher_conf_t head_config = dist_config->head;
+  matcher_conf_t tail_config = dist_config->tail;
+  matcher_conf_t digit_config = dist_config->digit;
 
   if (dist_config->regex == NULL) {
     // compile pattern
@@ -108,7 +104,7 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   int rc = pcre_exec(dist_config->regex, NULL, keyword.ptr, (int) keyword.len, 0, 0, ovector, 18);
   if (rc == PCRE_ERROR_NOMATCH) {
     // single
-    head_config->add_index(dict, head_conf, keyword, extra, tag,
+    head_config->add_index(dict, head_config, keyword, extra, tag,
                            mdi_prop_single | prop);
     return true;
   } else if (rc < 0) {
@@ -135,7 +131,7 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
 
   // store original keyword
   void *key_tag = (void *) dict->idx_count;
-  dict_add_index(dict, conf, keyword, extra, tag, prop);
+  dict_add_index(dict, config, keyword, extra, tag, prop);
 
   // store processed keyword
   strlen_s head = {
@@ -149,19 +145,19 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   };
 
   if (base_prop & mdi_prop_dist_digit) {
-    head_config->add_index(dict, head_conf, head,
+    head_config->add_index(dict, head_config, head,
                            (strlen_s) {.ptr = (char *) distance, .len = 0},
                            key_tag, mdi_prop_head | base_prop);
-    digit_config->add_index(dict, digit_conf, tail,
+    digit_config->add_index(dict, digit_config, tail,
                             (strlen_s) {.ptr = (char *) distance, .len = 0},
                             key_tag, mdi_prop_tail | base_prop);
   } else {
     size_t tail_max_len = max_alternation_length(tail, true);
 
-    head_config->add_index(dict, head_conf, head,
+    head_config->add_index(dict, head_config, head,
                            (strlen_s) {.ptr = (char *) tail_max_len, .len = 0},
                            key_tag, mdi_prop_head | base_prop);
-    tail_config->add_index(dict, tail_conf, tail,
+    tail_config->add_index(dict, tail_config, tail,
                            (strlen_s) {.ptr = (char *) distance, .len = 0},
                            key_tag, mdi_prop_tail | base_prop);
   }
@@ -169,9 +165,9 @@ bool dist_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   return true;
 }
 
-void dist_config_clean(matcher_config_t config) {
+void dist_config_clean(matcher_conf_t config) {
   if (config != NULL) {
-    dist_config_t dist_config = (dist_config_t) config->buf;
+    dist_conf_t dist_config = (dist_conf_t) config->buf;
     _release(dist_config->head);
     _release(dist_config->tail);
     _release(dist_config->digit);
@@ -179,17 +175,18 @@ void dist_config_clean(matcher_config_t config) {
   }
 }
 
-aobj dist_matcher_conf(uint8_t id, aobj head, aobj tail, aobj digit) {
-  aobj conf = matcher_conf(id, matcher_type_dist, dist_dict_add_index,
-                           sizeof(dist_config_s));
+matcher_conf_t
+dist_matcher_conf(uint8_t id, matcher_conf_t head, matcher_conf_t tail,
+                  matcher_conf_t digit) {
+  matcher_conf_t conf =
+      matcher_conf(id, matcher_type_dist, dist_dict_add_index, sizeof(dist_conf_s));
   if (conf) {
-    matcher_config_t config = GET_AOBJECT(conf);
-    config->clean = dist_config_clean;
-    dist_config_t dist_config = (dist_config_t) config->buf;
-    dist_config->head = head;
-    dist_config->tail = tail;
-    dist_config->digit = digit;
-    dist_config->regex = NULL;
+    conf->clean = dist_config_clean;
+    dist_conf_t dist_conf = (dist_conf_t) conf->buf;
+    dist_conf->head = head;
+    dist_conf->tail = tail;
+    dist_conf->digit = digit;
+    dist_conf->regex = NULL;
   }
   return conf;
 }
@@ -206,22 +203,21 @@ bool dist_destruct(dist_matcher_t self) {
   return false;
 }
 
-matcher_t dist_construct(match_dict_t dict, matcher_config_t conf) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  dist_config_t dist_config = (dist_config_t) config->buf;
+matcher_t dist_construct(match_dict_t dict, matcher_conf_t conf) {
+  dist_conf_t dist_conf = (dist_conf_t) conf->buf;
   dist_matcher_t matcher = NULL;
   matcher_t head_matcher = NULL;
   matcher_t tail_matcher = NULL;
   matcher_t digit_matcher = NULL;
 
   do {
-    head_matcher = matcher_construct_by_dict(dict, dist_config->head);
+    head_matcher = matcher_construct_by_dict(dict, dist_conf->head);
     if (head_matcher == NULL) break;
 
-    tail_matcher = matcher_construct_by_dict(dict, dist_config->tail);
+    tail_matcher = matcher_construct_by_dict(dict, dist_conf->tail);
     if (tail_matcher == NULL) break;
 
-    digit_matcher = matcher_construct_by_dict(dict, dist_config->digit);
+    digit_matcher = matcher_construct_by_dict(dict, dist_conf->digit);
     if (digit_matcher == NULL) break;
 
     matcher = amalloc(sizeof(struct dist_matcher));
@@ -357,7 +353,7 @@ bool dist_construct_out(dist_context_t ctx, size_t _eo) {
 #endif
   ctx->out_index.keyword =
       (char *) &content[hctx->out_eo - hctx->out_matched_index->length];
-  ctx->out_index.extra = matched_index->keyword;
+  ctx->out_index.extra = matched_index->extra;
   ctx->out_index._tag = matched_index->_tag;
   ctx->out_index.prop = matched_index->prop;
 

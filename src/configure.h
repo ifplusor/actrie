@@ -13,18 +13,19 @@ extern "C" {
 #endif /* __cplusplus */
 
 struct matcher_config;
-typedef struct matcher_config *matcher_config_t;
+typedef struct matcher_config *matcher_conf_t;
 
 struct match_dict;
 typedef struct match_dict *match_dict_t;
 
 typedef bool (*dict_add_index_func)(
-    match_dict_t dict, aobj conf, strlen_s keyword, strlen_s extra,
-    void *tag, mdi_prop_f prop);
+    match_dict_t dict, matcher_conf_t config, strlen_s keyword,
+    strlen_s extra, void *tag, mdi_prop_f prop);
 
-typedef void (*matcher_config_clean)(matcher_config_t config);
+typedef void (*matcher_config_clean)(matcher_conf_t config);
 
 typedef struct matcher_config {
+  uint32_t magic;
   uint8_t id;
   matcher_type_e type;
   dict_add_index_func add_index;
@@ -32,19 +33,19 @@ typedef struct matcher_config {
   char buf[0];
 } matcher_config_s;
 
-aobj matcher_conf(uint8_t id, matcher_type_e type,
+matcher_conf_t matcher_conf(uint8_t id, matcher_type_e type,
                   dict_add_index_func add_index, size_t extra);
 
-aobj matcher_root_conf(uint8_t id);
+matcher_conf_t matcher_root_conf(uint8_t id);
 
-typedef struct stub_config {
-  aobj stub;
-} stub_config_s, *stub_config_t;
+typedef struct stub_conf {
+  matcher_conf_t stub;
+} stub_conf_s, *stub_conf_t;
 
-void stub_config_clean(matcher_config_t config);
+void stub_config_clean(matcher_conf_t config);
 
-aobj matcher_wordattr_conf(uint8_t id, aobj stub);
-aobj matcher_alternation_conf(uint8_t id, aobj stub);
+matcher_conf_t matcher_wordattr_conf(uint8_t id, matcher_conf_t stub);
+matcher_conf_t matcher_alternation_conf(uint8_t id, matcher_conf_t stub);
 
 #ifdef __cplusplus
 }

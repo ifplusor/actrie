@@ -25,12 +25,7 @@ typedef struct trie_node { /* 十字链表实现字典树 */
   } trie_pd;
 #define trie_parent   trie_pd.parent
 #define trie_datidx   trie_pd.datidx
-  union {
-    aobj idxlist;
-    size_t placeholder;
-  } trie_dp;
-#define trie_idxlist  trie_dp.idxlist
-#define trie_p0       trie_dp.placeholder
+  aobj idxlist;
   unsigned char len;  /* 一个结点只存储 1 byte 数据 */
   unsigned char key;
   char placeholder[6]; /* 8 byte align */
@@ -44,12 +39,12 @@ typedef struct trie {
   match_dict_t _dict;
 } trie_s, *trie_t;
 
-typedef struct trie_config {
+typedef struct trie_conf {
   uint8_t filter;
   bool enable_automation;
-} trie_config_s, *trie_config_t;
+} trie_conf_s, *trie_conf_t;
 
-trie_t trie_construct(match_dict_t dict, trie_config_t config);
+trie_t trie_construct(match_dict_t dict, trie_conf_t conf);
 void trie_destruct(trie_t self);
 
 trie_t trie_alloc();

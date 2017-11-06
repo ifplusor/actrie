@@ -22,20 +22,18 @@ const context_func_l ambi_context_func = {
  */
 static const char *pattern = "^(.*)\\(\\?&!(.*)\\)$";
 
-bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
+bool ambi_dict_add_index(match_dict_t dict, matcher_conf_t config, strlen_s keyword,
                          strlen_s extra, void *tag, mdi_prop_f prop) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  ambi_config_t ambi_config = (ambi_config_t) config->buf;
-  aobj pure_conf = ambi_config->pure;
-  matcher_config_t pure_config = GET_AOBJECT(pure_conf);
+  ambi_conf_t ambi_conf = (ambi_conf_t) config->buf;
+  matcher_conf_t pure_conf = ambi_conf->pure;
 
-  if (ambi_config->regex == NULL) {
+  if (ambi_conf->regex == NULL) {
     // compile pattern
     const char *errorptr;
     int errorcode;
     int erroffset;
-    ambi_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
-    if (ambi_config->regex == NULL) {
+    ambi_conf->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
+    if (ambi_conf->regex == NULL) {
       ALOG_FATAL(errorptr);
     }
   }
@@ -43,11 +41,11 @@ bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
   if (keyword.len == 0) return true;
 
   int ovector[9];
-  int rc = pcre_exec(ambi_config->regex, NULL, keyword.ptr, (int) keyword.len, 0, 0, ovector, 9);
+  int rc = pcre_exec(ambi_conf->regex, NULL, keyword.ptr, (int) keyword.len, 0, 0, ovector, 9);
   if (rc == PCRE_ERROR_NOMATCH) {
     // non-ambi
-    pure_config->add_index(dict, pure_conf, keyword, extra, tag,
-                           mdi_prop_clearly | prop);
+    pure_conf->add_index(dict, pure_conf, keyword, extra, tag,
+                         mdi_prop_clearly | prop);
     return true;
   } else if (rc < 0) {
     return false;
@@ -70,44 +68,42 @@ bool ambi_dict_add_index(match_dict_t dict, aobj conf, strlen_s keyword,
       .len = (size_t) (PCRE_VEC_EO(ovector, 2) - PCRE_VEC_SO(ovector, 2)),
   };
 
-  pure_config->add_index(dict, pure_conf, key, strlen_empty, key_tag,
+  pure_conf->add_index(dict, pure_conf, key, strlen_empty, key_tag,
                          mdi_prop_normal | base_prop);
 
-  pure_config->add_index(dict, pure_conf, ambi, strlen_empty, key_tag,
+  pure_conf->add_index(dict, pure_conf, ambi, strlen_empty, key_tag,
                          mdi_prop_ambi | base_prop);
 
   return true;
 }
 
-void ambi_config_clean(matcher_config_t config) {
+void ambi_config_clean(matcher_conf_t config) {
   if (config != NULL) {
-    ambi_config_t ambi_config = (ambi_config_t) config->buf;
+    ambi_conf_t ambi_config = (ambi_conf_t) config->buf;
     _release(ambi_config->pure);
     free(ambi_config->regex);
   }
 }
 
-aobj ambi_matcher_conf(uint8_t id, aobj pure) {
-  aobj conf = matcher_conf(id, matcher_type_ambi, ambi_dict_add_index,
-                           sizeof(ambi_config_s));
-  if (conf) {
-    matcher_config_t config = GET_AOBJECT(conf);
+matcher_conf_t ambi_matcher_conf(uint8_t id, matcher_conf_t pure) {
+  matcher_conf_t config = matcher_conf(id, matcher_type_ambi, ambi_dict_add_index,
+                           sizeof(ambi_conf_s));
+  if (config) {
     config->clean = ambi_config_clean;
-    ambi_config_t ambi_config = (ambi_config_t) config->buf;
+    ambi_conf_t ambi_config = (ambi_conf_t) config->buf;
     ambi_config->pure = pure;
     ambi_config->regex = NULL;
   }
-  return conf;
+  return config;
 }
 
-matcher_t ambi_construct(match_dict_t dict, aobj conf) {
-  matcher_config_t config = GET_AOBJECT(conf);
-  ambi_config_t ambi_config = (ambi_config_t) config->buf;
+matcher_t ambi_construct(match_dict_t dict, matcher_conf_t conf) {
+  ambi_conf_t ambi_conf = (ambi_conf_t) conf->buf;
   ambi_matcher_t matcher = NULL;
   matcher_t pure_matcher = NULL;
 
   do {
-    pure_matcher = matcher_construct_by_dict(dict, ambi_config->pure);
+    pure_matcher = matcher_construct_by_dict(dict, ambi_conf->pure);
     if (pure_matcher == NULL) break;
 
     matcher = amalloc(sizeof(struct ambi_matcher));
@@ -117,7 +113,7 @@ matcher_t ambi_construct(match_dict_t dict, aobj conf) {
 
     matcher->_pure_matcher = pure_matcher;
 
-    matcher->header._type = config->type;
+    matcher->header._type = conf->type;
     matcher->header._func = ambi_matcher_func;
 
     return (matcher_t) matcher;

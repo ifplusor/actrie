@@ -37,7 +37,7 @@ typedef struct _context *context_t;
 //========================
 
 matcher_t matcher_construct_by_file(matcher_type_e type, const char *path);
-matcher_t matcher_construct_by_string(matcher_type_e type, const char *string);
+matcher_t matcher_construct_by_string(matcher_type_e type, strlen_t string);
 
 bool matcher_destruct(matcher_t matcher);
 

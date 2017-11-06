@@ -122,8 +122,8 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, ao
 
   /* 头插法链接 dict_index */
   // NOTE: 注意内存泄漏
-  aobj list = pNode->trie_idxlist;
-  pNode->trie_idxlist = _(list, obj, cons, list);
+  aobj list = pNode->idxlist;
+  pNode->idxlist = _(list, obj, cons, list);
   _release(list);
 
   return true;
@@ -190,9 +190,9 @@ void trie_swap_node_data(trie_node_t pa, trie_node_t pb) {
   pa->trie_parent ^= pb->trie_parent;
 
   // dict index
-  pa->trie_p0 ^= pb->trie_p0;
-  pb->trie_p0 ^= pa->trie_p0;
-  pa->trie_p0 ^= pb->trie_p0;
+  aobj tmp = pa->idxlist;
+  pa->idxlist = pb->idxlist;
+  pb->idxlist = tmp;
 
   pa->len ^= pb->len;
   pb->len ^= pa->len;
@@ -357,7 +357,7 @@ void trie_destruct(trie_t self) {
     for (int i = 0; i < POOL_REGION_SIZE; i++) {
       if (self->_nodepool[i] != NULL) {
         for (int j = 0; j < POOL_POSITION_SIZE; j++) {
-          _release(self->_nodepool[i][j].trie_idxlist);
+          _release(self->_nodepool[i][j].idxlist);
         }
         afree(self->_nodepool[i]);
       }
@@ -367,7 +367,7 @@ void trie_destruct(trie_t self) {
   }
 }
 
-trie_t trie_construct(match_dict_t dict, trie_config_t config) {
+trie_t trie_construct(match_dict_t dict, trie_conf_t conf) {
   trie_t prime_trie = NULL;
 
   do {
@@ -379,7 +379,7 @@ trie_t trie_construct(match_dict_t dict, trie_config_t config) {
     size_t i = 0;
     for (; i < dict->idx_count; i++) {
       mdi_t index = &dict->index[i];
-      if (mdi_prop_get_matcher(index->prop) != config->filter) continue;
+      if (mdi_prop_get_matcher(index->prop) != conf->filter) continue;
       if (!trie_add_keyword(prime_trie, index->keyword, index->length, index)) {
         fprintf(stderr, "%s(%d) - error: encounter error when add keywords!\n",
                 __FILE__, __LINE__);
@@ -390,7 +390,7 @@ trie_t trie_construct(match_dict_t dict, trie_config_t config) {
 
     trie_sort_to_line(prime_trie);  /* sort node for bfs and binary-search */
 
-    if (config->enable_automation)
+    if (conf->enable_automation)
       trie_construct_automation(prime_trie);        /* 构建自动机 */
 
     return prime_trie;
@@ -424,5 +424,5 @@ aobj trie_search(trie_t self, const unsigned char keyword[], size_t len) {
     }
   }
 
-  return pNode->trie_idxlist;
+  return pNode->idxlist;
 }
