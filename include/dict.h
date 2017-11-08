@@ -2,7 +2,7 @@
 #define _ACTRIE_DICT_H_
 
 #include <acom.h>
-#include <obj/dynastr.h>
+#include <obj/dstr.h>
 
 #ifdef __cplusplus
 extern "C" {

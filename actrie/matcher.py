@@ -62,10 +62,18 @@ class Matcher:
             raise MatcherError("should be list or set")
         return self.load_from_string(keywords)
 
-    def find_all(self, content):
+    def findall(self, content):
+        """Return a list of all matches of pattern in string.
+
+        :type content: str
+        :rtype: list[(str, int, int, str)]
+        """
         if not self._matcher:
             return MatcherError("matcher is not initialized")
         return _actrie.FindAll(self._matcher, content)
+    
+    def find_all(self, content):
+        return self.findall(content)
 
     def match(self, content):
         if not self._matcher:

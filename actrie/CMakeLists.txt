@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+
 if (NOT (DEFINED PythonVersion))
     set(PythonVersion 3)
 endif ()

@@ -9,7 +9,6 @@ void mcnf_clean(aobj id);
 
 static aobj_meta_s mcnf_meta = {
     .isa = FOUR_CHARS_TO_INT('M', 'C', 'N', 'F'),
-    .refcnt = 0,
     .clean = mcnf_clean,
 };
 
