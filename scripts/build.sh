@@ -18,7 +18,7 @@ echo "  BUILD_DIR = ${BUILD_DIR}"
 
 flags=""
 if [ -n "${ALIB_DIR}" ]; then
-	flags="-DALIB_DIR=${ALIB_DIR}"
+	flags="-Dalib_DIR=${ALIB_DIR}"
 fi
 echo "  CMake flags = ${flags}"
 echo ""

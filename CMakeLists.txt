@@ -32,7 +32,7 @@ if (ENABLE_PROFILE)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif ()
 
-if (NOT (DEFINED ALIB_DIR))
+if (NOT (DEFINED alib_DIR))
     set(alib_DIR "${PROJECT_SOURCE_DIR}/../alib")
 endif ()
 add_subdirectory(${alib_DIR} alib)
