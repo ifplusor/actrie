@@ -160,8 +160,8 @@ ambi_context_t ambi_alloc_context(ambi_matcher_t matcher) {
     ctx->_ambi_map = mdimap_construct(true);
     if (ctx->_ambi_map == NULL) break;
 
-    ctx->header._type = matcher->header._type;
-    ctx->header._func = ambi_context_func;
+    ctx->hdr._type = matcher->header._type;
+    ctx->hdr._func = ambi_context_func;
 
     return ctx;
   } while (0);
@@ -181,12 +181,11 @@ bool ambi_free_context(ambi_context_t context) {
   return true;
 }
 
-bool
-ambi_reset_context(ambi_context_t ctx, unsigned char content[], size_t len) {
-  ctx->header.content = content;
-  ctx->header.len = len;
-  ctx->header.out_matched_index = NULL;
-  ctx->header.out_eo = 0;
+bool ambi_reset_context(ambi_context_t ctx, char content[], size_t len) {
+  ctx->hdr.content = (strlen_s) {.ptr = content, .len = len};
+
+  ctx->hdr.out_index = NULL;
+  ctx->hdr.out_pos = (strpos_s) {.so = 0, .eo = 0};
 
   matcher_reset_context(ctx->_pure_ctx, (char *) content, len);
 
@@ -194,23 +193,6 @@ ambi_reset_context(ambi_context_t ctx, unsigned char content[], size_t len) {
   mdimap_reset(ctx->_ambi_map);
   dynapool_reset(ctx->_mdiqn_pool);
   deque_init(&ctx->_out_buffer);
-
-  return true;
-}
-
-bool ambi_construct_out(ambi_context_t ctx, mdi_t matched_index, size_t _eo) {
-  // alias
-  mdi_t pidx = matched_index->_tag;
-
-  ctx->header.out_eo = _eo;
-
-  ctx->header.out_matched_index = &ctx->out_index;
-  ctx->out_index.length = matched_index->length;
-  ctx->out_index.wlen = matched_index->wlen;
-  ctx->out_index.keyword = matched_index->keyword;
-  ctx->out_index.extra = pidx->extra;
-  ctx->out_index._tag = pidx->_tag;
-  ctx->out_index.prop = pidx->prop;
 
   return true;
 }
@@ -269,7 +251,7 @@ bool ambi_next_on_index(ambi_context_t ctx) {
               dynapool_free_node(ctx->_mdiqn_pool, last_word);
               normal--;
             }
-            if (last_word->pos.eo <= pctx->out_eo - mdi->length) break;
+            if (last_word->pos.eo <= matcher_matched_pos(pctx).so) break;
             last_word = last_word->next;
           }
           mdim_node_t
@@ -295,10 +277,11 @@ bool ambi_next_on_index(ambi_context_t ctx) {
   // pop from queue
   mdim_node_t node = deque_pop_front(&ctx->_out_buffer, mdim_node_s, deque_elem);
   if (node->idx->prop & mdi_prop_clearly) {
-    ctx->header.out_matched_index = node->idx;
-    ctx->header.out_eo = node->pos.eo;
+    ctx->hdr.out_index = node->idx;
+    ctx->hdr.out_pos = node->pos;
   } else {
-    ambi_construct_out(ctx, node->idx, node->pos.eo);
+    ctx->hdr.out_index = node->idx->_tag;
+    ctx->hdr.out_pos = node->pos;
   }
 
   return true;

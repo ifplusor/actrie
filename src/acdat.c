@@ -319,8 +319,8 @@ matcher_t dat_construct(match_dict_t dict, matcher_conf_t conf) {
     }
     if (pdat == NULL) break;
 
-    pdat->header._type = conf->type;
-    pdat->header._func = dat_matcher_func;
+    pdat->hdr._type = conf->type;
+    pdat->hdr._func = dat_matcher_func;
   } while (0);
 
   trie_destruct(prime_trie);
@@ -340,15 +340,15 @@ dat_context_t dat_alloc_context(datrie_t matcher) {
 
   ctx->trie = matcher;
 
-  ctx->header._type = matcher->header._type;
-  ctx->header._func = acdat_context_func;
+  ctx->hdr._type = matcher->hdr._type;
+  ctx->hdr._func = acdat_context_func;
 
-  if (ctx->header._type == matcher_type_seg_acdat) {
-    ctx->header._func.next = (matcher_next_func) dat_seg_ac_next_on_index;
-  } else if (ctx->header._type == matcher_type_prefix_acdat) {
-    ctx->header._func.next = (matcher_next_func) dat_prefix_next_on_index;
-  } else if (ctx->header._type == matcher_type_dat) {
-    ctx->header._func.next = (matcher_next_func) dat_next_on_index;
+  if (ctx->hdr._type == matcher_type_seg_acdat) {
+    ctx->hdr._func.next = (matcher_next_func) dat_seg_ac_next_on_index;
+  } else if (ctx->hdr._type == matcher_type_prefix_acdat) {
+    ctx->hdr._func.next = (matcher_next_func) dat_prefix_next_on_index;
+  } else if (ctx->hdr._type == matcher_type_dat) {
+    ctx->hdr._func.next = (matcher_next_func) dat_next_on_index;
   }
 
   return ctx;
@@ -362,14 +362,13 @@ bool dat_free_context(dat_context_t context) {
   return true;
 }
 
-bool dat_reset_context(dat_context_t context, unsigned char content[],
-                       size_t len) {
-  context->header.content = content;
-  context->header.len = len;
+bool dat_reset_context(dat_context_t context, char content[], size_t len) {
+  context->hdr.content = (strlen_s) {.ptr = content, .len = len};
 
-  context->header.out_eo = 0;
-  context->header.out_matched_index = NULL;
+  context->hdr.out_index = NULL;
+  context->hdr.out_pos = (strpos_s) {.so = 0, .eo = 0};
 
+  context->_e = 0;
   context->_i = 0;
   context->_iCursor = DAT_ROOT_IDX;
   context->_matched = context->trie->root;
@@ -379,21 +378,34 @@ bool dat_reset_context(dat_context_t context, unsigned char content[],
 }
 
 bool dat_match_end(dat_context_t ctx) {
-  return ctx->header.out_eo >= ctx->header.len;
+  return ctx->_e >= ctx->hdr.content.len;
+}
+
+static inline size_t dat_forward(dat_node_t cur, dat_context_t ctx) {
+  return cur->base + ((unsigned char *) ctx->hdr.content.ptr)[ctx->_e];
+}
+
+static inline void dat_output(dat_context_t ctx) {
+  mdi_t mdi = _(list, ctx->_list, car);
+  ctx->hdr.out_index = mdi;
+  ctx->hdr.out_pos = (strpos_s) {
+      .so = ctx->_e - cstr2dstr(mdi->keyword)->len,
+      .eo = ctx->_e
+  };
 }
 
 bool dat_next_on_index(dat_context_t ctx) {
   if (ctx->_list != NULL) {
     ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
 
   dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
-    size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
     if (pNext->check != ctx->_iCursor)
       break;
@@ -402,19 +414,17 @@ bool dat_next_on_index(dat_context_t ctx) {
     if (pNext->idxlist != NULL) {
       ctx->_matched = pNext;
       ctx->_list = ctx->_matched->idxlist;
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
-      ctx->header.out_eo++;
+      ctx->_e++;
+      dat_output(ctx);
       return true;
     }
   }
 
-  for (ctx->_i++; ctx->_i < ctx->header.len; ctx->_i++) {
+  for (ctx->_i++; ctx->_i < ctx->hdr.content.len; ctx->_i++) {
     ctx->_iCursor = DAT_ROOT_IDX;
     pCursor = ctx->trie->root;
-    for (ctx->header.out_eo = ctx->_i;
-         ctx->header.out_eo < ctx->header.len;
-         ctx->header.out_eo++) {
-      size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+    for (ctx->_e = ctx->_i; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+      size_t iNext = dat_forward(pCursor, ctx);
       dat_node_t pNext = dat_access_node(ctx->trie, iNext);
       if (pNext->check != ctx->_iCursor)
         break;
@@ -423,8 +433,8 @@ bool dat_next_on_index(dat_context_t ctx) {
       if (pNext->idxlist != NULL) {
         ctx->_matched = pNext;
         ctx->_list = ctx->_matched->idxlist;
-        ctx->header.out_matched_index = _(list, ctx->_list, car);
-        ctx->header.out_eo++;
+        ctx->_e++;
+        dat_output(ctx);
         return true;
       }
     }
@@ -438,20 +448,20 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->failed);
     if (ctx->_matched->idxlist != NULL) {
       ctx->_list = ctx->_matched->idxlist;
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
 
   /* 执行匹配 */
   dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
-    size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
     while (pCursor != ctx->trie->root && pNext->check != ctx->_iCursor) {
       ctx->_iCursor = pCursor->failed;
       pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-      iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+      iNext = dat_forward(pCursor, ctx);
       pNext = dat_access_node(ctx->trie, iNext);
     }
     if (pNext->check == ctx->_iCursor) {
@@ -461,8 +471,8 @@ bool dat_ac_next_on_node(dat_context_t ctx) {
         if (pNext->idxlist != NULL) {
           ctx->_matched = pNext;
           ctx->_list = ctx->_matched->idxlist;
-          ctx->header.out_matched_index = _(list, ctx->_list, car);
-          ctx->header.out_eo++;
+          ctx->_e++;
+          dat_output(ctx);
           return true;
         }
         pNext = dat_access_node(ctx->trie, pNext->failed);
@@ -477,7 +487,7 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
   if (ctx->_list != NULL) {
     ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
@@ -487,20 +497,20 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->failed);
     if (ctx->_matched->idxlist != NULL) {
       ctx->_list = ctx->_matched->idxlist;
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
 
   /* 执行匹配 */
   dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
-    size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
     while (pCursor != ctx->trie->root && pNext->check != ctx->_iCursor) {
       ctx->_iCursor = pCursor->failed;
       pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-      iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+      iNext = dat_forward(pCursor, ctx);
       pNext = dat_access_node(ctx->trie, iNext);
     }
     if (pNext->check == ctx->_iCursor) {
@@ -510,8 +520,8 @@ bool dat_ac_next_on_index(dat_context_t ctx) {
         if (pNext->idxlist != NULL) {
           ctx->_matched = pNext;
           ctx->_list = ctx->_matched->idxlist;
-          ctx->header.out_matched_index = _(list, ctx->_list, car);
-          ctx->header.out_eo++;
+          ctx->_e++;
+          dat_output(ctx);
           return true;
         }
         pNext = dat_access_node(ctx->trie, pNext->failed);
@@ -526,7 +536,7 @@ bool dat_seg_ac_next_on_index(dat_context_t ctx) {
   if (ctx->_list != NULL) {
     ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
@@ -536,15 +546,15 @@ bool dat_seg_ac_next_on_index(dat_context_t ctx) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->failed);
     if (ctx->_matched->idxlist != NULL) {
       ctx->_list = ctx->_matched->idxlist;
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
 
   /* 执行匹配 */
   dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
-    size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
     if (pCursor != ctx->trie->root) { // matching
       while (pCursor != ctx->trie->root && pNext->check != ctx->_iCursor) {
@@ -553,7 +563,7 @@ bool dat_seg_ac_next_on_index(dat_context_t ctx) {
         if (ctx->_iCursor == DAT_ROOT_IDX)
           return false; // back to root
         pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-        iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+        iNext = dat_forward(pCursor, ctx);
         pNext = dat_access_node(ctx->trie, iNext);
       }
     }
@@ -564,8 +574,8 @@ bool dat_seg_ac_next_on_index(dat_context_t ctx) {
         if (pNext->idxlist != NULL) {
           ctx->_matched = pNext;
           ctx->_list = ctx->_matched->idxlist;
-          ctx->header.out_matched_index = _(list, ctx->_list, car);
-          ctx->header.out_eo++;
+          ctx->_e++;
+          dat_output(ctx);
           return true;
         }
         pNext = dat_access_node(ctx->trie, pNext->failed);
@@ -580,15 +590,15 @@ bool dat_prefix_next_on_index(dat_context_t ctx) {
   if (ctx->_list != NULL) {
     ctx->_list = _(list, ctx->_list, cdr);
     if (ctx->_list != NULL) {
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
+      dat_output(ctx);
       return true;
     }
   }
 
   /* 执行匹配 */
   dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->header.out_eo < ctx->header.len; ctx->header.out_eo++) {
-    size_t iNext = pCursor->base + ctx->header.content[ctx->header.out_eo];
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
     if (pNext->check != ctx->_iCursor) return false;
     ctx->_iCursor = iNext;
@@ -596,8 +606,8 @@ bool dat_prefix_next_on_index(dat_context_t ctx) {
     if (pNext->idxlist != NULL) {
       ctx->_matched = pNext;
       ctx->_list = ctx->_matched->idxlist;
-      ctx->header.out_matched_index = _(list, ctx->_list, car);
-      ctx->header.out_eo++;
+      ctx->_e++;
+      dat_output(ctx);
       return true;
     }
   }

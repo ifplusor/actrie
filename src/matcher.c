@@ -182,13 +182,17 @@ bool matcher_next(context_t context) {
 }
 
 mdi_t matcher_matched_index(context_t context) {
-  return context->out_matched_index;
+  return context->out_index;
 }
 
 strpos_s matcher_matched_pos(context_t context) {
-  return (strpos_s) {
-      .so = context->out_eo - context->out_matched_index->length,
-      .eo = context->out_eo
+  return context->out_pos;
+}
+
+strlen_s matcher_matched_str(context_t context) {
+  return (strlen_s) {
+      .ptr = &context->content.ptr[context->out_pos.so],
+      .len = context->out_pos.eo - context->out_pos.so
   };
 }
 
@@ -210,13 +214,10 @@ idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
         idx_pos_s *new = realloc(lst, sizeof(idx_pos_s) * size);
         if (new == NULL) break; else lst = new;
       }
-      mdi_t p = context->out_matched_index;
-      lst[len].keyword = p->keyword;
-      lst[len].extra = p->extra;
-      lst[len].length = p->length;
-      lst[len].wlen = p->wlen;
-      lst[len].eo = context->out_eo;
-      lst[len].so = context->out_eo - p->length;
+      lst[len] = (idx_pos_s) {
+          .idx = context->out_index,
+          .pos = context->out_pos
+      };
       len++;
     }
   }
@@ -232,10 +233,10 @@ idx_pos_s *matcher_match_all(context_t context, char *content, size_t len,
 
 int cmp(const void *a, const void *b) {
   idx_pos_s *sa = a, *sb = b;
-  if (sa->so == sb->so) {
-    return (int)sa->eo - (int)sb->eo;
+  if (sa->pos.so == sb->pos.so) {
+    return (int) sa->pos.eo - (int) sb->pos.eo;
   } else {
-    return (int)sa->so - (int)sb->so;
+    return (int) sa->pos.so - (int) sb->pos.so;
   }
 }
 
@@ -245,8 +246,8 @@ idx_pos_s *matcher_sort_by_os(idx_pos_s *lst, size_t len) {
   return lst;
 }
 
-inline idx_pos_s *matcher_match_with_sort(context_t context, char *content,
-                                          size_t len, size_t *out_len) {
+idx_pos_s *matcher_match_with_sort(context_t context, char *content, size_t len,
+                                   size_t *out_len) {
   idx_pos_s *lst = matcher_match_all(context, content, len, out_len);
   return matcher_sort_by_os(lst, *out_len);
 }

@@ -27,11 +27,11 @@ typedef enum matcher_type {
   matcher_type_ultimate      // combined matcher
 } matcher_type_e;
 
-struct _matcher;
-typedef struct _matcher *matcher_t;
+struct _matcher_hdr;
+typedef struct _matcher_hdr *matcher_t;
 
-struct _context;
-typedef struct _context *context_t;
+struct _context_hdr;
+typedef struct _context_hdr *context_t;
 
 // base interface
 //========================
@@ -49,15 +49,14 @@ bool matcher_next(context_t context);
 
 mdi_t matcher_matched_index(context_t context);
 strpos_s matcher_matched_pos(context_t context);
+strlen_s matcher_matched_str(context_t context);
 
 // utils
 //========================
 
 typedef struct matched_index_pos {
-  const char *keyword;
-  const char *extra;
-  size_t length, wlen;
-  size_t so, eo;
+  mdi_t idx;
+  strpos_s pos;
 } idx_pos_s;
 
 idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len);

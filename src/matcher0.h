@@ -20,7 +20,7 @@ typedef struct _matcher_func {
   matcher_alloc_context_func alloc_context;  /* 构造 context */
 } matcher_func_l, *matcher_func_t;
 
-typedef struct _matcher {
+typedef struct _matcher_hdr {
   matcher_type_e _type;
   matcher_func_l _func;
 } matcher_s;
@@ -36,15 +36,14 @@ typedef struct _context_func {
   matcher_next_func next;  /* 迭代匹配 */
 } context_func_l, *context_func_t;
 
-typedef struct _context {
+typedef struct _context_hdr {
   matcher_type_e _type;
   context_func_l _func;
 
-  unsigned char *content;
-  size_t len;
+  strlen_s content;
 
-  mdi_t out_matched_index;  /* volatile, need deep copy */
-  size_t out_eo;               /* end offset of current matched word */
+  mdi_t out_index;
+  strpos_s out_pos;  /* offset of current matched word */
 } context_s;
 
 matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_conf_t conf);

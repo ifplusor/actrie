@@ -18,7 +18,7 @@ typedef struct dat_node {
 } dat_node_s, *dat_node_t;
 
 typedef struct datrie {
-  struct _matcher header;
+  matcher_s hdr;
 
   dat_node_s *_nodepool[REGION_SIZE];
   dat_node_t _sentinel; /* maintain free list */
@@ -27,7 +27,7 @@ typedef struct datrie {
 } datrie_s, *datrie_t;
 
 typedef struct dat_context {
-  struct _context header;
+  context_s hdr;
 
   datrie_t trie;
 
@@ -35,6 +35,7 @@ typedef struct dat_context {
   aobj _list;
   size_t _iCursor;
   size_t _i;
+  size_t _e;
 
 } dat_context_s, *dat_context_t;
 
@@ -46,8 +47,7 @@ bool dat_destruct(datrie_t p);
 
 dat_context_t dat_alloc_context(datrie_t matcher);
 bool dat_free_context(dat_context_t context);
-bool dat_reset_context(dat_context_t context,
-                       unsigned char content[], size_t len);
+bool dat_reset_context(dat_context_t context, char content[], size_t len);
 
 bool dat_match_end(dat_context_t ctx);
 

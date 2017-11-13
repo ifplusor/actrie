@@ -3,7 +3,7 @@
 //
 
 #include <matcher.h>
-#include "../src/matcher0.h"
+#include <utf8.h>
 
 int main() {
   char content[150000] = "abcdefg";
@@ -31,11 +31,13 @@ int main() {
     matcher_reset_context(context, content, strlen(content));
     while (matcher_next(context)) {
       mdi_t idx = matcher_matched_index(context);
-      fprintf(fout, "%.*s(%d) - %s\n",
-              (int) idx->length, idx->keyword, idx->wlen, idx->extra);
-//      fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
-//              count, context->out_eo - idx->length, context->out_eo,
-//              (int) idx->length, idx->_keyword, idx->wlen, idx->_extra);
+      strpos_s pos = matcher_matched_pos(context);
+      strlen_s str= matcher_matched_str(context);
+//      fprintf(fout, "%.*s(%d) - %s\n", (int) str.len, str.ptr,
+//              (int) utf8_word_length(str.ptr, str.len), idx->extra);
+      fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
+              count, pos.so, pos.eo, (int) str.len, str.ptr,
+              (int) utf8_word_length(str.ptr, str.len), idx->extra);
     };
   }
 

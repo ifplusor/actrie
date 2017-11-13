@@ -3,6 +3,7 @@
 //
 
 #include <matcher.h>
+#include <utf8.h>
 #include "../src/matcher0.h"
 
 int main() {
@@ -14,11 +15,11 @@ int main() {
   system("chcp 65001");
 #endif
 
-  strlen_s str = {
+  strlen_s pattern = {
       .ptr = "123\00045\n23\n12345\n45\n",
       .len = 19
   };
-  matcher = matcher_construct_by_string(matcher_type_dat, &str);
+  matcher = matcher_construct_by_string(matcher_type_dat, &pattern);
 //  matcher = matcher_construct_by_file(matcher_type_acdat, "testdata/rule_pure.txt");
   ctx = matcher_alloc_context(matcher);
 
@@ -37,11 +38,13 @@ int main() {
     matcher_reset_context(ctx, content, 11);
     while (matcher_next(ctx)) {
       mdi_t idx = matcher_matched_index(ctx);
-      fprintf(fout, "%.*s(%d) - %s\n",
-              (int) idx->length, idx->keyword, idx->wlen, idx->extra);
-//      fprintf(fout, "[%zu,%zu] %.*s(%d) - %s\n",
-//              ctx->out_eo - idx->length, ctx->out_eo,
-//              (int) idx->length, idx->keyword, idx->wlen, idx->extra);
+      strpos_s pos = matcher_matched_pos(ctx);
+      strlen_s str = matcher_matched_str(ctx);
+      fprintf(fout, "%.*s(%d) - %s\n", (int) str.len, str.ptr,
+              (int) utf8_word_length(str.ptr, str.len), idx->extra);
+//      fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
+//              count, pos.so, pos.eo, (int) str.len, str.ptr,
+//              (int) utf8_word_length(str.ptr, str.len), idx->extra);
       c++;
     }
 //  }

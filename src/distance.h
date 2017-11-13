@@ -30,14 +30,9 @@ typedef enum dist_match_state {
 } dist_match_state;
 
 typedef struct dist_context {
-  context_s header; /* 'header.out_matched_index' point 'out_index' */
+  context_s hdr;
 
   dist_matcher_t _matcher;
-
-  mdi_s out_index;     /* will change when call 'next' */
-#ifdef DIST_REPLACE_BY_ZERO
-  unsigned char _c;
-#endif
 
   size_t *_utf8_pos;
 
@@ -67,7 +62,7 @@ bool dist_destruct(dist_matcher_t self);
 
 dist_context_t dist_alloc_context(dist_matcher_t matcher);
 bool dist_free_context(dist_context_t context);
-bool dist_reset_context(dist_context_t context, unsigned char content[], size_t len);
+bool dist_reset_context(dist_context_t context, char content[], size_t len);
 
 bool dist_next_on_index(dist_context_t ctx);
 

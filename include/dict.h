@@ -41,18 +41,16 @@ typedef uint32_t mdi_prop_f;
 
 /*
  * optimize for cache:
- *      _tag   _keyword  _extra   length    wlen     prop
- *   +--------+--------+--------+--------+--------+--------+
- *   | 8 byte | 8 byte | 8 byte | 2 byte | 2 byte | 4 byte |
- *   +--------+--------+--------+--------+--------+--------+
+ *      _tag   _keyword  _extra    prop
+ *   +--------+--------+--------+--------+
+ *   | 8 byte | 8 byte | 8 byte | 4 byte |
+ *   +--------+--------+--------+--------+
  */
 typedef struct match_dict_index {
   // TODO: set magic?
-  void *_tag; // place in first for compare
-  ds keyword;                   /* 匹配的正文文本 */
+  void *_tag;
+  ds keyword;  /* 匹配的模式串 */
   ds extra;
-  uint16_t length;              /* 文本的字符长度 */
-  uint16_t wlen;                /* 文本的字节长度 */
   mdi_prop_f prop;
 } mdi_s, *mdi_t;
 

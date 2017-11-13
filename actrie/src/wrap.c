@@ -130,9 +130,11 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
   return Py_False;
 }
 
-static inline PyObject *build_matched_output(mdi_t mdi, strpos_s pos) {
-  return Py_BuildValue(
-      "(s#,i,i,s)", mdi->keyword, mdi->length, pos.so, pos.eo, mdi->extra);
+static inline PyObject *build_matched_output(context_t ctx) {
+  mdi_t mdi = matcher_matched_index(ctx);
+  strpos_s pos = matcher_matched_pos(ctx);
+  strlen_s str= matcher_matched_str(ctx);
+  return Py_BuildValue("(s#,i,i,s)", str.ptr, str.len, pos.so, pos.eo, mdi->extra);
 }
 
 PyObject *wrap_next(PyObject *dummy, PyObject *args) {
@@ -147,9 +149,7 @@ PyObject *wrap_next(PyObject *dummy, PyObject *args) {
   context = (context_t) temp;
 
   if (matcher_next(context)) {
-    mdi_t mdi = matcher_matched_index(context);
-    strpos_s pos = matcher_matched_pos(context);
-    return build_matched_output(mdi, pos);
+    return build_matched_output(context);
   }
 
   return Py_None;
@@ -177,9 +177,7 @@ PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
 
   PyObject *list = PyList_New(0);
   while (matcher_next(context)) {
-    mdi_t mdi = matcher_matched_index(context);
-    strpos_s pos = matcher_matched_pos(context);
-    PyObject *item = build_matched_output(mdi, pos);
+    PyObject *item = build_matched_output(context);
     PyList_Append(list, item);
   }
 

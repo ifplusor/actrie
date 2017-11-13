@@ -154,13 +154,6 @@ bool dict_add_index(match_dict_t dict, matcher_conf_t conf, strlen_s keyword,
     memset(dict->index + dict->idx_count, 0, sizeof(match_dict_s) * 100);
   }
 
-  // NOTE: mdi.length is uint16_t
-  dict->index[dict->idx_count].length = (uint16_t) keyword.len;
-  dict->index[dict->idx_count].wlen = (uint16_t)
-      utf8_word_length(keyword.ptr, keyword.len);
-
-  // because we use standard c string, must use dynabuf_write_with_zero
-
   aobj ds = NULL;
   if (prop & mdi_prop_bufkey) {
     aobj list = trie_search(dict->_map, keyword.ptr, keyword.len);
@@ -313,9 +306,9 @@ bool dict_parse(match_dict_t self, vocab_t vocab, matcher_conf_t conf) {
   for (size_t i = 0; i < self->idx_count; i++) {
     mdi_t idx = self->index + i;
     if (idx->prop & mdi_prop_bufkey)
-      idx->keyword = dstr2cstr(idx->keyword);
+      idx->keyword = dstr2cstr((dstr_t) idx->keyword);
     if (idx->prop & mdi_prop_bufextra) {
-      idx->extra = dstr2cstr(idx->extra);
+      idx->extra = dstr2cstr((dstr_t) idx->extra);
       // replace NULL with ""
       if (idx->extra == NULL) idx->extra = str_empty;
     }

@@ -380,7 +380,7 @@ trie_t trie_construct(match_dict_t dict, trie_conf_t conf) {
     for (; i < dict->idx_count; i++) {
       mdi_t index = &dict->index[i];
       if (mdi_prop_get_matcher(index->prop) != conf->filter) continue;
-      if (!trie_add_keyword(prime_trie, index->keyword, index->length, index)) {
+      if (!trie_add_keyword(prime_trie, index->keyword, cstr2dstr(index->keyword)->len, index)) {
         fprintf(stderr, "%s(%d) - error: encounter error when add keywords!\n",
                 __FILE__, __LINE__);
         break;

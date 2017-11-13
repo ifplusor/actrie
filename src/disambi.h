@@ -16,14 +16,14 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef struct ambi_matcher {
-  struct _matcher header;
+  matcher_s header;
 
   matcher_t _pure_matcher;
   match_dict_t _dict;
 } *ambi_matcher_t;
 
 typedef struct ambi_context {
-  struct _context header; /* 'header.out_matched_index' point 'out_index' */
+  context_s hdr;
 
   ambi_matcher_t _matcher;
 
@@ -35,7 +35,6 @@ typedef struct ambi_context {
   mdimap_t _ambi_map;
 
   deque_node_s _out_buffer;
-  mdi_s out_index;
 
 } ambi_context_s, *ambi_context_t;
 
@@ -51,7 +50,7 @@ bool ambi_destruct(ambi_matcher_t self);
 
 ambi_context_t ambi_alloc_context(ambi_matcher_t matcher);
 bool ambi_free_context(ambi_context_t context);
-bool ambi_reset_context(ambi_context_t context, unsigned char content[], size_t len);
+bool ambi_reset_context(ambi_context_t context, char content[], size_t len);
 
 bool ambi_next_on_index(ambi_context_t ctx);
 
