@@ -4,7 +4,6 @@
 
 #include <matcher.h>
 #include <utf8.h>
-#include "../src/matcher0.h"
 
 int main() {
   matcher_t matcher;

@@ -15,7 +15,7 @@
  */
 
 #include <Python.h>
-#include <matcher.h>
+#include "utf8ctx.h"
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -78,7 +78,7 @@ PyObject *wrap_destroy(PyObject *dummy, PyObject *args) {
 PyObject *wrap_alloc_context(PyObject *dummy, PyObject *args) {
   unsigned long long temp;
   matcher_t matcher;
-  context_t context;
+  wctx_t wctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
@@ -87,25 +87,25 @@ PyObject *wrap_alloc_context(PyObject *dummy, PyObject *args) {
 
   matcher = (matcher_t) temp;
 
-  context = matcher_alloc_context(matcher);
-  if (context == NULL)
+  wctx = alloc_context(matcher);
+  if (wctx == NULL)
     return Py_None;
 
-  return Py_BuildValue("K", context);
+  return Py_BuildValue("K", wctx);
 }
 
 PyObject *wrap_free_context(PyObject *dummy, PyObject *args) {
   unsigned long long temp;
-  context_t context;
+  wctx_t wctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     return Py_None;
   }
 
-  context = (context_t) temp;
+  wctx = (wctx_t) temp;
 
-  if (matcher_free_context(context))
+  if (free_context(wctx))
     return Py_True;
 
   return Py_False;
@@ -113,7 +113,7 @@ PyObject *wrap_free_context(PyObject *dummy, PyObject *args) {
 
 PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
   unsigned long long temp;
-  context_t context;
+  wctx_t wctx;
   char *content;
   int length;
 
@@ -122,34 +122,34 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
     return Py_None;
   }
 
-  context = (context_t) temp;
+  wctx = (wctx_t) temp;
 
-  if (matcher_reset_context(context, content, (size_t) length))
-    return Py_True;
+  if (reset_context(wctx, content, length))
+    Py_True;
 
   return Py_False;
 }
 
-static inline PyObject *build_matched_output(context_t ctx) {
-  mdi_t mdi = matcher_matched_index(ctx);
-  strpos_s pos = matcher_matched_pos(ctx);
-  strlen_s str= matcher_matched_str(ctx);
-  return Py_BuildValue("(s#,i,i,s)", str.ptr, str.len, pos.so, pos.eo, mdi->extra);
+static inline PyObject *build_matched_output(wctx_t wctx) {
+  mdi_t mdi = matcher_matched_index(wctx->ctx);
+  strpos_s pos = matcher_matched_pos(wctx->ctx);
+  strlen_s str= matcher_matched_str(wctx->ctx);
+  return Py_BuildValue("(s#,i,i,s)", str.ptr, str.len, wctx->pos[pos.so], wctx->pos[pos.eo], mdi->extra);
 }
 
 PyObject *wrap_next(PyObject *dummy, PyObject *args) {
   unsigned long long temp;
-  context_t context;
+  wctx_t wctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     return Py_None;
   }
 
-  context = (context_t) temp;
+  wctx = (wctx_t) temp;
 
-  if (matcher_next(context)) {
-    return build_matched_output(context);
+  if (next(wctx)) {
+    return build_matched_output(wctx);
   }
 
   return Py_None;
@@ -168,16 +168,16 @@ PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
 
   matcher = (matcher_t) temp;
 
-  context_t context = matcher_alloc_context(matcher);
-  if (context == NULL)
+  wctx_t wctx = alloc_context(matcher);
+  if (wctx == NULL)
     return Py_None;
 
-  if (!matcher_reset_context(context, content, (size_t) length))
+  if (!reset_context(wctx, content, length))
     return Py_None;
 
   PyObject *list = PyList_New(0);
-  while (matcher_next(context)) {
-    PyObject *item = build_matched_output(context);
+  while (next(wctx)) {
+    PyObject *item = build_matched_output(wctx);
     PyList_Append(list, item);
   }
 

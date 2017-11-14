@@ -22,7 +22,7 @@ if not actrie_dir:
     actrie_dir = get_root_dir()
 
 if not alib_dir:
-    alib_dir = os.path.join(actrie_dir, "..", "alib")
+    alib_dir = os.path.join(actrie_dir, '..', 'alib')
 
 
 def build_library():
@@ -31,6 +31,7 @@ def build_library():
 
 warp_sources = [
     os.path.join(actrie_dir, 'actrie', 'src', 'wrap.c'),
+    os.path.join(actrie_dir, 'actrie', 'src', 'utf8ctx.c')
 ]
 
 sources = warp_sources

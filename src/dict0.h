@@ -38,9 +38,6 @@ extern const char tokens_delimiter;
 extern const char left_parentheses;
 extern const char right_parentheses;
 
-extern const bool alpha_number_bitmap[256];
-extern const bool number_bitmap[256];
-
 match_dict_t dict_alloc();
 match_dict_t dict_retain(match_dict_t dict);
 void dict_release(match_dict_t dict);

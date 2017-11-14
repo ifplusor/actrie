@@ -39,6 +39,9 @@ extern "C" {
 
 typedef uint32_t mdi_prop_f;
 
+extern const bool alpha_number_bitmap[256];
+extern const bool number_bitmap[256];
+
 /*
  * optimize for cache:
  *      _tag   _keyword  _extra    prop
