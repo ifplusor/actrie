@@ -27,12 +27,12 @@ PyObject *wrap_construct_by_file(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "s", &path)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   matcher = matcher_construct_by_file(matcher_type_ultimate, path);
   if (matcher == NULL)
-    return Py_None;
+    Py_RETURN_NONE;
 
   return Py_BuildValue("K", matcher);
 }
@@ -44,7 +44,7 @@ PyObject *wrap_construct_by_string(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "s#", &string, &length)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   strlen_s vocab = {
@@ -53,7 +53,7 @@ PyObject *wrap_construct_by_string(PyObject *dummy, PyObject *args) {
   };
   matcher = matcher_construct_by_string(matcher_type_ultimate, &vocab);
   if (matcher == NULL)
-    return Py_None;
+    Py_RETURN_NONE;
 
   return Py_BuildValue("K", matcher);
 }
@@ -64,15 +64,15 @@ PyObject *wrap_destroy(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   matcher = (matcher_t) temp;
 
   if (matcher_destruct(matcher))
-    return Py_True;
+    Py_RETURN_TRUE;
 
-  return Py_False;
+  Py_RETURN_FALSE;
 }
 
 PyObject *wrap_alloc_context(PyObject *dummy, PyObject *args) {
@@ -82,14 +82,14 @@ PyObject *wrap_alloc_context(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   matcher = (matcher_t) temp;
 
   wctx = alloc_context(matcher);
   if (wctx == NULL)
-    return Py_None;
+    Py_RETURN_NONE;
 
   return Py_BuildValue("K", wctx);
 }
@@ -100,15 +100,15 @@ PyObject *wrap_free_context(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   wctx = (wctx_t) temp;
 
   if (free_context(wctx))
-    return Py_True;
+    Py_RETURN_TRUE;
 
-  return Py_False;
+  Py_RETURN_FALSE;
 }
 
 PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
@@ -119,15 +119,15 @@ PyObject *wrap_reset_context(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "Ks#", &temp, &content, &length)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   wctx = (wctx_t) temp;
 
   if (reset_context(wctx, content, length))
-    Py_True;
+    Py_RETURN_TRUE;
 
-  return Py_False;
+  Py_RETURN_FALSE;
 }
 
 static inline PyObject *build_matched_output(wctx_t wctx) {
@@ -143,7 +143,7 @@ PyObject *wrap_next(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   wctx = (wctx_t) temp;
@@ -152,7 +152,7 @@ PyObject *wrap_next(PyObject *dummy, PyObject *args) {
     return build_matched_output(wctx);
   }
 
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
@@ -163,17 +163,17 @@ PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
 
   if (!PyArg_ParseTuple(args, "Ks#", &temp, &content, &length)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   matcher = (matcher_t) temp;
 
   wctx_t wctx = alloc_context(matcher);
   if (wctx == NULL)
-    return Py_None;
+    Py_RETURN_NONE;
 
   if (!reset_context(wctx, content, length))
-    return Py_None;
+    Py_RETURN_NONE;
 
   PyObject *list = PyList_New(0);
   while (next(wctx)) {
