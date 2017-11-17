@@ -62,6 +62,11 @@ class Matcher:
             raise MatcherError("should be list or set")
         return self.load_from_string(keywords)
 
+    def match(self, content):
+        if not self._matcher:
+            raise MatcherError("matcher is not initialized")
+        return Context(self, content)
+
     def findall(self, content):
         """Return a list of all matches of pattern in string.
 
@@ -71,11 +76,17 @@ class Matcher:
         if not self._matcher:
             return MatcherError("matcher is not initialized")
         return _actrie.FindAll(self._matcher, content)
-    
-    def find_all(self, content):
-        return self.findall(content)
 
-    def match(self, content):
-        if not self._matcher:
-            raise MatcherError("matcher is not initialized")
-        return Context(self, content)
+    def finditer(self, content):
+        return self.match(content)
+
+    def search(self, content):
+        """Return first matched.
+
+        :type content: str
+        :rtype: (str, int, int, str)
+        """
+        ctx = self.finditer(content)
+        for matched in ctx:
+            return matched
+        return None
