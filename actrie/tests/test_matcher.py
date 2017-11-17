@@ -26,7 +26,7 @@ def test():
         print(matched)
 
     print("\ntest find all")
-    ret = matcher.find_all(content)
+    ret = matcher.findall(content)
     print(ret)
 
 

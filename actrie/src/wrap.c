@@ -179,7 +179,10 @@ PyObject *wrap_find_all(PyObject *dummy, PyObject *args) {
   while (next(wctx)) {
     PyObject *item = build_matched_output(wctx);
     PyList_Append(list, item);
+    Py_DECREF(item);
   }
+
+  free_context(wctx);
 
   return list;
 }
