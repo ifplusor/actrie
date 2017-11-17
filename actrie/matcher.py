@@ -40,6 +40,13 @@ class Matcher:
         self._matcher = _actrie.ConstructByFile(path)
         return self._matcher is not None
 
+    @classmethod
+    def create_by_file(cls, path):
+        matcher = Matcher()
+        if matcher.load_from_file(path):
+            return matcher
+        return None
+
     def load_from_string(self, keyword):
         if self._matcher:
             return MatcherError("matcher is initialized")
@@ -48,6 +55,13 @@ class Matcher:
         keyword = convert2pass(keyword)
         self._matcher = _actrie.ConstructByString(keyword)
         return self._matcher is not None
+
+    @classmethod
+    def create_by_string(cls, keyword):
+        matcher = Matcher()
+        if matcher.load_from_string(keyword):
+            return matcher
+        return None
 
     def load_from_collection(self, strings):
         if self._matcher:
@@ -61,6 +75,13 @@ class Matcher:
         else:
             raise MatcherError("should be list or set")
         return self.load_from_string(keywords)
+
+    @classmethod
+    def create_by_collection(cls, strings):
+        matcher = Matcher()
+        if matcher.load_from_collection(strings):
+            return matcher
+        return None
 
     def match(self, content):
         if not self._matcher:
