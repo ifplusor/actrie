@@ -45,6 +45,7 @@ bool reset_context(wctx_t wctx, char *content, int length) {
     if (!matcher_reset_context(wctx->ctx, content, (size_t) length))
       break;
 
+    if (wctx-> pos != NULL) free(wctx->pos);
     wctx->pos = malloc((length + 1) * sizeof(size_t));
     if (wctx->pos == NULL) break;
 

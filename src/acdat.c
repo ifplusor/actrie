@@ -270,6 +270,7 @@ bool dat_destruct(datrie_t p) {
       if (p->_nodepool[i + 1] != NULL) {
         // release list
         for (size_t j = 0; j < POOL_POSITION_SIZE; j++) {
+          /* 当root节点挂有idxlist时，将泄漏内存 */
           if (p->_nodepool[i][j].check == 0) continue;
           _release(p->_nodepool[i][j].idxlist);
         }

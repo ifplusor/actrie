@@ -142,6 +142,8 @@ bool dict_reset(match_dict_t dict, size_t index_count, size_t buffer_size) {
 bool dict_add_index(match_dict_t dict, matcher_conf_t conf, strlen_s keyword,
                     strlen_s extra, void *tag, mdi_prop_f prop) {
 
+  if (keyword.len == 0) return true;
+
   if (dict->idx_count == dict->idx_size) {
     // extend memory
     dict->idx_size += 100;
