@@ -51,6 +51,7 @@ bool dat_reset_context(dat_context_t context, char content[], size_t len);
 
 bool dat_match_end(dat_context_t ctx);
 
+bool dat_next_on_node(dat_context_t ctx);
 bool dat_next_on_index(dat_context_t ctx);
 bool dat_ac_next_on_node(dat_context_t ctx);
 bool dat_ac_next_on_index(dat_context_t ctx);

@@ -11,7 +11,7 @@ size_t trie_size(trie_t self) {
 
 static size_t trie_alloc_node(trie_t self) {
   size_t region = self->_autoindex >> REGION_OFFSET;
-//	size_t position = self->_autoindex & POSITION_MASK;
+//  size_t position = self->_autoindex & POSITION_MASK;
 #ifdef CHECK
   if (region >= POOL_REGION_SIZE)
       return (size_t)-1;
@@ -28,34 +28,6 @@ static size_t trie_alloc_node(trie_t self) {
       return (size_t)-1;
 #endif // CHECK
   return self->_autoindex++;
-}
-
-#if defined(_WIN32) && !defined(__cplusplus)
-#define inline __inline
-#endif
-
-static inline trie_node_t trie_access_node(trie_t self, size_t index) {
-  size_t region = index >> REGION_OFFSET;
-  size_t position = index & POSITION_MASK;
-#ifdef CHECK
-  if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
-          || index >= self->_autoindex) {
-      return NULL;
-  }
-#endif // CHECK
-  return &self->_nodepool[region][position];
-}
-
-trie_node_t trie_access_node_export(trie_t self, size_t index) {
-  size_t region = index >> REGION_OFFSET;
-  size_t position = index & POSITION_MASK;
-#ifdef CHECK
-  if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
-          || index >= self->_autoindex) {
-      return NULL;
-  }
-#endif // CHECK
-  return &self->_nodepool[region][position];
 }
 
 bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, aobj obj) {
@@ -152,10 +124,9 @@ size_t trie_next_state_by_binary(trie_t self, size_t iNode, unsigned char key) {
   return 0;
 }
 
-trie_node_t trie_next_node_by_binary(trie_t self, trie_node_t pNode,
-                                       unsigned char key) {
+trie_node_t trie_next_node_by_binary(trie_t self, trie_node_t pNode, unsigned char key) {
   size_t left, right;
-  if (key < trie_access_node(self, pNode->trie_child)->key ||
+  if (pNode->len == 0 || key < trie_access_node(self, pNode->trie_child)->key ||
       trie_access_node(self, pNode->trie_child + pNode->len - 1)->key < key)
     return self->root;
 
@@ -304,7 +275,6 @@ void trie_sort_to_line(trie_t self) {
       iTarget++;
     }
   }
-//  fprintf(stderr, "sort succeed!\n");
 }
 
 void trie_set_parent_by_dfs(trie_t self, size_t current, size_t parent) {
@@ -319,7 +289,6 @@ void trie_set_parent_by_dfs(trie_t self, size_t current, size_t parent) {
 void trie_rebuild_parent_relation(trie_t self) {
   if (self->root->trie_child != 0)
     trie_set_parent_by_dfs(self, self->root->trie_child, 0);
-//  fprintf(stderr, "rebuild parent succeed!\n");
 }
 
 void trie_construct_automation(trie_t self) {
@@ -349,7 +318,6 @@ void trie_construct_automation(trie_t self) {
       pChild->trie_failed = match;
     }
   }
-//  fprintf(stderr, "construct AC automation succeed!\n");
 }
 
 void trie_destruct(trie_t self) {

@@ -52,6 +52,18 @@ bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, ao
 aobj trie_search(trie_t self, const unsigned char keyword[], size_t len);
 void trie_rebuild_parent_relation(trie_t self);
 
+static inline trie_node_t trie_access_node(trie_t self, size_t index) {
+  size_t region = index >> REGION_OFFSET;
+  size_t position = index & POSITION_MASK;
+#ifdef CHECK
+  if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
+          || index >= self->_autoindex) {
+      return NULL;
+  }
+#endif // CHECK
+  return &self->_nodepool[region][position];
+}
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

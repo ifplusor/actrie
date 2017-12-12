@@ -4,10 +4,7 @@
 /* Trie 内部接口，仅限 Double-Array Trie 使用 */
 size_t trie_size(trie_t self);
 
-trie_node_t trie_access_node_export(trie_t self, size_t index);
-
-size_t trie_next_state_by_binary(trie_t self, size_t iNode,
-                                 unsigned char key);
+size_t trie_next_state_by_binary(trie_t self, size_t iNode, unsigned char key);
 
 
 // Double-Array Trie
@@ -104,10 +101,10 @@ static void dat_construct_by_dfs(datrie_t self, trie_t origin,
 
   if (pNode->trie_child == 0) return;
 
-  pChild = trie_access_node_export(origin, pNode->trie_child);
+  pChild = trie_access_node(origin, pNode->trie_child);
   while (pChild != origin->root) {
     child[len++] = pChild->key;
-    pChild = trie_access_node_export(origin, pChild->trie_brother);
+    pChild = trie_access_node(origin, pChild->trie_brother);
   }
   pos = self->_sentinel->dat_free_next;
   while (1) {
@@ -154,11 +151,11 @@ static void dat_construct_by_dfs(datrie_t self, trie_t origin,
   }
 
   /* 构建子树 */
-  pChild = trie_access_node_export(origin, pNode->trie_child);
+  pChild = trie_access_node(origin, pNode->trie_child);
   while (pChild != origin->root) {
     pChild->trie_datidx = pDatNode->base + pChild->key;
     dat_construct_by_dfs(self, origin, pChild, pChild->trie_datidx);
-    pChild = trie_access_node_export(origin, pChild->trie_brother);
+    pChild = trie_access_node(origin, pChild->trie_brother);
   }
 }
 
@@ -230,7 +227,7 @@ void dat_construct_automation(datrie_t self, trie_t origin) {
   trie_node_t pNode = origin->root;
   size_t iChild = pNode->trie_child;
   while (iChild != 0) {
-    trie_node_t pChild = trie_access_node_export(origin, iChild);
+    trie_node_t pChild = trie_access_node(origin, iChild);
 
     /* 设置 failed 域 */
     iChild = pChild->trie_brother;
@@ -239,16 +236,16 @@ void dat_construct_automation(datrie_t self, trie_t origin) {
   }
 
   for (index = 1; index < trie_size(origin); index++) { // bfs
-    pNode = trie_access_node_export(origin, index);
+    pNode = trie_access_node(origin, index);
     iChild = pNode->trie_child;
     while (iChild != 0) {
-      trie_node_t pChild = trie_access_node_export(origin, iChild);
+      trie_node_t pChild = trie_access_node(origin, iChild);
       unsigned char key = pChild->key;
 
       size_t iFailed = pNode->trie_failed;
       size_t match = trie_next_state_by_binary(origin, iFailed, key);
       while (iFailed != 0 && match == 0) {
-        iFailed = trie_access_node_export(origin, iFailed)->trie_failed;
+        iFailed = trie_access_node(origin, iFailed)->trie_failed;
         match = trie_next_state_by_binary(origin, iFailed, key);
       }
       iChild = pChild->trie_brother;
@@ -257,7 +254,7 @@ void dat_construct_automation(datrie_t self, trie_t origin) {
       /* 设置 DAT 的 failed 域 */
       dat_access_node(self, pChild->trie_datidx)->failed =
           match == 0 ? DAT_ROOT_IDX :
-          trie_access_node_export(origin, match)->trie_datidx;
+          trie_access_node(origin, match)->trie_datidx;
     }
   }
 //  fprintf(stderr, "construct AC automation succeed!\n");
@@ -393,6 +390,46 @@ static inline void dat_output(dat_context_t ctx) {
       .so = ctx->_e - cstr2dstr(mdi->keyword)->len,
       .eo = ctx->_e
   };
+}
+
+bool dat_next_on_node(dat_context_t ctx) {
+  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
+  for (; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+    size_t iNext = dat_forward(pCursor, ctx);
+    dat_node_t pNext = dat_access_node(ctx->trie, iNext);
+    if (pNext->check != ctx->_iCursor)
+      break;
+    ctx->_iCursor = iNext;
+    pCursor = pNext;
+    if (pNext->idxlist != NULL) {
+      ctx->_matched = pNext;
+      ctx->_list = ctx->_matched->idxlist;
+      ctx->_e++;
+      dat_output(ctx);
+      return true;
+    }
+  }
+
+  for (ctx->_i++; ctx->_i < ctx->hdr.content.len; ctx->_i++) {
+    ctx->_iCursor = DAT_ROOT_IDX;
+    pCursor = ctx->trie->root;
+    for (ctx->_e = ctx->_i; ctx->_e < ctx->hdr.content.len; ctx->_e++) {
+      size_t iNext = dat_forward(pCursor, ctx);
+      dat_node_t pNext = dat_access_node(ctx->trie, iNext);
+      if (pNext->check != ctx->_iCursor)
+        break;
+      ctx->_iCursor = iNext;
+      pCursor = pNext;
+      if (pNext->idxlist != NULL) {
+        ctx->_matched = pNext;
+        ctx->_list = ctx->_matched->idxlist;
+        ctx->_e++;
+        dat_output(ctx);
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 bool dat_next_on_index(dat_context_t ctx) {
