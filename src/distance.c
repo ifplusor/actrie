@@ -26,7 +26,6 @@ const context_func_l dist_context_func = {
 
 /*
  * pattern will match:
- * - A.*?B
  * - A\d{0,5}B
  * - A.{0,5}B
  */

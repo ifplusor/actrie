@@ -5,4 +5,4 @@ from .matcher import Matcher, Context
 
 __all__ = ['Matcher', 'Context']
 
-__version__ = '2.0'
+__version__ = '2.1'
