@@ -15,6 +15,7 @@ if (UNIX)
         message("not defined CMAKE_BUILD_TYPE, use -O2")
         add_compile_options(-O2 -Wall)
     endif ()
+    add_compile_options(-g)
 elseif (MSVC)
     message("compile with MSVC")
 	add_compile_options(/utf-8 /NODEFAULTLIB:library)
@@ -48,7 +49,8 @@ set(actrie_HEADER_FILES
         src/acdat.h
         src/mdimap.h
         src/disambi.h
-        src/distance.h)
+        src/distance.h
+        src/parser.h)
 
 set(actrie_SOURCE_FILES
         src/configure.c
@@ -59,7 +61,8 @@ set(actrie_SOURCE_FILES
         src/mdimap.c
         src/disambi.c
         src/distance.c
-        src/matcher.c)
+        src/matcher.c
+        src/parser.c)
 
 add_library(actrie STATIC
         ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})

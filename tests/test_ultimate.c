@@ -33,10 +33,10 @@ int main() {
         strpos_s pos = matcher_matched_pos(context);
         strlen_s str= matcher_matched_str(context);
 //      fprintf(fout, "%.*s(%d) - %s\n", (int) str.len, str.ptr,
-//              (int) utf8_word_length(str.ptr, str.len), idx->extra);
+//              (int) utf8_word_len(str.ptr, str.len), idx->extra);
         fprintf(fout, "%d: [%zu,%zu] %.*s(%d) - %s\n",
                 count, pos.so, pos.eo, (int) str.len, str.ptr,
-                (int) utf8_word_length(str.ptr, str.len), idx->extra);
+                (int) utf8_word_len(str.ptr, str.len), idx->extra);
         c++;
       };
     }
