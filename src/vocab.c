@@ -35,7 +35,7 @@ vocab_t vocab_construct(stream_type_e type, void *src) {
     if (ch0 != '\n')
       vocab->count++;
 
-    dynabuf_init(&vocab->_buf, 200, false);
+    dynabuf_init(&vocab->_buf, 200);
 
     return vocab;
   } while(0);
@@ -76,11 +76,11 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
   if (ch == EOF && dynabuf_empty(&self->_buf)) {
     return false;
   } else {
-    dynabuf_write_with_zero(&self->_buf, NULL, 0);
+    dynabuf_write_eos(&self->_buf, NULL, 0);
     *keyword = dynabuf_split(&self->_buf, keyword_pos);
     if (ch == '\t') {
       ch = dynabuf_consume_until(&self->_buf, self->_stream, "\n", &extra_pos);
-      dynabuf_write_with_zero(&self->_buf, NULL, 0);
+      dynabuf_write_eos(&self->_buf, NULL, 0);
       *extra = dynabuf_split(&self->_buf, extra_pos);
     } else {
       *extra = strlen_empty;

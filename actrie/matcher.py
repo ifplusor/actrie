@@ -111,3 +111,8 @@ class Matcher:
         for matched in ctx:
             return matched
         return None
+
+
+class ExternalMatcher:
+    def __init__(self):
+        pass

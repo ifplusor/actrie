@@ -50,6 +50,7 @@ set(actrie_HEADER_FILES
         src/mdimap.h
         src/disambi.h
         src/distance.h
+        src/tokenizer.h
         src/parser.h)
 
 set(actrie_SOURCE_FILES
@@ -62,6 +63,7 @@ set(actrie_SOURCE_FILES
         src/disambi.c
         src/distance.c
         src/matcher.c
+        src/tokenizer.c
         src/parser.c)
 
 add_library(actrie STATIC
