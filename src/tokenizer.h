@@ -8,10 +8,16 @@
 #include <stream.h>
 #include <obj/dstr.h>
 
-#define TOKEN_EOF  EOF
+#define TOKEN_TXT  (0)
+#define TOKEN_EOF  (-1)
 #define TOKEN_ERR  (-2)
-#define TOKEN_SUBS (-3)
-#define TOKEN_SUBE (-4)
-#define TOKEN_ALT  (-5)
+#define TOKEN_ALT  (-3)
+#define TOKEN_SUBS (-4)
+#define TOKEN_SUBE (-5)
+#define TOKEN_AMBI (-6)
+#define TOKEN_ANTO (-7)
+#define TOKEN_DIST (-8)
+
+int token_next(stream_t stream, dstr_t *token);
 
 #endif //_ACTRIE_TOKENIZER_H_
