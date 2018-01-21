@@ -15,8 +15,10 @@ gmon.out
 cmake-build-*
 
 .vs
+CMakeSettings.json
 
-cmake-build
-build
-lib
+cmake-build/
+build/
+lib/
+dist/
 

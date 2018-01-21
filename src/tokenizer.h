@@ -19,5 +19,7 @@
 #define TOKEN_DIST (-8)
 
 int token_next(stream_t stream, dstr_t *token);
+int token_min_dist();
+int token_max_dist();
 
 #endif //_ACTRIE_TOKENIZER_H_

@@ -3,7 +3,8 @@
 //
 
 #include <dynabuf.h>
-#include <obj/list.h>
+#include <threadlocal.h>
+
 #include "tokenizer.h"
 
 const bool oct_number_bitmap[256] = {
@@ -81,6 +82,14 @@ const int hex_char2num[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
+
+
+tls_key_t dist_key;
+
+bool tokenizer_init() {
+  return tls_create_key(&dist_key, free);
+}
+
 
 /**
  * token_oct_num - octal escape sequence
@@ -210,6 +219,36 @@ int token_escape(int ch, stream_t stream) {
   }
 }
 
+typedef struct _token_dist_s {
+  int min, max;
+} dist_s, *dist_t;
+
+void token_set_dist(int min, int max) {
+  dist_t dist = tls_get_value(dist_key);
+  if (dist == NULL) {
+    dist = malloc(sizeof(dist_s));
+    tls_set_value(dist_key, dist);
+  }
+  dist->min = min;
+  dist->max = max;
+}
+
+int token_min_dist() {
+  dist_t dist = tls_get_value(dist_key);
+  if (dist == NULL) {
+    return -1;
+  }
+  return dist->min;
+}
+
+int token_max_dist() {
+  dist_t dist = tls_get_value(dist_key);
+  if (dist == NULL) {
+    return -1;
+  }
+  return dist->max;
+}
+
 int token_dist(int ch, stream_t stream) {
   // dist-pattern: .{min,max}
   do {
@@ -224,8 +263,8 @@ int token_dist(int ch, stream_t stream) {
     token_skip_space(stream);
     if (!token_expect_char(stream, '}')) break;
 
-    // TODO: return min and max
-//    _(list, min, cons, max);
+    // set min and max
+    token_set_dist(min, max);
 
     return TOKEN_DIST;
   } while (0);

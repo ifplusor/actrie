@@ -6,9 +6,7 @@
 #include "parser.h"
 
 
-void *parse_pattern(strlen_t pattern) {
-  stream_t stream = stream_construct(stream_type_string, pattern);
-
+void *parse_pattern0(stream_t stream) {
   int ch;
   dstr_t token;
   while ((ch = token_next(stream, &token)) != TOKEN_EOF) {
@@ -16,9 +14,38 @@ void *parse_pattern(strlen_t pattern) {
 
       _release(token);
     } else if (ch == TOKEN_DIST) {
+      // dist-pattern
+      int dmin = token_min_dist();
+      int dmax = token_max_dist();
 
+
+    } else if (ch == TOKEN_AMBI) {
+      // ambi-pattern
+
+    } else if (ch == TOKEN_ANTO) {
+      // anto-pattern
+
+    } else if (ch == TOKEN_SUBS) {
+      // sub-pattern
+
+    } else if (ch == TOKEN_ALT) {
+      // alter-pattern
+
+    } else if (ch == TOKEN_SUBE) {
+      //
+
+    } else {
+      // error
     }
   }
+
+  return NULL;
+}
+
+void *parse_pattern(strlen_t pattern) {
+  stream_t stream = stream_construct(stream_type_string, pattern);
+
+  parse_pattern0(stream);
 
   stream_destruct(stream);
 
