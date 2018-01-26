@@ -26,7 +26,7 @@ if not alib_dir:
 
 
 def build_library():
-    os.system(os.path.join(actrie_dir, "scripts", "build.sh"))
+    os.system(os.path.join(actrie_dir, "utils", "build.sh"))
 
 
 warp_sources = [

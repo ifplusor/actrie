@@ -51,7 +51,9 @@ set(actrie_HEADER_FILES
         src/disambi.h
         src/distance.h
         src/tokenizer.h
-        src/parser.h)
+        src/parser.h
+        src/lr_table.h
+        src/pattern.h)
 
 set(actrie_SOURCE_FILES
         src/configure.c
@@ -64,7 +66,8 @@ set(actrie_SOURCE_FILES
         src/distance.c
         src/matcher.c
         src/tokenizer.c
-        src/parser.c)
+        src/parser.c
+        src/pattern.c)
 
 add_library(actrie STATIC
         ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})

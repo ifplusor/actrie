@@ -320,13 +320,12 @@ int token_next(stream_t stream, dstr_t *token) {
     if (dynabuf_empty(&buffer))
       ch = TOKEN_EOF;
     else
-      ch = TOKEN_TXT;
-  } else if (ch >= 0) {
-    ch = TOKEN_TXT;
+      ch = TOKEN_TEXT;
   }
 
   if (token != NULL) {
-    if (dynabuf_empty(&buffer)) {
+    // 出错不返回
+    if (dynabuf_empty(&buffer) || ch == TOKEN_ERR) {
       *token = NULL;
     } else {
       strlen_s tok = dynabuf_content(&buffer);

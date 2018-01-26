@@ -6,5 +6,9 @@
 #define _ACTRIE_PARSER_H_
 
 #include "vocab.h"
+#include "pattern.h"
+
+ptrn_t parse_pattern(strlen_t pattern);
+void *parse_vocab(vocab_t vocab);
 
 #endif //_ACTRIE_PARSER_H_

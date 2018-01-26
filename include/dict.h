@@ -52,8 +52,8 @@ extern const bool number_bitmap[256];
 typedef struct match_dict_index {
   // TODO: set magic?
   void *_tag;
-  ds keyword;  /* 匹配的模式串 */
-  ds extra;
+  cstr keyword;  /* 匹配的模式串 */
+  cstr extra;
   mdi_prop_f prop;
 } mdi_s, *mdi_t;
 

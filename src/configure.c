@@ -7,13 +7,13 @@
 
 void mcnf_clean(aobj id);
 
-static aobj_meta_s mcnf_meta = {
-    .isa = FOUR_CHARS_TO_INT('M', 'C', 'N', 'F'),
-    .clean = mcnf_clean,
-};
+ameta(mcnf,
+      FOUR_CHARS_TO_INT('M', 'C', 'N', 'F'),
+      mcnf_clean
+)
 
 aobj mcnf_init(void *ptr, void *data) {
-  matcher_conf_t id = aobj_init(ptr, &mcnf_meta);
+  matcher_conf_t id = aobj_init(mcnf, ptr);
   if (id) {
     id->clean = NULL;
   }
