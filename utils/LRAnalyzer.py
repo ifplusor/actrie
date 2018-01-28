@@ -1,6 +1,8 @@
 #!/bin/env python3
 # coding=utf-8
 
+from functools import reduce
+
 
 class IdGenerator:
     def __init__(self):
@@ -162,7 +164,7 @@ class ItemClosure:
             return str(list(closure_set)[0])
         else:
             lst = list(closure_set)
-            lst.sort(lambda a, b: -cmp(str(a), str(b)))
+            lst.sort(key=str)
             return "\n".join([str(item) for item in lst])
 
     def __str__(self):
@@ -242,8 +244,11 @@ class LRAnalyzer:
         return token in self.non_terminator
 
     def read_pdcts(self, path):
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             for line in fp.readlines():
+                sharp = line.find("#")
+                if sharp != -1:
+                    line = line[:sharp]
                 line = line.strip()
                 if not line:
                     continue
@@ -261,6 +266,17 @@ class LRAnalyzer:
         self.non_terminator = set([pdct.gen for pdct in self.pdct_list])
         self.terminator = reduce(lambda s, pdct: s.union(pdct.tokens), self.pdct_list, set()) - self.non_terminator
         self.terminator.add("$")
+
+        # 定义优先级和结合性
+        # self.priority = {
+        #     "text",
+        #     ")",
+        #     "(?&!",
+        #     "(?<!",
+        #     "(",
+        #     "|",
+        #     "$",
+        # }
 
     def get_first(self, gen, forward=None):
         """ get_first - 获取 FIRST(gen, forward) 集
@@ -319,7 +335,7 @@ class LRAnalyzer:
                                 else:
                                     follows.update(self.get_first(token))
                             else:
-                                if pdct == self.pdct_dict["term"][0]:
+                                if pdct == self.pdct_dict["pattern"][0]:
                                     follows.add("$")
                                 else:
                                     queue.push(pdct.gen)
@@ -341,30 +357,24 @@ class LRAnalyzer:
         :param new_queue: 新 closure 队列
         :return:
         """
-        closure = set(item_set)
-
         queue = UniQueue()
         for item in item_set:
-            if item.is_end():
-                continue
+            queue.push(item)
 
-            # item 的期望的下一个 token 是未检查过的非终结符
+        while not queue.empty():
+            item = queue.pop()  # A -> alpha . B beta, a
+
+            # item 的期望的下一个 token 是非终结符
             token = item.next_token()
             if self.is_non_terminator(token):
-                queue.push(token)
-
-            while not queue.empty():  # A -> alpha . B beta, a
-                token = queue.pop()
                 plist = self.pdct_dict[token]  # token 的产生式
                 for pdct in plist:  # B -> gamma
                     beta = item.skip_token()
                     for first in self.get_first(beta, item.forward):
-                        closure.add(self.get_item(pdct, 0, first))
+                        extend_item = self.get_item(pdct, 0, first)
+                        queue.push(extend_item)
 
-                    token0 = pdct.tokens[0]
-                    if self.is_non_terminator(token0):
-                        queue.push(token0)
-
+        closure = queue.lookup
         id = ItemClosure.identifier(closure)
         item_closure = self.closure_cache.get(id, None)
         if item_closure is None:
@@ -375,7 +385,7 @@ class LRAnalyzer:
 
     def gen_dfa(self):
         # 初态
-        term_pdct = self.pdct_dict["term"][0]
+        term_pdct = self.pdct_dict["pattern"][0]
         # start_item = term_pdct.items[0]
         # accept_item = start_item.nitem
 
@@ -390,6 +400,15 @@ class LRAnalyzer:
             self.closure_list.append(closure)
             closure.build_goto(lambda x: self.get_closure(x, queue))
 
+        # def dfs(closure, pid):
+        #     if (closure.id <= pid):
+        #         return
+        #     print("%d" % closure.id)
+        #     for key in closure._goto:
+        #         dfs(closure._goto[key], closure.id)
+        #
+        # dfs(root_closure, -1)
+
         # 生成 lr 分析表
         for closure in self.closure_list:
             lr_analyze_item = dict()
@@ -402,7 +421,7 @@ class LRAnalyzer:
             for item in closure:
                 token = item.next_token()
                 if token is None:
-                    if item.forward == "$" and item.pdct.gen == "term":
+                    if item.forward == "$" and item.pdct.gen == "pattern":
                         lr_analyze_item["$"] = ("acpt", -1)
                     else:
                         forward = item.forward
@@ -527,5 +546,14 @@ lr_item_s lr_goto_table[%d][%d] = {
 
 
 if __name__ == "__main__":
-    lr_analyzer = LRAnalyzer("utils/productions.txt")
-    lr_analyzer.output("src/lr_table.h")
+    import sys
+    import getopt
+    opts, args = getopt.getopt(sys.argv[1:], "s:o:", ["source=", "output="])
+    for op, value in opts:
+        if op == "-s" or op == "--source":
+            source = value
+        elif op == "-o" or op == "--output":
+            output = value
+    print("generate LR(1) table, source='%s', output='%s'" % (source, output))
+    lr_analyzer = LRAnalyzer(source)
+    lr_analyzer.output(output)

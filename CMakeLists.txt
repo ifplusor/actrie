@@ -19,6 +19,10 @@ if (UNIX)
 elseif (MSVC)
     message("compile with MSVC")
 	add_compile_options(/utf-8 /NODEFAULTLIB:library)
+else ()
+    add_compile_options(-fPIC)
+    add_compile_options(-Wall)
+    add_compile_options(-g)
 endif ()
 
 set(CMAKE_C_STANDARD 99)
@@ -38,33 +42,37 @@ if (NOT (DEFINED alib_DIR))
 endif ()
 add_subdirectory(${alib_DIR} alib)
 
+#add_custom_command(OUTPUT src/lr_table.h
+#        python utils/LRAnalyzer.py ARGS --source="utils/productions.syntax" --output="src/lr_table.h"
+#        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
 set(actrie_HEADER_FILES
-        src/configure.h
-        include/dict.h
-        include/matcher.h
+#        src/configure.h
+#        include/dict.h
+#        include/matcher.h
         src/vocab.h
-        src/dict0.h
-        src/actrie.h
-        src/matcher0.h
-        src/acdat.h
-        src/mdimap.h
-        src/disambi.h
-        src/distance.h
+#        src/dict0.h
+#        src/actrie.h
+#        src/matcher0.h
+#        src/acdat.h
+#        src/mdimap.h
+#        src/disambi.h
+#        src/distance.h
         src/tokenizer.h
         src/parser.h
         src/lr_table.h
         src/pattern.h)
 
 set(actrie_SOURCE_FILES
-        src/configure.c
+#        src/configure.c
         src/vocab.c
-        src/dict.c
-        src/actrie.c
-        src/acdat.c
-        src/mdimap.c
-        src/disambi.c
-        src/distance.c
-        src/matcher.c
+#        src/dict.c
+#        src/actrie.c
+#        src/acdat.c
+#        src/mdimap.c
+#        src/disambi.c
+#        src/distance.c
+#        src/matcher.c
         src/tokenizer.c
         src/parser.c
         src/pattern.c)
@@ -74,8 +82,8 @@ add_library(actrie STATIC
 target_include_directories(actrie
         PUBLIC include)
 target_link_libraries(actrie
-        PUBLIC alib
-        PUBLIC pcre)
+        PUBLIC alib)
+#        PUBLIC pcre)
 target_compile_definitions(actrie
         PUBLIC -DPCRE_STATIC) # we link pcre static lib, this is must in windows
 

@@ -5,44 +5,171 @@
 #include "tokenizer.h"
 #include "parser.h"
 #include <dynapool.h>
+#include <obj/pint.h>
 
 #include "lr_table.h"
 
 
 typedef struct _sign_node {
   int state;
-  void *data;
+  aobj data;
   deque_node_s deque_elem;
 } sign_s, *sign_t;
 
 
-typedef void (*lr_reduce_func)(deque_node_t, sign_t*);
+typedef void (*lr_reduce_func)(dynapool_t, deque_node_t, sign_t*);
 
-void reduce_only_pop(deque_node_t sign_stack, sign_t *node) {
+void reduce_only_pop(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
   *node = deque_pop_front(sign_stack, sign_s, deque_elem);
 }
 
+void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t sign = deque_pop_front(sign_stack, sign_s, deque_elem);
+
+  // construct pure-pattern
+  dstr_t text = sign->data;
+  sign->data = _alloc(ptrn, pure, text);
+  _release(text);
+
+  *node = sign;
+}
+
+void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t right = deque_pop_front(sign_stack, sign_s, deque_elem); // ')'
+  sign_t origin = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t left = deque_pop_front(sign_stack, sign_s, deque_elem); // '(', '(?&!', '(?<!'
+
+  dynapool_free_node(sign_pool, right);
+  dynapool_free_node(sign_pool, left);
+
+  *node = origin;
+}
+
+void reduce_ambi(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t anti = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t origin = deque_pop_front(sign_stack, sign_s, deque_elem);
+
+  // construct ambi-pattern
+  origin->data = _alloc(ptrn, ambi, origin->data, anti->data);
+
+  dynapool_free_node(sign_pool, origin);
+
+  *node = origin;
+}
+
+void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t origin = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t anti = deque_pop_front(sign_stack, sign_s, deque_elem);
+
+  // construct anto-pattern
+  anti->data = _alloc(ptrn, anto, origin->data, anti->data);
+
+  dynapool_free_node(sign_pool, origin);
+
+  *node = anti;
+}
+
+void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t tail = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t dist = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t head = deque_pop_front(sign_stack, sign_s, deque_elem);
+
+  uptr_t data = (uptr_t) pint_get(dist->data);
+  int min = (int) (data & 0xFFFF);
+  int max = (int) ((data >> 16) & 0xFFFF);
+
+  // construct dist-pattern
+  head->data = _alloc(ptrn, dist, head->data, tail->data, min, max);
+
+  dynapool_free_node(sign_pool, tail);
+  dynapool_free_node(sign_pool, dist);
+
+  *node = head;
+}
+
+void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node) {
+  sign_t after = deque_pop_front(sign_stack, sign_s, deque_elem);
+  sign_t alter = deque_pop_front(sign_stack, sign_s, deque_elem); // "|"
+  sign_t before = deque_pop_front(sign_stack, sign_s, deque_elem);
+
+  // construct anto-pattern
+  before->data = _alloc(ptrn, cat, before->data, after->data);
+
+  dynapool_free_node(sign_pool, after);
+  dynapool_free_node(sign_pool, alter);
+
+  *node = before;
+}
+
 static const lr_reduce_func reduce_func[LR_PDCT_NUM] = {
-    NULL,
-    reduce_only_pop,
+    [0] = NULL,
+
+    [1] = reduce_only_pop,
+    [2] = reduce_only_pop,
+    [6] = reduce_only_pop,
+    [7] = reduce_only_pop,
+    [8] = reduce_only_pop,
+    [16] = reduce_only_pop,
+    [17] = reduce_only_pop,
+    [25] = reduce_only_pop,
+    [26] = reduce_only_pop,
+
+    [34] = reduce_text2pure,
+
+    [4] = reduce_unwrap,
+    [13] = reduce_unwrap,
+    [20] = reduce_unwrap,
+    [21] = reduce_unwrap,
+    [22] = reduce_unwrap,
+    [29] = reduce_unwrap,
+    [30] = reduce_unwrap,
+    [31] = reduce_unwrap,
+
+    [27] = reduce_ambi,
+    [28] = reduce_ambi,
+
+    [3] = reduce_anto,
+    [18] = reduce_anto,
+    [19] = reduce_anto,
+
+    [9] = reduce_dist,
+    [10] = reduce_dist,
+    [11] = reduce_dist,
+    [12] = reduce_dist,
+
+    [5] = reduce_alter,
+    [14] = reduce_alter,
+    [15] = reduce_alter,
+    [23] = reduce_alter,
+    [24] = reduce_alter,
+    [32] = reduce_alter,
+    [33] = reduce_alter,
 
 };
 
-void parse_reduce(lr_item_t change, deque_node_t sign_stack, sign_t *node) {
+/**
+ * parse_reduce - reduce production
+ * @param sign_pool [IN]
+ * @param sign_stack [IN]
+ * @param node [OUT]
+ * @param change [IO]
+ */
+void parse_reduce(dynapool_t sign_pool, deque_node_t sign_stack, sign_t *node, lr_item_t change) {
   int pdct = change->index;
   // reduce
-  reduce_func[pdct](sign_stack, node);
+  reduce_func[pdct](sign_pool, sign_stack, node);
   int nonid = lr_pdct2nonid[pdct];
   sign_t sign = deque_peek_front(sign_stack, sign_s, deque_elem);
   // after reduce, check goto table
   *change = lr_goto_table[sign->state][nonid];
 }
 
-ptrn_t parse_pattern1(stream_t stream) {
+ptrn_t parse_pattern0(stream_t stream) {
   deque_node_s sentinel0, sentinel1;
   deque_node_t sign_stack = &sentinel0;
   deque_node_t token_deque = &sentinel1;
   deque_init(sign_stack);
+  deque_init(token_deque);
 
   dynapool_t sign_pool = dynapool_construct_with_type(sign_s);
 
@@ -52,18 +179,25 @@ ptrn_t parse_pattern1(stream_t stream) {
   while ((ch = token_next(stream, &token)) != TOKEN_EOF) {
     if (ch == TOKEN_ERR) break;
 
-    sign_t node = dynapool_alloc_node(sign_pool);
-    node->state = -ch;
-    if (ch == TOKEN_TEXT) {
+    if (token != NULL) {
+      sign_t node = dynapool_alloc_node(sign_pool);
+      node->state = TOKEN_TEXT;
       node->data = token;
-    } else if (ch == TOKEN_DIST) {
-      int max = token_max_dist();
-      int min = token_min_dist();
-      node->data = (void*) (((uptr_t) max & 0xFFFF) << 16 | ((uptr_t) min & 0xFFFF));
-    } else {
-      node->data = NULL;
+      deque_push_back(token_deque, node, sign_s, deque_elem);
     }
-    deque_push_back(token_deque, node, sign_s, deque_elem);
+
+    if (ch != TOKEN_TEXT){
+      sign_t node = dynapool_alloc_node(sign_pool);
+      node->state = -ch;
+      if (ch == TOKEN_DIST) {
+        int max = token_max_dist();
+        int min = token_min_dist();
+        node->data = pint(((uptr_t) max & 0xFFFF) << 16 | ((uptr_t) min & 0xFFFF));
+      } else {
+        node->data = NULL;
+      }
+      deque_push_back(token_deque, node, sign_s, deque_elem);
+    }
   }
 
   if (ch != TOKEN_ERR) {
@@ -91,14 +225,20 @@ lr_rdc:
         case acpt:
           goto lr_acc;
         case shft:
-          node->state = change.action;
+          // node 进栈，无需释放内存
+          node->state = change.index;
           deque_push_front(sign_stack, node, sign_s, deque_elem);
           break;
         case rduc:
-          parse_reduce(&change, sign_stack, &node);
+          // node 放回 token_deque，规约产生式
+          deque_push_front(token_deque, node, sign_s, deque_elem);
+          parse_reduce(sign_pool, sign_stack, &node, &change);
           goto lr_rdc;
       }
     }
+  } else {
+    // tokenize error
+    return NULL;
   }
 
 lr_acc:
@@ -108,166 +248,12 @@ lr_err:
   return NULL;
 }
 
-
-ptrn_t parse_pattern0(stream_t stream, bool expect_sube);
-
-ptrn_t parse_alter(stream_t stream, ptrn_t before, bool expect_sube) {
-  ptrn_t after = parse_pattern0(stream, expect_sube);
-  if (after != NULL)
-    return _alloc(ptrn, cat, before, after);
-  // error
-  return NULL;
-}
-
-ptrn_t parse_ambi(stream_t stream, ptrn_t origin, bool expect_sube) {
-  // get ambiguous pattern
-  ptrn_t ambi = parse_pattern0(stream, true);
-  if (ambi == NULL) return NULL;
-
-  // check ambi type
-  do {
-    // only pure pattern is allowed as antonym prefix
-    if (ambi->type == ptrn_type_pure) break; // type is pure, pass
-    if (ambi->type == ptrn_type_alter) {
-      list_t con = ambi->desc;
-      while (con != NULL) {
-        ptrn_t p = con->car;
-        if (p->type != ptrn_type_pure)
-          break;
-        con = con->cdr;
-      }
-      if (con == NULL) break; // type of each item is pure, pass
-    }
-    // error
-    _release(ambi);
-    return NULL;
-  } while (0);
-
-  // create ambi-pattern
-  return _alloc(ptrn, ambi, origin, ambi);
-}
-
-ptrn_t parse_anto(stream_t stream, bool expect_sube) {
-  // get antonym pattern
-  ptrn_t anto = parse_pattern0(stream, true);
-  if (anto == NULL) return NULL;
-
-  // check anto type
-  do {
-    // only pure pattern is allowed as antonym prefix
-    if (anto->type == ptrn_type_pure) break; // type is pure, pass
-    if (anto->type == ptrn_type_alter) {
-      list_t con = anto->desc;
-      while (con != NULL) {
-        ptrn_t p = con->car;
-        if (p->type != ptrn_type_pure)
-          break;
-        con = con->cdr;
-      }
-      if (con == NULL) break; // type of each item is pure, pass
-    }
-    // error
-    _release(anto);
-    return NULL;
-  } while (0);
-
-  // get origin pattern
-  ptrn_t origin = parse_pattern0(stream, expect_sube);
-  if (origin == NULL) {
-    _release(anto);
-    return NULL;
-  }
-
-  // create anto-pattern
-  return _alloc(ptrn, anto, origin, anto);
-}
-
-ptrn_t parse_dist(stream_t stream, ptrn_t head, bool expect_sube) {
-  int min = token_min_dist();
-  int max = token_max_dist();
-
-  ptrn_t tail = parse_pattern0(stream, expect_sube);
-  if (tail != NULL)
-    return _alloc(ptrn, dist, head, tail, min, max);
-
-  return NULL;
-}
-
-/**
- * @param stream
- * @param expect_sube - terminator
- * @return pattern
- */
-ptrn_t parse_pattern0(stream_t stream, bool expect_sube) {
-  int ch;
-  dstr_t token;
-  ptrn_t pattern = NULL;
-
-  while ((ch = token_next(stream, &token)) != TOKEN_EOF) {
-
-
-    if (token != NULL) {
-      // have token, generate pure pattern
-      ptrn_t ptrn = _alloc(ptrn, pure, token);
-      _release(token);
-
-      if (ch == TOKEN_TEXT) { // pure pattern
-        pattern = ptrn;
-      } else if (ch == TOKEN_SUBE) {
-        // empty-sube
-        pattern = ptrn;
-        break; // sub pattern is end
-      } else if (ch == TOKEN_AMBI) {
-        // empty-ambi
-        pattern = parse_ambi(stream, ptrn, expect_sube);
-      } else if (ch == TOKEN_DIST) {
-        // empty-dist
-        pattern = parse_dist(stream, ptrn, expect_sube);
-      } else if (ch == TOKEN_ALT) {
-        // empty-alt
-        pattern = parse_alter(stream, ptrn, expect_sube);
-      } else {
-        ALOG_FATAL("parser error.");
-      }
-    } else {
-      // have not token
-      if (ch == TOKEN_SUBS) {
-        // empty-subs
-        pattern = parse_pattern0(stream, true);
-      } else if (ch == TOKEN_SUBE) {
-
-      } else if (ch == TOKEN_AMBI) {
-
-      } else if (ch == TOKEN_ANTO) {
-        // only empty-anto is allowed, so pattern must be empty in here
-        pattern = parse_anto(stream, expect_sube);
-      } else if (ch == TOKEN_DIST) {
-        // pattern-dist
-        pattern = parse_dist(stream, pattern, expect_sube);
-      } else if (ch == TOKEN_ALT) {
-        pattern = parse_alter(stream, pattern, expect_sube);
-      } else {
-        ALOG_FATAL("parser error.");
-      }
-    }
-  }
-
-  if (((ch == TOKEN_SUBE) && !expect_sube) ||
-      ((ch == TOKEN_EOF) && expect_sube)) {
-    // terminator is unexpected
-    _release(pattern);
-    return NULL;
-  }
-
-  return pattern;
-}
-
 /**
  * wrapper for convert strlen_t to stream_t
  */
 ptrn_t parse_pattern(strlen_t pattern) {
   stream_t stream = stream_construct(stream_type_string, pattern);
-  ptrn_t ptrn = parse_pattern0(stream, false);
+  ptrn_t ptrn = parse_pattern0(stream);
   stream_destruct(stream);
   return ptrn;
 }
@@ -279,6 +265,7 @@ void *parse_vocab(vocab_t vocab) {
     // TODO: parse pattern, output syntax tree
     ptrn_t syntax = parse_pattern(&keyword);
 
+    _release(syntax);
   }
 
   return NULL;

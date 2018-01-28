@@ -193,6 +193,7 @@ bool token_consume_integer(stream_t stream, int *integer) {
     do {
       num = num * 10 + (ch - '0');
     } while ((ch = stream_getc(stream)) != EOF && dec_number_bitmap[ch]);
+    stream_ungetc(stream, ch);
 
     if (integer != NULL)
       *integer = is_neg ? -num : num;
