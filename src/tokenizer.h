@@ -18,6 +18,7 @@
 #define TOKEN_DIST (-7)
 #define TOKEN_ALT  (-8)
 
+bool tokenizer_init();
 int token_next(stream_t stream, dstr_t *token);
 int token_min_dist();
 int token_max_dist();

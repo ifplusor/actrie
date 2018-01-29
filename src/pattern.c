@@ -24,8 +24,12 @@ void ptrn_clean(aobj id) {
   if (TAGGED_AOBJECT(id)) {
     ptrn_t ptrn = id;
     switch (ptrn->type) {
-      case ptrn_type_dist:
+      case ptrn_type_dist: {
+        pdd_t pdd = ptrn->desc;
+        _release(pdd->head);
+        _release(pdd->tail);
         afree(ptrn->desc);
+      }
         break;
       default: // 默认 ptrn->desc 也是 aobj
         _release(ptrn->desc);
