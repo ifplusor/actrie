@@ -34,7 +34,7 @@ class Matcher:
 
     def load_from_file(self, path):
         if self._matcher:
-            return MatcherError("matcher is initialized")
+            raise MatcherError("matcher is initialized")
         if not os.path.isfile(path):
             return False
         self._matcher = _actrie.ConstructByFile(path)
@@ -49,7 +49,7 @@ class Matcher:
 
     def load_from_string(self, keyword):
         if self._matcher:
-            return MatcherError("matcher is initialized")
+            raise MatcherError("matcher is initialized")
         if not keyword:
             return False
         keyword = convert2pass(keyword)
@@ -65,7 +65,7 @@ class Matcher:
 
     def load_from_collection(self, strings):
         if self._matcher:
-            return MatcherError("matcher is initialized")
+            raise MatcherError("matcher is initialized")
         if isinstance(strings, list) or isinstance(strings, set):
             # for utf-8 '\n' is 0x0a, in other words, utf-8 is ascii compatible.
             # but in python3, str.join is only accept str as argument
@@ -95,7 +95,7 @@ class Matcher:
         :rtype: list[(str, int, int, str)]
         """
         if not self._matcher:
-            return MatcherError("matcher is not initialized")
+            raise MatcherError("matcher is not initialized")
         return _actrie.FindAll(self._matcher, content)
 
     def finditer(self, content):
@@ -111,8 +111,3 @@ class Matcher:
         for matched in ctx:
             return matched
         return None
-
-
-class ExternalMatcher:
-    def __init__(self):
-        pass
