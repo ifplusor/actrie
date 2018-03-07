@@ -2,6 +2,7 @@
 #define _ACTRIE_ACTRIE_H_
 
 #include "dict0.h"
+#include "segarray.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,9 +33,7 @@ typedef struct trie_node { /* 十字链表实现字典树 */
 } trie_node_s, *trie_node_t;
 
 typedef struct trie {
-  trie_node_s *_nodepool[REGION_SIZE]; /* 区位设计不需要大块连续内存，但不能用指针做遍历 */
-  size_t _autoindex; /* 结点分配器，同时表示trie中结点数量 */
-#define trie_len _autoindex
+  segarray_t nodearray; /* 区位设计不需要大块连续内存，但不能用指针做遍历 */
   trie_node_t root;
   match_dict_t _dict;
 } trie_s, *trie_t;
@@ -53,15 +52,11 @@ aobj trie_search(trie_t self, const unsigned char keyword[], size_t len);
 void trie_rebuild_parent_relation(trie_t self);
 
 static inline trie_node_t trie_access_node(trie_t self, size_t index) {
-  size_t region = index >> REGION_OFFSET;
-  size_t position = index & POSITION_MASK;
 #ifdef CHECK
-  if (region >= POOL_REGION_SIZE || self->_nodepool[region] == NULL
-          || index >= self->_autoindex) {
-      return NULL;
-  }
+  return segarray_access_s(self->nodearray, index);
+#else
+  return segarray_access(self->nodearray, index);
 #endif // CHECK
-  return &self->_nodepool[region][position];
 }
 
 #ifdef __cplusplus

@@ -44,7 +44,7 @@ size_t trie_ac_match(trie_t self, unsigned char content[], size_t len) {
 
 int main() {
 
-  vocab_t vocab = vocab_construct(stream_type_file, "/home/james/Downloads/dict.txt");
+  vocab_t vocab = vocab_construct(stream_type_file, "raw_company.txt");
   aobj acdat_conf = matcher_root_conf(1);
   acdat_conf = dat_matcher_conf(1, matcher_type_dat, acdat_conf);
 
@@ -59,9 +59,9 @@ int main() {
   trie_t prime_trie = trie_construct(dict, &trie_conf);
   if (prime_trie == NULL) exit(-1);
 
-  printf("use memory %zu\n", amalloc_used_memory());
+  printf("use memory %llu\n", amalloc_used_memory());
 
-  FILE *fin = fopen("/home/james/Downloads/corpus.txt", "r");
+  FILE *fin = fopen("corpus.txt", "r");
   if (fin == NULL) exit(-1);
 
   printf("load success!\n");

@@ -6,28 +6,15 @@
 // ========================================================
 
 size_t trie_size(trie_t self) {
-  return self->_autoindex;
+  return segarray_size(self->nodearray);
 }
 
 static size_t trie_alloc_node(trie_t self) {
-  size_t region = self->_autoindex >> REGION_OFFSET;
-//  size_t position = self->_autoindex & POSITION_MASK;
-#ifdef CHECK
-  if (region >= POOL_REGION_SIZE)
-      return (size_t)-1;
-#endif // CHECK
-  if (self->_nodepool[region] == NULL) {
-    trie_node_t pnode =
-        (trie_node_t) amalloc(sizeof(trie_node_s) * POOL_POSITION_SIZE);
-    if (pnode == NULL) return (size_t) -1;
-    self->_nodepool[region] = pnode;
-    memset(pnode, 0, sizeof(trie_node_s) * POOL_POSITION_SIZE);
+  if (1 == segarray_extend(self->nodearray, 1)) {
+    return segarray_size(self->nodearray) - 1;
+  } else {
+    return (size_t) -1;
   }
-#ifdef CHECK
-  if (self->_autoindex == (size_t)-1)
-      return (size_t)-1;
-#endif // CHECK
-  return self->_autoindex++;
 }
 
 bool trie_add_keyword(trie_t self, const unsigned char keyword[], size_t len, aobj obj) {
@@ -243,9 +230,8 @@ trie_t trie_alloc() {
     if (p == NULL) break;
 
     p->_dict = NULL;
-    for (i = 0; i < POOL_REGION_SIZE; i++)
-      p->_nodepool[i] = NULL;
-    p->_autoindex = 0;
+    p->nodearray = segarray_construct_with_type(trie_node_s);
+    if (p->nodearray == NULL) break;
 
     root = trie_alloc_node(p);
     if (root == (size_t) -1) break;
@@ -301,7 +287,8 @@ void trie_construct_automation(trie_t self) {
     pChild->trie_failed = 0; /* 设置 failed 域 */
   }
 
-  for (index = 1; index < self->_autoindex; index++) { // bfs
+  size_t size = trie_size(self);
+  for (index = 1; index < size; index++) { // bfs
     pNode = trie_access_node(self, index);
     iChild = pNode->trie_child;
     while (iChild != 0) {
@@ -322,14 +309,7 @@ void trie_construct_automation(trie_t self) {
 
 void trie_destruct(trie_t self) {
   if (self != NULL) {
-    for (int i = 0; i < POOL_REGION_SIZE; i++) {
-      if (self->_nodepool[i] != NULL) {
-        for (int j = 0; j < POOL_POSITION_SIZE; j++) {
-          _release(self->_nodepool[i][j].idxlist);
-        }
-        afree(self->_nodepool[i]);
-      }
-    }
+    segarray_destruct(self->nodearray);
     dict_release(self->_dict);
     afree(self);
   }
