@@ -391,13 +391,13 @@ bool dist_next_on_index(dist_context_t ctx) {
         case dist_match_state_check_history:
           while (tail_node) {
             mdi_t matched_index = tail_node->idx;
-            long distance = utf8_word_pos(ctx->_utf8_pos, hctx->out_pos.eo, tail_node->pos.so);
+            long distance = utf8_word_dist(ctx->_utf8_pos, hctx->out_pos.eo, tail_node->pos.so);
             if (distance < 0) {
               tail_node = tail_node->next;
               continue;
             } else if (distance > (size_t) matched_index->extra) {
               // if length of tail longer than max_tail_length, next round.
-              size_t wlen = utf8_word_pos(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
+              size_t wlen = utf8_word_dist(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
               if (wlen >= (size_t) hctx->out_index->extra)
                 break;
               tail_node = tail_node->next;
@@ -416,7 +416,7 @@ bool dist_next_on_index(dist_context_t ctx) {
         case dist_match_state_check_tail:
           while (matcher_next(tctx)) {
             mdi_t matched_index = tctx->out_index;
-            long distance = utf8_word_pos(ctx->_utf8_pos, hctx->out_pos.eo, tctx->out_pos.so);
+            long distance = utf8_word_dist(ctx->_utf8_pos, hctx->out_pos.eo, tctx->out_pos.so);
             if (distance < 0) continue;
 
             // record history
@@ -435,7 +435,7 @@ bool dist_next_on_index(dist_context_t ctx) {
 
             if (distance > (size_t) matched_index->extra) {
               // if length of tail longer than max_tail_length, next round.
-              size_t wlen = utf8_word_pos(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
+              size_t wlen = utf8_word_dist(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
               if (wlen >= (size_t) hctx->out_index->extra)
                 break;
               continue;
