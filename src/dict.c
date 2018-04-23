@@ -3,10 +3,6 @@
 #include "actrie.h"
 #include "obj/list.h"
 
-const char tokens_delimiter = '|';
-const char left_parentheses = '(';
-const char right_parentheses = ')';
-
 const bool alpha_number_bitmap[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -232,12 +228,11 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
   size_t i, depth = 0;
 
   /* 脱括号 */
-  while (keyword.ptr[so] == left_parentheses
-      && keyword.ptr[eo] == right_parentheses) {
+  while (keyword.ptr[so] == T_PACKET_L && keyword.ptr[eo] == T_PACKET_R) {
     for (i = so + 1; i <= eo - 1; i++) {
-      if (keyword.ptr[i] == left_parentheses) {
+      if (keyword.ptr[i] == T_PACKET_L) {
         depth++;
-      } else if (keyword.ptr[i] == right_parentheses) {
+      } else if (keyword.ptr[i] == T_PACKET_R) {
         if (depth <= 0) break; // error
         depth--;
       }
@@ -250,7 +245,7 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
   depth = 0;
   size_t cur = so;
   for (i = so; i <= eo; i++) {
-    if (keyword.ptr[i] == tokens_delimiter) {
+    if (keyword.ptr[i] == T_ALTER) {
       if (depth == 0 && i > cur) {
         strlen_s key = {
             .ptr = keyword.ptr + cur,
@@ -259,9 +254,9 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
         stub_conf->add_index(dict, stub_conf, key, extra, tag, prop);
         cur = i + 1;
       }
-    } else if (keyword.ptr[i] == left_parentheses) {
+    } else if (keyword.ptr[i] == T_PACKET_L) {
       depth++;
-    } else if (keyword.ptr[i] == right_parentheses) {
+    } else if (keyword.ptr[i] == T_PACKET_R) {
       depth--;
     }
   }
@@ -274,6 +269,66 @@ bool dict_add_alternation_index(match_dict_t dict, matcher_conf_t conf,
   }
 
   return true;
+}
+
+bool is_dist(const char *ptr, size_t len) {
+  size_t i = 0;
+  if (i >= len || ptr[i++] != '{') return false;
+  if (i >= len || ptr[i] < '0' || ptr[i] > '9') return false;
+  do { i++; } while (i < len && ptr[i] >= '0' && ptr[i] < '9');
+  if (i >= len || ptr[i++] != ',') return false;
+  if (i >= len || ptr[i] < '0' || ptr[i] > '9') return false;
+  do { i++; } while (i < len && ptr[i] >= '0' && ptr[i] < '9');
+  if (i >= len || ptr[i++] != '}') return false;
+  return i < len;
+}
+
+strlen_s transform_keyword(strlen_t keyword) {
+  char *new_keyword = malloc(keyword->len + 1);
+  if (new_keyword == NULL) {
+    return (strlen_s) {.ptr=NULL, .len=0};
+  }
+
+  size_t cur = 0;
+  bool is_escape = false;
+  for (int i = 0; i < keyword->len; i++) {
+    char ch = keyword->ptr[i];
+    if (is_escape) {
+      if ('d' == ch && is_dist(keyword->ptr + i + 1, keyword->len - i - 1)) {
+        new_keyword[cur++] = T_NUM;
+        i += 2;
+      } else if ('n' == ch) {
+        new_keyword[cur++] = '\n';
+      } else if ('r' == ch) {
+        new_keyword[cur++] = '\r';
+      } else if ('t' == ch) {
+        new_keyword[cur++] = '\t';
+      } else {
+        new_keyword[cur++] = ch;
+      }
+      is_escape = false;
+      continue;
+    }
+    if ('\\' == ch) {
+      is_escape = true;
+      continue;
+    } else if ('|' == ch) {
+      new_keyword[cur++] = T_ALTER;
+    } else if ('(' == ch) {
+      new_keyword[cur++] = T_PACKET_L;
+    } else if (')' == ch) {
+      new_keyword[cur++] = T_PACKET_R;
+    } else if ('.' == ch && is_dist(keyword->ptr + i + 1, keyword->len - i - 1)) {
+      new_keyword[cur++] = T_ANY;
+    } else if ('?' == ch && keyword->len - i > 3 && '&' == keyword->ptr[i + 1] && '!' == keyword->ptr[i + 2]) {
+      new_keyword[cur++] = T_AMBI;
+      i += 2;
+    } else {
+      new_keyword[cur++] = ch;
+    }
+  }
+  new_keyword[cur] = '\0';
+  return (strlen_s) {.ptr=new_keyword, .len=cur};
 }
 
 bool dict_parse(match_dict_t self, vocab_t vocab, matcher_conf_t conf) {
@@ -295,11 +350,15 @@ bool dict_parse(match_dict_t self, vocab_t vocab, matcher_conf_t conf) {
   while (vocab_next_word(vocab, &keyword, &extra)) {
     // TODO: check syntax
 
+    keyword = transform_keyword(&keyword);
+
     // store keyword and extra in buffer
     if (!conf->add_index(self, conf, keyword, extra, NULL,
-        mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
+                         mdi_prop_reserved | mdi_prop_bufkey | mdi_prop_bufextra)) {
+      free(keyword.ptr);
       return false;
     }
+    free(keyword.ptr);
   }
   trie_destruct(self->_map);
   self->_map = NULL;

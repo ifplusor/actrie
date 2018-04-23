@@ -29,7 +29,7 @@ const context_func_l dist_context_func = {
  * - A\d{0,5}B
  * - A.{0,5}B
  */
-static const char *pattern = "^(.*)((\\\\d|\\.)\\{\\d+,(\\d+)\\})(.*)$";
+static const char *pattern = "^(.*)(([\x04\x05])\\{\\d+,(\\d+)\\})(.*)$";
 
 void dist_dict_before_reset(match_dict_t dict,
                             size_t *index_count,
@@ -44,29 +44,29 @@ size_t max_alternation_length(strlen_s keyword, bool nest) {
   if (keyword.len == 0) return 0;
 
   size_t so = 0, eo = keyword.len - 1;
-  if ((keyword.ptr[so] == left_parentheses
-      && keyword.ptr[eo] != right_parentheses)
-      || (keyword.ptr[so] != left_parentheses
-          && keyword.ptr[eo] == right_parentheses)) {
+  if ((keyword.ptr[so] == T_PACKET_L
+      && keyword.ptr[eo] != T_PACKET_R)
+      || (keyword.ptr[so] != T_PACKET_L
+          && keyword.ptr[eo] == T_PACKET_R)) {
     max = keyword.len;
   } else {
     // 脱括号
-    if (keyword.ptr[so] == left_parentheses
-        && keyword.ptr[eo] == right_parentheses) {
+    if (keyword.ptr[so] == T_PACKET_L
+        && keyword.ptr[eo] == T_PACKET_R) {
       so++;
       eo--;
     }
     size_t i, depth = 0, cur = so;
     for (i = so; i <= eo; i++) {
-      if (keyword.ptr[i] == tokens_delimiter) {
+      if (keyword.ptr[i] == T_ALTER) {
         if (depth == 0 && i > cur) {
           size_t len = i - cur;
           if (len > max) max = len;
           cur = i + 1;
         }
-      } else if (keyword.ptr[i] == left_parentheses) {
+      } else if (keyword.ptr[i] == T_PACKET_L) {
         depth++;
-      } else if (keyword.ptr[i] == right_parentheses) {
+      } else if (keyword.ptr[i] == T_PACKET_R) {
         depth--;
       }
     }
@@ -91,7 +91,7 @@ bool dist_dict_add_index(match_dict_t dict, matcher_conf_t config,
     const char *errorptr;
     int errorcode;
     int erroffset;
-    dist_config->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
+    dist_config->regex = pcre_compile2(pattern, PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
     if (dist_config->regex == NULL) {
       ALOG_FATAL(errorptr);
     }
@@ -122,8 +122,7 @@ bool dist_dict_add_index(match_dict_t dict, matcher_conf_t config,
   else if (distance < 0)
     distance = 0;
 
-  if (strncmp(keyword.ptr + PCRE_VEC_SO(ovector, 3), "\\d",
-              (size_t) (PCRE_VEC_EO(ovector, 3) - PCRE_VEC_SO(ovector, 3))) == 0) {
+  if (keyword.ptr[PCRE_VEC_SO(ovector, 3)] == T_NUM) {
     // \d{0,n}
     base_prop |= mdi_prop_dist_digit;
   }
@@ -343,109 +342,109 @@ bool dist_next_on_index(dist_context_t ctx) {
   mdim_node_t tail_node = ctx->_tail_node;
 
   switch (ctx->_state) {
-  case dist_match_state_new_round:
-    while (matcher_next(hctx)) {
-      // check single
-      if (hctx->out_index->prop & mdi_prop_single) {
-        ctx->hdr.out_index = hctx->out_index;
-        ctx->hdr.out_pos = hctx->out_pos;
-        return true; // next round
-      }
+    case dist_match_state_new_round:
+      while (matcher_next(hctx)) {
+        // check single
+        if (hctx->out_index->prop & mdi_prop_single) {
+          ctx->hdr.out_index = hctx->out_index;
+          ctx->hdr.out_pos = hctx->out_pos;
+          return true; // next round
+        }
 
-      // check number
-      size_t dist = (size_t) hctx->out_index->extra;
-      if (hctx->out_index->prop & mdi_prop_dist_digit) {
-        ctx->_state = dist_match_state_check_prefix;
-        // skip number
-        size_t tail_so = hctx->out_pos.eo;
-        if (number_bitmap[(unsigned char) content[tail_so]]) {
-          while (dist--) {
-            if (!number_bitmap[(unsigned char) content[tail_so]])break;
-            tail_so++;
-          }
-          // check prefix
-          ctx->_tail_so = tail_so;
-          matcher_reset_context(dctx, &content[tail_so], ctx->hdr.content.len - tail_so);
-  case dist_match_state_check_prefix:
-          while (matcher_next(dctx)) {
-            if (dctx->out_index->_tag == hctx->out_index->_tag) {
-              dist_output(ctx, ctx->_tail_so + dctx->out_pos.eo);
-              return true;
+        // check number
+        size_t dist = (size_t) hctx->out_index->extra;
+        if (hctx->out_index->prop & mdi_prop_dist_digit) {
+          ctx->_state = dist_match_state_check_prefix;
+          // skip number
+          size_t tail_so = hctx->out_pos.eo;
+          if (number_bitmap[(unsigned char) content[tail_so]]) {
+            while (dist--) {
+              if (!number_bitmap[(unsigned char) content[tail_so]])break;
+              tail_so++;
             }
+            // check prefix
+            ctx->_tail_so = tail_so;
+            matcher_reset_context(dctx, &content[tail_so], ctx->hdr.content.len - tail_so);
+            case dist_match_state_check_prefix:
+              while (matcher_next(dctx)) {
+                if (dctx->out_index->_tag == hctx->out_index->_tag) {
+                  dist_output(ctx, ctx->_tail_so + dctx->out_pos.eo);
+                  return true;
+                }
+              }
           }
+          ctx->_state = dist_match_state_new_round;
+          continue; // next round
         }
-        ctx->_state = dist_match_state_new_round;
-        continue; // next round
-      }
 
-      ctx->_state = dist_match_state_check_history;
-      // clean history cache
-      tail_node = deque_peek_front(&ctx->_tail_cache, mdim_node_s, deque_elem);
-      while (tail_node) {
-        if (tail_node->pos.eo > hctx->out_pos.eo) break;
-        mdimap_delete(ctx->_tail_map, tail_node);
-        deque_delete(&ctx->_tail_cache, tail_node, mdim_node_s, deque_elem);
-        dynapool_free_node(ctx->_mdiqn_pool, tail_node);
+        ctx->_state = dist_match_state_check_history;
+        // clean history cache
         tail_node = deque_peek_front(&ctx->_tail_cache, mdim_node_s, deque_elem);
-      }
-      tail_node = mdimap_search(ctx->_tail_map, hctx->out_index->_tag);
-  case dist_match_state_check_history:
-      while (tail_node) {
-        mdi_t matched_index = tail_node->idx;
-        long distance = utf8_word_dist(ctx->_utf8_pos, hctx->out_pos.eo, tail_node->pos.so);
-        if (distance < 0) {
-          tail_node = tail_node->next;
-          continue;
-        } else if (distance > (size_t) matched_index->extra) {
-          // if length of tail longer than max_tail_length, next round.
-          size_t wlen = utf8_word_dist(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
-          if (wlen >= (size_t) hctx->out_index->extra)
-            break;
-          tail_node = tail_node->next;
-          continue;
+        while (tail_node) {
+          if (tail_node->pos.eo > hctx->out_pos.eo) break;
+          mdimap_delete(ctx->_tail_map, tail_node);
+          deque_delete(&ctx->_tail_cache, tail_node, mdim_node_s, deque_elem);
+          dynapool_free_node(ctx->_mdiqn_pool, tail_node);
+          tail_node = deque_peek_front(&ctx->_tail_cache, mdim_node_s, deque_elem);
         }
-        ctx->_tail_node = tail_node->next;
-        dist_output(ctx, tail_node->pos.eo);
-        return true;
-      }
-      if (tail_node != NULL) {
+        tail_node = mdimap_search(ctx->_tail_map, hctx->out_index->_tag);
+        case dist_match_state_check_history:
+          while (tail_node) {
+            mdi_t matched_index = tail_node->idx;
+            long distance = utf8_word_pos(ctx->_utf8_pos, hctx->out_pos.eo, tail_node->pos.so);
+            if (distance < 0) {
+              tail_node = tail_node->next;
+              continue;
+            } else if (distance > (size_t) matched_index->extra) {
+              // if length of tail longer than max_tail_length, next round.
+              size_t wlen = utf8_word_pos(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
+              if (wlen >= (size_t) hctx->out_index->extra)
+                break;
+              tail_node = tail_node->next;
+              continue;
+            }
+            ctx->_tail_node = tail_node->next;
+            dist_output(ctx, tail_node->pos.eo);
+            return true;
+          }
+        if (tail_node != NULL) {
+          ctx->_state = dist_match_state_new_round;
+          continue; // next round
+        }
+
+        ctx->_state = dist_match_state_check_tail;
+        case dist_match_state_check_tail:
+          while (matcher_next(tctx)) {
+            mdi_t matched_index = tctx->out_index;
+            long distance = utf8_word_pos(ctx->_utf8_pos, hctx->out_pos.eo, tctx->out_pos.so);
+            if (distance < 0) continue;
+
+            // record history
+            tail_node = dynapool_alloc_node(ctx->_mdiqn_pool);
+            tail_node->idx = tctx->out_index;
+            tail_node->pos = matcher_matched_pos(tctx);
+            mdimap_insert(ctx->_tail_map, tail_node);
+            deque_push_back(&ctx->_tail_cache, tail_node, mdim_node_s, deque_elem);
+
+            // if diff of end_pos is longer than max_tail_length, next round.
+            if (tctx->out_pos.eo - hctx->out_pos.eo > MAX_CHAR_DISTANCE
+                + (size_t) hctx->out_index->extra) break;
+
+            if (matched_index->_tag != hctx->out_index->_tag)
+              continue;
+
+            if (distance > (size_t) matched_index->extra) {
+              // if length of tail longer than max_tail_length, next round.
+              size_t wlen = utf8_word_pos(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
+              if (wlen >= (size_t) hctx->out_index->extra)
+                break;
+              continue;
+            }
+            dist_output(ctx, tctx->out_pos.eo);
+            return true;
+          }
         ctx->_state = dist_match_state_new_round;
-        continue; // next round
       }
-
-      ctx->_state = dist_match_state_check_tail;
-  case dist_match_state_check_tail:
-      while (matcher_next(tctx)) {
-        mdi_t matched_index = tctx->out_index;
-        long distance = utf8_word_dist(ctx->_utf8_pos, hctx->out_pos.eo, tctx->out_pos.so);
-        if (distance < 0) continue;
-
-        // record history
-        tail_node = dynapool_alloc_node(ctx->_mdiqn_pool);
-        tail_node->idx = tctx->out_index;
-        tail_node->pos = matcher_matched_pos(tctx);
-        mdimap_insert(ctx->_tail_map, tail_node);
-        deque_push_back(&ctx->_tail_cache, tail_node, mdim_node_s, deque_elem);
-
-        // if diff of end_pos is longer than max_tail_length, next round.
-        if (tctx->out_pos.eo - hctx->out_pos.eo > MAX_CHAR_DISTANCE
-            + (size_t) hctx->out_index->extra) break;
-
-        if (matched_index->_tag != hctx->out_index->_tag)
-          continue;
-
-        if (distance > (size_t) matched_index->extra) {
-          // if length of tail longer than max_tail_length, next round.
-          size_t wlen = utf8_word_dist(ctx->_utf8_pos, tail_node->pos.so, tail_node->pos.eo);
-          if (wlen >= (size_t) hctx->out_index->extra)
-            break;
-          continue;
-        }
-        dist_output(ctx, tctx->out_pos.eo);
-        return true;
-      }
-      ctx->_state = dist_match_state_new_round;
-    }
   }
 
   return false;

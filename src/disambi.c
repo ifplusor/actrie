@@ -20,7 +20,7 @@ const context_func_l ambi_context_func = {
  * pattern will match:
  * - A(?&!D1|D2)
  */
-static const char *pattern = "^(.*)\\(\\?&!(.*)\\)$";
+static const char *pattern = "^(.*)\x01\x06(.*)\x02$";
 
 bool ambi_dict_add_index(match_dict_t dict, matcher_conf_t config, strlen_s keyword,
                          strlen_s extra, void *tag, mdi_prop_f prop) {
@@ -32,7 +32,7 @@ bool ambi_dict_add_index(match_dict_t dict, matcher_conf_t config, strlen_s keyw
     const char *errorptr;
     int errorcode;
     int erroffset;
-    ambi_conf->regex = pcre_compile2(pattern, PCRE_MULTILINE | PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
+    ambi_conf->regex = pcre_compile2(pattern, PCRE_DOTALL | PCRE_UTF8, &errorcode, &errorptr, &erroffset, NULL);
     if (ambi_conf->regex == NULL) {
       ALOG_FATAL(errorptr);
     }
@@ -69,10 +69,10 @@ bool ambi_dict_add_index(match_dict_t dict, matcher_conf_t config, strlen_s keyw
   };
 
   pure_conf->add_index(dict, pure_conf, key, strlen_empty, key_tag,
-                         mdi_prop_normal | base_prop);
+                       mdi_prop_normal | base_prop);
 
   pure_conf->add_index(dict, pure_conf, ambi, strlen_empty, key_tag,
-                         mdi_prop_ambi | base_prop);
+                       mdi_prop_ambi | base_prop);
 
   return true;
 }
@@ -87,7 +87,7 @@ void ambi_config_clean(matcher_conf_t config) {
 
 matcher_conf_t ambi_matcher_conf(uint8_t id, matcher_conf_t pure) {
   matcher_conf_t config = matcher_conf(id, matcher_type_ambi, ambi_dict_add_index,
-                           sizeof(ambi_conf_s));
+                                       sizeof(ambi_conf_s));
   if (config) {
     config->clean = ambi_config_clean;
     ambi_conf_t ambi_config = (ambi_conf_t) config->buf;

@@ -14,6 +14,13 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#define T_PACKET_L 0x01
+#define T_PACKET_R 0x02
+#define T_ALTER 0x03
+#define T_ANY 0x04
+#define T_NUM 0x05
+#define T_AMBI 0x06
+
 
 // dictionary API
 // ==============
@@ -33,10 +40,6 @@ typedef struct match_dict {
 
   dict_before_reset_func before_reset;
 } match_dict_s;
-
-extern const char tokens_delimiter;
-extern const char left_parentheses;
-extern const char right_parentheses;
 
 match_dict_t dict_alloc();
 match_dict_t dict_retain(match_dict_t dict);
