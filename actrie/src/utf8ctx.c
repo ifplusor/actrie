@@ -49,7 +49,7 @@ bool reset_context(wctx_t wctx, char *content, int length) {
     wctx->pos = malloc((length + 1) * sizeof(size_t));
     if (wctx->pos == NULL) break;
 
-    utf8_word_position(content, (size_t) length, wctx->pos);
+    utf8_word_pos(content, (size_t) length, wctx->pos);
 
     return true;
   } while (0);

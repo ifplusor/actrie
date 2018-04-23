@@ -1,7 +1,11 @@
 # coding=utf-8
 
 from abc import ABCMeta, abstractmethod
-from enum import Enum
+try:
+    from enum import Enum
+except:
+    class Enum(object):
+        pass
 
 from tokenizer import Tokenizer
 from tokenizer import convert2unicode, is_py3k
