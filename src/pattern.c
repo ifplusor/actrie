@@ -1,17 +1,20 @@
-//
-// Created by james on 1/22/18.
-//
-
+/**
+ * pattern.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
 #include "pattern.h"
 
 void ptrn_clean(aobj id);
 
+// clang-format off
 ameta(ptrn,
   FOUR_CHARS_TO_INT('P', 'T', 'R', 'N'),
   ptrn_clean
-)
+);
+// clang-format on
 
-aobj ptrn_init(void *ptr, void *data) {
+aobj ptrn_init(void* ptr, void* data) {
   ptrn_t id = aobj_init(ptrn, ptr);
   if (id) {
     id->type = ptrn_type_empty;
@@ -29,15 +32,13 @@ void ptrn_clean(aobj id) {
         _release(pdd->head);
         _release(pdd->tail);
         afree(ptrn->desc);
-      }
-        break;
-      default: // 默认 ptrn->desc 也是 aobj
+      } break;
+      default:  // 默认 ptrn->desc 也是 aobj
         _release(ptrn->desc);
         break;
     }
   }
 }
-
 
 // pure pattern
 // ===========================
@@ -52,7 +53,6 @@ afunc_defn(ptrn, pure, aobj, dstr_t text) {
   return ptrn;
 }
 
-
 // alternative pattern
 // ===========================
 
@@ -63,12 +63,15 @@ afunc_defn(ptrn, pure, aobj, dstr_t text) {
  * a new merge object will be generated.
  */
 afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
-  if (before == NULL || after == NULL) return NULL;
+  if (before == NULL || after == NULL)
+    return NULL;
 
   if (before->type == ptrn_type_alter) {
     // reuse before
     list_t con = before->desc;
-    while (con->cdr != NULL) con = con->cdr; // walk to tail
+    while (con->cdr != NULL) {
+      con = con->cdr;  // walk to tail
+    }
     if (after->type == ptrn_type_alter) {
       _retain(after->desc);
       con->cdr = after->desc;
@@ -102,14 +105,13 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
   }
 }
 
-
-// ambiguous pattern
+// ambiguity pattern
 // ===========================
 
 afunc_defn(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {
-    ptrn->type = ptrn_type_ambi;
+    ptrn->type = ptrn_type_anti_ambi;
     ptrn->desc = _alloc(list, cons, origin, ambi);
     _release(origin);
     _release(ambi);
@@ -117,14 +119,13 @@ afunc_defn(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi) {
   return ptrn;
 }
 
-
 // antonym pattern
 // ===========================
 
 afunc_defn(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {
-    ptrn->type = ptrn_type_anto;
+    ptrn->type = ptrn_type_anti_anto;
     ptrn->desc = _alloc(list, cons, origin, anto);
     _release(origin);
     _release(anto);
@@ -148,4 +149,3 @@ afunc_defn(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, int min, int max) {
   }
   return ptrn;
 }
-

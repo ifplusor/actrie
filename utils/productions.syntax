@@ -1,42 +1,30 @@
 # 增广规则
 pattern -> term
 
-# 根模式
-term -> dist
-term -> anto
+# 优先级: plain > anti-ambi > anti-anto > dist > alter > wrap
+term -> wrap
 term -> alter
+term -> dist
+term -> anti-anto
+term -> anti-ambi
+term -> plain
 
-# 句式
-#dist -> dist .{m,n} term3
-dist -> term3 .{m,n} term3
+# 包装
+wrap -> ( term )
 
-term3 -> anto
-term3 -> term2
-term3 -> ambi
+# 并列
+alter -> term | term
 
-# 反义：对歧义的反义必须有括号包装
-anto -> anti-anto term2
+# 距离
+dist -> term .{m,n} term
 
-term2 -> ( alter )
-term2 -> term0
+# 反义
+anti-anto -> anto term
+anto -> (?<! term )
 
-# 集合：纯文本+歧义
-alter -> alter | term1
-alter -> term1
+# 歧义
+anti-ambi -> term ambi
+ambi -> (?&! term )
 
-term1 -> ambi
-term1 -> term0
-
-# 歧义：每个词单独设置歧义
-ambi -> term0 anti-ambi
-
-# 歧义、反义修饰符：只能是纯文本集合
-anti-anto -> (?<! alter0 )
-anti-ambi -> (?&! alter0 )
-
-# 纯文本集合
-alter0 -> alter0 | term0
-alter0 -> term0
-
-# 纯文本
-term0 -> text
+# 平凡
+plain -> text

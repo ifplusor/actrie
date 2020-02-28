@@ -8,6 +8,8 @@ is_py3k = bool(sys.version_info[0] == 3)
 
 
 class IdGenerator:
+    """id 生成器"""
+
     def __init__(self):
         self.id = -1
 
@@ -17,17 +19,21 @@ class IdGenerator:
 
 
 class Queue(list):
+    """普通队列"""
+
     def pop(self, idx=0):
-        return list.pop(self, idx)
+        return super(Queue, self).pop(idx)
 
     def push(self, obj):
-        list.append(self, obj)
+        super(Queue, self).append(obj)
 
     def empty(self):
         return len(self) == 0
 
 
 class UniQueue(Queue):
+    """记忆队列，元素仅可入队一次"""
+
     def __init__(self):
         super(UniQueue, self).__init__()
         self.lookup = set()
@@ -35,10 +41,12 @@ class UniQueue(Queue):
     def push(self, obj):
         if obj not in self.lookup:
             self.lookup.add(obj)
-            Queue.push(self, obj)
+            super(UniQueue, self).push(obj)
 
 
 class Item:
+    """项目"""
+
     def __init__(self, analyzer, pdct, anchor, forward=None):
         self.analyzer = analyzer
         self.id = self.analyzer.item_id.next()
@@ -53,9 +61,8 @@ class Item:
         return self.anchor >= self.pdct.length
 
     def next_token(self):
-        """
-        next_token - item 的下一个文法符号
-        :return:
+        """next_token - item 的下一个文法符号
+        :return: 下一个文法符号
         """
         if self.is_end():
             return None
@@ -65,19 +72,24 @@ class Item:
     def skip_token(self):
         if self.is_end():
             raise Exception("item index out of range")
-        elif self.anchor + 1 == self.pdct.length:
+        elif self.anchor + 1 >= self.pdct.length:
             return None
         else:
             return self.pdct.tokens[self.anchor + 1]
 
     @staticmethod
     def identifier(pdct, anchor, forward=None):
+        """identifier - 生成 item 的符号表示
+        :return: item 的符号表示
+        """
         if anchor >= pdct.length:
-            _str = pdct.gen + " -> " + " ".join(pdct.tokens) + " ."
+            _str = "{} -> {} .".format(pdct.gen, " ".join(pdct.tokens))
+        elif anchor <= 0:
+            _str = "{} -> . {}".format(pdct.gen, " ".join(pdct.tokens))
         else:
-            _str = pdct.gen + " -> " + " ".join(pdct.tokens[:anchor]) + " . " + " ".join(pdct.tokens[anchor:])
+            _str = "{} -> {} . {}".format(pdct.gen, " ".join(pdct.tokens[:anchor]), " ".join(pdct.tokens[anchor:]))
         if forward is not None:
-            _str += ", " + forward
+            _str += "; {}".format(forward)
         return _str
 
     def __str__(self):
@@ -93,40 +105,44 @@ class Item:
 
 
 class ItemClosure:
-    def __init__(self, analyzer, closure):
+    """项目集（闭包）"""
+
+    def __init__(self, analyzer, items):
         self.analyzer = analyzer
         self.id = self.analyzer.closure_id.next()
         self._str = None
 
-        self.closure = closure
+        self.prefix = LRAnalyzer.token_eof
+        self.items = items  # item 集合
         self._goto = dict()
 
-        for item in closure:
+        for item in items:
             if item.is_end():
-                self.have_reduce = True
+                self.has_reduce = True
                 break
         else:
-            self.have_reduce = False
+            self.has_reduce = False
 
-        self.gen = set()
-        if self.have_reduce:
-            for item in closure:
+        self.gen = set()  # 可规约的左部符号集合
+        if self.has_reduce:
+            for item in self.items:
                 if item.is_end():
                     self.gen.add(item.pdct.gen)
 
     def build_goto(self, get_closure):
+        """build_goto - 构造状态转换表"""
         direct_next = dict()
-        for item in self.closure:
+        for item in self.items:
             if item.is_end():
                 continue
             token = item.next_token()
             s = direct_next.get(token, None)
             if s is None:
-                s = set()
-                direct_next[token] = s
+                direct_next[token] = s = set()
             s.add(self.analyzer.get_item(item.pdct, item.anchor+1, item.forward))
         for token in direct_next:
             self._goto[token] = get_closure(direct_next[token])
+            self._goto[token].prefix = token
 
     def next_tokens(self):
         return set(self._goto.keys())
@@ -135,44 +151,47 @@ class ItemClosure:
         return self._goto.get(token, None)
 
     def is_conflict(self):
-        return self.have_reduce and (len(self._goto) >= 1 or len(self.closure) >= 2)
+        return self.has_reduce and (len(self._goto) >= 1 or len(self.items) >= 2)
 
     def need_reduce(self):
-        return self.have_reduce
+        return self.has_reduce
 
     def reduce_item(self):
         return list(self.closure)[0]
 
     def reduce_item_set(self):
         lst = []
-        for item in self.closure:
+        for item in self.items:
             if item.is_end():
                 lst.append(item)
         return lst
 
     def is_reduce(self):
-        return self.have_reduce and len(self._goto) == 0
+        return self.has_reduce and len(self._goto) == 0
 
     def __iter__(self):
-        return self.closure.__iter__()
+        return self.items.__iter__()
 
     def __len__(self):
-        return len(self.closure)
+        return len(self.items)
 
     @staticmethod
-    def identifier(closure_set):
-        if len(closure_set) == 0:
+    def identifier(items):
+        """identifier - 生成 closure 的符号表示
+        :return: closure 的符号表示
+        """
+        if len(items) == 0:
             return ""
-        elif len(closure_set) == 1:
-            return str(list(closure_set)[0])
+        elif len(items) == 1:
+            return str(list(items)[0])
         else:
-            lst = list(closure_set)
+            lst = list(items)
             lst.sort(key=str)
             return "\n".join([str(item) for item in lst])
 
     def __str__(self):
         if self._str is None:
-            self._str = self.identifier(self.closure)
+            self._str = self.identifier(self.items)
         return self._str
 
     def __eq__(self, other):
@@ -183,6 +202,8 @@ class ItemClosure:
 
 
 class Production:
+    """产生式"""
+
     def __init__(self, analyzer, text):
         self.analyzer = analyzer
         self.id = self.analyzer.pdct_id.next()
@@ -190,13 +211,8 @@ class Production:
 
         left, right = text.split("->")
         self.gen = left.strip()  # 产生式左部符号
-        self.tokens = [x for x in right.split() if x]  # 产生式的右部符号序列
+        self.tokens = right.split()  # 产生式的右部符号序列
         self.length = len(self.tokens)
-
-        # 生成 item
-        # self.items = [Item(self.analyzer.item_id, self, anchor) for anchor in range(self.length + 1)]
-        # for i in range(self.length):
-        #     self.items[i].nitem = self.items[i+1]
 
     def __str__(self):
         if self._str is None:
@@ -211,15 +227,33 @@ class Production:
 
 
 class LRAnalyzer:
+    """LR(1) 分析器"""
 
-    def __init__(self, path):
+    gen_super = "pattern"
+
+    token_text = "text"
+    token_eof = "$"
+    token_err = "--"
+    token_subs = "("
+    token_sube = ")"
+    token_ambi = "(?&!"
+    token_anto = "(?<!"
+    token_dist = ".{m,n}"
+    token_alt = "|"
+
+    action_deny = "deny"
+    action_accept = "acpt"
+    action_shift = "shft"
+    action_reduce = "rduc"
+
+    def __init__(self, source_path, priority_path):
         # 产生式
         self.pdct_list = list()
         self.pdct_dict = dict()
 
         # 符号表
-        self.terminator = set()
-        self.non_terminator = set()
+        self.terminator = set()  # 终结符
+        self.non_terminator = set()  # 非终结符
 
         self.item_cache = dict()
         self.item_list = list()
@@ -237,8 +271,12 @@ class LRAnalyzer:
         self.item_id = IdGenerator()
         self.closure_id = IdGenerator()
 
-        self.read_pdcts(path)
-        self.gen_dfa()
+        self.priority_list = list()
+        self.priority_set = set()
+
+        self.read_pdcts(source_path)
+        self.read_priority(priority_path)
+        self.build_dfa()
 
     def is_terminator(self, token):
         return token in self.terminator
@@ -247,17 +285,18 @@ class LRAnalyzer:
         return token in self.non_terminator
 
     def read_pdcts(self, path):
+        """read_pdcts - 从文件中读取产生式
+        :param path: 文件路径
+        :return:
+        """
         if is_py3k:
-            fopen = lambda fpath: open(fpath, encoding="utf-8")
+            def fopen(fpath): return open(fpath, encoding="utf-8")
         else:
-            fopen = lambda fpath: open(fpath)
+            def fopen(fpath): return open(fpath)
 
         with fopen(path) as fp:
             for line in fp.readlines():
-                sharp = line.find("#")
-                if sharp != -1:
-                    line = line[:sharp]
-                line = line.strip()
+                line = line.split("#")[0].strip()
                 if not line:
                     continue
                 try:
@@ -268,26 +307,29 @@ class LRAnalyzer:
                         self.pdct_dict[pdct.gen] = plist = []
                     plist.append(pdct)
                 except Exception as e:
-                    print("encounter error when read productions '%s', skipped..." % line)
-                    pass
+                    print("encounter error when read productions '{}', skipped...".format(line))
+                    exit(-1)
 
         self.non_terminator = set([pdct.gen for pdct in self.pdct_list])
-        self.terminator = reduce(lambda s, pdct: s.union(pdct.tokens), self.pdct_list, set()) - self.non_terminator
-        self.terminator.add("$")
+        self.terminator = reduce(lambda s, pdct: s.union(
+            pdct.tokens), self.pdct_list, set()) - self.non_terminator
+        self.terminator.add(LRAnalyzer.token_eof)
 
-        # 定义优先级和结合性
-        # self.priority = {
-        #     "text",
-        #     ")",
-        #     "(?&!",
-        #     "(?<!",
-        #     "(",
-        #     "|",
-        #     "$",
-        # }
+    def read_priority(self, path):
+        if not path:
+            return
+
+        if is_py3k:
+            def fopen(fpath): return open(fpath, encoding="utf-8")
+        else:
+            def fopen(fpath): return open(fpath)
+
+        with fopen(path) as fp:
+            self.priority_list = filter(lambda line: len(line) > 0, map(lambda line: line.split("#")[0].strip(), fp.readlines()))
+            self.priority_set = set(self.priority_list)
 
     def get_first(self, gen, forward=None):
-        """ get_first - 获取 FIRST(gen, forward) 集
+        """get_first - 获取 FIRST(gen, forward) 集
         :param gen: 期待的文法符号
         :param forward: 终结符
         :return: 终结符集合
@@ -299,8 +341,7 @@ class LRAnalyzer:
 
         firsts = self.first_cache.get(gen, None)  # cache
         if firsts is None:
-            firsts = set()
-            self.first_cache[gen] = firsts
+            self.first_cache[gen] = firsts = set()
 
             queue = UniQueue()
             queue.push(gen)
@@ -319,7 +360,7 @@ class LRAnalyzer:
             return {forward}
 
     def get_follow(self, gen):
-        """ get_follow - 获取 FOLLOW(gen) 集
+        """get_follow - 获取 FOLLOW(gen) 集
         :param gen: 非终结符
         :return: 终结符集合
         """
@@ -343,114 +384,139 @@ class LRAnalyzer:
                                 else:
                                     follows.update(self.get_first(token))
                             else:
-                                if pdct == self.pdct_dict["pattern"][0]:
-                                    follows.add("$")
+                                if pdct == self.pdct_dict[LRAnalyzer.gen_super][0]:
+                                    follows.add(LRAnalyzer.token_eof)
                                 else:
                                     queue.push(pdct.gen)
 
         return follows
 
     def get_item(self, pdct, anchor, forward=None):
-        id = Item.identifier(pdct, anchor, forward)
-        item = self.item_cache.get(id, None)
+        item_id = Item.identifier(pdct, anchor, forward)
+        item = self.item_cache.get(item_id, None)
         if item is None:
             item = Item(self, pdct, anchor, forward)
-            self.item_cache[id] = item
+            self.item_cache[item_id] = item
         return item
 
-    def get_closure(self, item_set, new_queue):
-        """
-        get_closure - 获取 item 集的 closure 集
-        :param item_set:
-        :param new_queue: 新 closure 队列
-        :return:
+    def expand_items_to_closure(self, item_set):
+        """expand_items_to_closure - 扩展 item 集合为 closure
+        :param item_set: item 的集合
+        :return: closure 的 item 集合
         """
         queue = UniQueue()
         for item in item_set:
             queue.push(item)
 
         while not queue.empty():
-            item = queue.pop()  # A -> alpha . B beta, a
+            item_A = queue.pop()  # A -> alpha . B beta; a
 
-            # item 的期望的下一个 token 是非终结符
-            token = item.next_token()
-            if self.is_non_terminator(token):
-                plist = self.pdct_dict[token]  # token 的产生式
-                for pdct in plist:  # B -> gamma
-                    beta = item.skip_token()
-                    for first in self.get_first(beta, item.forward):
-                        extend_item = self.get_item(pdct, 0, first)
+            # item(A -> alpha . B beta; a) 的期望的下一个 token(B) 是非终结符
+            token_B = item_A.next_token()
+            if self.is_non_terminator(token_B):
+                token_beta = item_A.skip_token()
+                plist = self.pdct_dict[token_B]  # B 的产生式
+                for pdct_B in plist:  # B -> gamma
+                    for first in self.get_first(token_beta, item_A.forward):
+                        extend_item = self.get_item(pdct_B, 0, first)
                         queue.push(extend_item)
 
-        closure = queue.lookup
-        id = ItemClosure.identifier(closure)
-        item_closure = self.closure_cache.get(id, None)
-        if item_closure is None:
-            item_closure = ItemClosure(self, closure)
-            self.closure_cache[id] = item_closure
-            new_queue.push(item_closure)
-        return item_closure
+        return queue.lookup
 
-    def gen_dfa(self):
-        # 初态
-        term_pdct = self.pdct_dict["pattern"][0]
-        # start_item = term_pdct.items[0]
-        # accept_item = start_item.nitem
+    def get_closure(self, item_set, closure_queue):
+        """get_closure - 获取 item 集的 closure 集
+        :param item_set:
+        :param new_queue: 接收新 closure 的队列
+        :return:
+        """
+        items_in_closure = self.expand_items_to_closure(item_set)
+        closure_id = ItemClosure.identifier(items_in_closure)
+        closure = self.closure_cache.get(closure_id, None)
+        if closure is None:
+            closure = ItemClosure(self, items_in_closure)
+            self.closure_cache[closure_id] = closure
+            if closure_queue is not None:
+                closure_queue.push(closure)
+        return closure
 
-        start_item = self.get_item(term_pdct, 0, "$")
-        accept_item = self.get_item(term_pdct, 1, "$")
+    def reduce_over_shift(self, pdct, token):
+        operator = set(pdct.tokens) & self.priority_set
+        if len(operator) != 1:
+            raise Exception("Priority not recognized.\n production: {}\n token: {}".format(pdct, token))
+        operator = list(operator)[0]
+        if token not in self.priority_set:  # 未出现在优先级表中的符号默认优先级低
+            ret = True
+        else:
+            ret = self.priority_list.index(operator) <= self.priority_list.index(token)  # 左结合
+        if ret:
+            print("priority: {} > {}".format(operator, token))
+        else:
+            print("priority: {} > {}".format(token, operator))
+        return ret
+
+    def build_dfa(self):
+        # 初态, 增广规则
+        super_pdct = self.pdct_dict[LRAnalyzer.gen_super][0]
+
+        start_item = self.get_item(super_pdct, 0, LRAnalyzer.token_eof)
+        accept_item = self.get_item(super_pdct, 1, LRAnalyzer.token_eof)
 
         # 构造 closure
-        queue = Queue()
-        root_closure = self.get_closure({start_item}, queue)
-        while not queue.empty():
-            closure = queue.pop()
+        closure_queue = Queue()
+        root_closure = self.get_closure({start_item}, closure_queue)
+        while not closure_queue.empty():
+            closure = closure_queue.pop()
             self.closure_list.append(closure)
-            closure.build_goto(lambda x: self.get_closure(x, queue))
-
-        # def dfs(closure, pid):
-        #     if (closure.id <= pid):
-        #         return
-        #     print("%d" % closure.id)
-        #     for key in closure._goto:
-        #         dfs(closure._goto[key], closure.id)
-        #
-        # dfs(root_closure, -1)
+            closure.build_goto(lambda items, _queue=closure_queue: self.get_closure(items, _queue))
 
         # 生成 lr 分析表
         for closure in self.closure_list:
+            # new table item
             lr_analyze_item = dict()
             self.lr_analyze_table.append(lr_analyze_item)
-
-            next_tokens = closure.next_tokens()
-            for next_token in next_tokens:
-                pass
 
             for item in closure:
                 token = item.next_token()
                 if token is None:
-                    if item.forward == "$" and item.pdct.gen == "pattern":
-                        lr_analyze_item["$"] = ("acpt", -1)
+                    # will reduce
+                    if item.id == accept_item.id:
+                        # accept
+                        lr_analyze_item[LRAnalyzer.token_eof] = (LRAnalyzer.action_accept, -1)
                     else:
                         forward = item.forward
                         if forward not in lr_analyze_item:
-                            lr_analyze_item[forward] = ("rduc", item.pdct.id)
+                            # reduce
+                            lr_analyze_item[forward] = (LRAnalyzer.action_reduce, item.pdct.id)
                         else:
-                            action = lr_analyze_item[forward]
-                            if action[0] != "rduc":
-                                print("closure#%d have shift-reduce conflict:\n%s\n" % (closure.id, str(closure)))
-                                exit(-1)  # conflict!
-                            elif action[1] != item.pdct.id:
-                                print("closure#%d have reduce-reduce conflict\n%s\n" % (closure.id, str(closure)))
-                                exit(-1)  # conflict!
+                            action, pdct_or_closure_id = lr_analyze_item[forward]
+                            if action == LRAnalyzer.action_shift:
+                                # shift-reduce conflict
+                                if self.reduce_over_shift(item.pdct, forward):  # check priority
+                                    # overwrite by reduce
+                                    lr_analyze_item[forward] = (LRAnalyzer.action_reduce, item.pdct.id)
+                            elif action == LRAnalyzer.action_reduce:
+                                if item.pdct.id != pdct_or_closure_id:
+                                    # reduce-reduce conflict
+                                    print("closure#{} have reduce-reduce conflict\n{}\ncurrent item:{}\n".format(closure.id, closure, item))
+                                    exit(-1)
+                            else:
+                                print("closure#{} have unknown conflict\n{}\ncurrent item:{}\n".format(closure.id, closure, item))
+                                exit(-1)
                 else:
+                    # will shift
                     if token not in lr_analyze_item:
-                        lr_analyze_item[token] = ("shft", closure.goto(token).id)
+                        # shift
+                        lr_analyze_item[token] = (LRAnalyzer.action_shift, closure.goto(token).id)
                     else:
-                        action = lr_analyze_item[token]
-                        if action[0] != "shft":
-                            print("closure#%d have shift-reduce conflict:\n%s\n" % (closure.id, str(closure)))
-                            exit(-1)  # conflict!
+                        action, pdct_or_closure_id = lr_analyze_item[token]
+                        if action == LRAnalyzer.action_reduce:
+                            # shift-reduce conflict
+                            if not self.reduce_over_shift(self.pdct_list[pdct_or_closure_id], token):  # check priority
+                                # overwrite by shift
+                                lr_analyze_item[token] = (LRAnalyzer.action_shift, closure.goto(token).id)
+                        elif action != LRAnalyzer.action_shift:
+                            print("closure#{} have unknown conflict\n{}\ncurrent item:{}\n".format(closure.id, closure, item))
+                            exit(-1)
 
     def output(self, path):
         """
@@ -461,18 +527,28 @@ class LRAnalyzer:
             fp.write("""/**
  * %s - LR(1) analyze table
  *
- * NOTE: this file is auto-generated by LRAnalyzer
+ * NOTE: this file is auto-generated by LRAnalyzer.py
  */
 
 #ifndef _LR_ANALYZER_TABLE_H_
 #define _LR_ANALYZER_TABLE_H_
 
 #include "lr_reduce.h"
+
+// clang-format off
 """ % path)
 
-            terminator = [("text", "TOKEN_TEXT"), ("$", "TOKEN_EOF"), ("--", "TOKEN_ERR"),
-                          ("(", "TOKEN_SUBS"), (")", "TOKEN_SUBE"), ("(?&!", "TOKEN_AMBI"),
-                          ("(?<!", "TOKEN_ANTO"), (".{m,n}", "TOKEN_DIST"), ("|", "TOKEN_ALT")]
+            terminator = [
+                (LRAnalyzer.token_text, "TOKEN_TEXT"),
+                (LRAnalyzer.token_eof,  "TOKEN_EOF"),
+                (LRAnalyzer.token_err,  "TOKEN_ERR"),
+                (LRAnalyzer.token_subs, "TOKEN_SUBS"),
+                (LRAnalyzer.token_sube, "TOKEN_SUBE"),
+                (LRAnalyzer.token_ambi, "TOKEN_AMBI"),
+                (LRAnalyzer.token_anto, "TOKEN_ANTO"),
+                (LRAnalyzer.token_dist, "TOKEN_DIST"),
+                (LRAnalyzer.token_alt,  "TOKEN_ALT")
+            ]
 
             non_terminator = list(self.non_terminator)
             non_to_id = dict()
@@ -480,7 +556,7 @@ class LRAnalyzer:
                 non_to_id[token] = i
 
             # write productions
-            fp.write("""\n
+            fp.write("""
 /**
  * productions:
 """)
@@ -505,31 +581,32 @@ static const int lr_pdct2nonid[LR_PDCT_NUM] = {
 };
 """)
 
+            # write production to reduce function
             fp.write("""
 static const lr_reduce_func lr_reduce_func_table[LR_PDCT_NUM] = {
 """)
 
             for pdct in self.pdct_list:
-                if pdct.gen == "pattern":
+                if pdct.gen == LRAnalyzer.gen_super:
                     fp.write("    NULL,\n")
                 elif pdct.length == 1:
-                    if pdct.tokens[0] == "text":
+                    if pdct.tokens[0] == LRAnalyzer.token_text:
                         fp.write("    reduce_text2pure,\n")
                     else:
                         fp.write("    reduce_only_pop,\n")
                 elif pdct.length == 2:
-                    if pdct.tokens[0] == "anti-anto":
+                    if pdct.tokens[0] == "anto":
                         fp.write("    reduce_anto,\n")
-                    elif pdct.tokens[1] == "anti-ambi":
+                    elif pdct.tokens[1] == "ambi":
                         fp.write("    reduce_ambi,\n")
                     else:
                         raise Exception("error production")
                 elif pdct.length == 3:
-                    if pdct.tokens[1] == "|":
+                    if pdct.tokens[1] == LRAnalyzer.token_alt:
                         fp.write("    reduce_alter,\n")
-                    elif pdct.tokens[1] == ".{m,n}":
+                    elif pdct.tokens[1] == LRAnalyzer.token_dist:
                         fp.write("    reduce_dist,\n")
-                    elif pdct.tokens[2] == ")":
+                    elif pdct.tokens[2] == LRAnalyzer.token_sube:
                         fp.write("    reduce_unwrap,\n")
                     else:
                         raise Exception("error production")
@@ -570,7 +647,8 @@ lr_item_s lr_action_table[%d][%d] = {
                 fp.write("/* %3d */ { " % i)
                 for token, _ in terminator:
                     if token in analyze_item:
-                        fp.write("{ %s,%3d }, " % (analyze_item[token][0], analyze_item[token][1]))
+                        fp.write("{ %s,%3d }, " % (
+                            analyze_item[token][0], analyze_item[token][1]))
                     else:
                         fp.write("{ deny,%3d }, " % -1)
                 fp.write(" },\n")
@@ -586,27 +664,33 @@ lr_item_s lr_goto_table[%d][%d] = {
                 fp.write("/* %3d */ { " % i)
                 for token in non_terminator:
                     if token in analyze_item:
-                        fp.write("{ %s,%3d }, " % (analyze_item[token][0], analyze_item[token][1]))
+                        fp.write("{ %s,%3d }, " % (
+                            analyze_item[token][0], analyze_item[token][1]))
                     else:
                         fp.write("{ deny,%3d }, " % -1)
                 fp.write(" },\n")
 
             fp.write("};\n")
 
-            fp.write("""\n
-#endif //_LR_ANALYZER_TABLE_H_
+            fp.write("""
+// clang-format on
+
+#endif  // _LR_ANALYZER_TABLE_H_
 """)
 
 
 if __name__ == "__main__":
     import sys
-    import getopt
-    opts, args = getopt.getopt(sys.argv[1:], "s:o:", ["source=", "output="])
-    for op, value in opts:
-        if op == "-s" or op == "--source":
-            source = value
-        elif op == "-o" or op == "--output":
-            output = value
-    print("generate LR(1) table, source='%s', output='%s'" % (source, output))
-    lr_analyzer = LRAnalyzer(source)
-    lr_analyzer.output(output)
+    import optparse
+
+    usage = "usage: %prog [options]"
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-s", "--source", dest="source", type=str, metavar="PATH", help="productions.syntax path")
+    parser.add_option("-o", "--output", dest="output", type=str, metavar="PATH", help="lr_table.c output path")
+    parser.add_option("-p", "--priority", dest="priority", type=str, metavar="PATH", help="priority.syntax path")
+    options, args = parser.parse_args(args=sys.argv[1:])
+
+    print("generate LR(1) table, source='{}', output='{}'".format(options.source, options.output))
+
+    lr_analyzer = LRAnalyzer(options.source, options.priority)
+    lr_analyzer.output(options.output)

@@ -15,10 +15,11 @@ gmon.out
 cmake-build-*
 
 .vs
+.vscode
 CMakeSettings.json
 
 cmake-build/
 build/
 lib/
 dist/
-
+data/

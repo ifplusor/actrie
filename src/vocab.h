@@ -1,17 +1,18 @@
-//
-// Created by james on 9/30/17.
-//
+/**
+ * vocab.h
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
+#ifndef __ACTRIE_VOCABULARY_H__
+#define __ACTRIE_VOCABULARY_H__
 
-#ifndef _ACTRIE_VOCAB_H_
-#define _ACTRIE_VOCAB_H_
-
-#include "acom.h"
-#include "dynabuf.h"
-#include "stream.h"
+#include <alib/acom.h>
+#include <alib/io/stream.h>
+#include <alib/string/dynabuf.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* __cplusplus */
 
 typedef struct vocab {
   stream_t _stream;
@@ -20,10 +21,7 @@ typedef struct vocab {
   dynabuf_s _buf;
 } vocab_s, *vocab_t;
 
-vocab_t vocab_alloc();
-bool vocab_free(vocab_t self);
-
-vocab_t vocab_construct(stream_type_e type, void *src);
+vocab_t vocab_construct(stream_type_e type, void* src);
 bool vocab_destruct(vocab_t self);
 
 size_t vocab_count(vocab_t self);
@@ -34,7 +32,7 @@ bool vocab_reset(vocab_t self);
 bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra);
 
 #ifdef __cplusplus
-};
-#endif
+}
+#endif /* __cplusplus */
 
-#endif //_ACTRIE_VOCAB_H_
+#endif  // __ACTRIE_VOCABULARY_H__

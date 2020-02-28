@@ -1,253 +1,161 @@
-//
-// Created by james on 6/16/17.
-//
+/**
+ * matcher.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
+#include "matcher.h"
 
-#include "matcher0.h"
-#include "vocab.h"
-#include "acdat.h"
-#include "disambi.h"
-#include "distance.h"
+#include "parser/parser.h"
+#include "reglet/engine.h"
+#include "reglet/expr/expr.h"
+#include "trie/acdat.h"
 
-matcher_t matcher_construct_by_dict(match_dict_t dict, matcher_conf_t conf) {
-  matcher_t matcher = NULL;
-  switch (conf->type) {
-    case matcher_type_alteration:
-      matcher = matcher_construct_by_dict(dict, ((stub_conf_t)conf->buf)->stub);
-      break;
-    case matcher_type_dat:
-    case matcher_type_acdat:
-    case matcher_type_seg_acdat:
-    case matcher_type_prefix_acdat:
-      matcher = dat_construct(dict, conf);
-      break;
-    case matcher_type_ambi:
-      matcher = ambi_construct(dict, conf);
-      break;
-    case matcher_type_dist:
-    case matcher_type_ultimate:
-      matcher = dist_construct(dict, conf);
-      break;
-    default:
-      break;
+typedef struct _actrie_matcher_ {
+  reglet_t reglet;
+  dat_t datrie;
+} matcher_s;
+
+static matcher_t matcher_alloc() {
+  matcher_t matcher = amalloc(sizeof(matcher_s));
+  matcher->reglet = NULL;
+  matcher->datrie = NULL;
+  return matcher;
+}
+
+static void matcher_free(matcher_t matcher) {
+  afree(matcher);
+}
+
+static void add_pattern_to_matcher(ptrn_t pattern, strlen_t extra, void* arg) {
+  matcher_t matcher = (matcher_t)arg;
+  reglet_add_pattern(matcher->reglet, pattern, extra);
+}
+
+void trie_sort_to_line(trie_t self);
+
+static void free_expr_list(void* trie, void* node) {
+  list_t list = (list_t)node;
+  _release(list);
+}
+
+matcher_t matcher_construct(vocab_t vocab) {
+  matcher_t matcher = matcher_alloc();
+
+  // build reglet
+  matcher->reglet = reglet_construct();
+  if (!parse_vocab(vocab, add_pattern_to_matcher, matcher, false)) {
+    trie_free(matcher->reglet->trie, (trie_node_free_f)free_expr_list);
+    matcher->reglet->trie = NULL;
+    matcher_destruct(matcher);
+    return NULL;
   }
-  return matcher;
-}
 
-matcher_t matcher_construct_by_vocab(vocab_t vocab, aobj conf) {
-  match_dict_t dict = NULL;
-  matcher_t matcher = NULL;
-
-  do {
-    dict = dict_alloc();
-    if (dict == NULL) break;
-
-    if (!dict_parse(dict, vocab, conf)) break;
-
-    matcher = matcher_construct_by_dict(dict, conf);
-  } while (0);
-
-  dict_release(dict);
+  // build datrie by reglet->trie
+  trie_sort_to_line(matcher->reglet->trie);
+  matcher->datrie = dat_construct_by_trie(matcher->reglet->trie, true);
+  // then, free reglet->trie
+  trie_free(matcher->reglet->trie, NULL);
+  matcher->reglet->trie = NULL;
 
   return matcher;
 }
 
-aobj matcher_ultimate_conf() {
-  aobj dist_conf = NULL;
-  aobj head_conf = NULL;
-  aobj tail_conf = NULL;
-  aobj digit_conf = NULL;
-  uint8_t matcher_id = 0;
-
-  matcher_id++;
-  head_conf = matcher_root_conf(matcher_id);
-  head_conf = matcher_wordattr_conf(matcher_id, head_conf);
-  head_conf = dat_matcher_conf(matcher_id, matcher_type_seg_acdat, head_conf);
-  head_conf = matcher_alternation_conf(matcher_id, head_conf);
-
-  matcher_id++;
-  head_conf = ambi_matcher_conf(matcher_id, head_conf);
-  head_conf = matcher_alternation_conf(matcher_id, head_conf);
-
-  matcher_id++;
-  tail_conf = matcher_root_conf(matcher_id);
-  tail_conf = matcher_wordattr_conf(matcher_id, tail_conf);
-  tail_conf = dat_matcher_conf(matcher_id, matcher_type_seg_acdat, tail_conf);
-  tail_conf = matcher_alternation_conf(matcher_id, tail_conf);
-
-  matcher_id++;
-  tail_conf = ambi_matcher_conf(matcher_id, tail_conf);
-  tail_conf = matcher_alternation_conf(matcher_id, tail_conf);
-
-  matcher_id++;
-  digit_conf = matcher_root_conf(matcher_id);
-  digit_conf = matcher_wordattr_conf(matcher_id, digit_conf);
-  digit_conf = dat_matcher_conf(matcher_id, matcher_type_prefix_acdat, digit_conf);
-  digit_conf = matcher_alternation_conf(matcher_id, digit_conf);
-
-  matcher_id++;
-  dist_conf = dist_matcher_conf(matcher_id, head_conf, tail_conf, digit_conf);
-  dist_conf = matcher_alternation_conf(matcher_id, dist_conf);
-
-  return dist_conf;
-}
-
-aobj matcher_acdat_conf() {
-  aobj acdat_conf = NULL;
-  uint8_t matcher_id = 0;
-
-  matcher_id++;
-  acdat_conf = matcher_root_conf(matcher_id);
-  acdat_conf = matcher_wordattr_conf(matcher_id, acdat_conf);
-  acdat_conf = dat_matcher_conf(matcher_id, matcher_type_acdat, acdat_conf);
-
-  return acdat_conf;
-}
-
-aobj matcher_dat_conf() {
-  aobj acdat_conf = NULL;
-  uint8_t matcher_id = 0;
-
-  matcher_id++;
-  acdat_conf = matcher_root_conf(matcher_id);
-  acdat_conf = dat_matcher_conf(matcher_id, matcher_type_dat, acdat_conf);
-
-  return acdat_conf;
-}
-
-matcher_t matcher_construct(matcher_type_e type, vocab_t vocab) {
-  matcher_t matcher = NULL;
-  aobj conf = NULL;
-
-  do {
-    if (vocab == NULL) break;
-
-    switch (type) {
-      case matcher_type_ultimate:
-        conf = matcher_ultimate_conf();
-        break;
-      case matcher_type_acdat:
-        conf = matcher_acdat_conf();
-        break;
-      case matcher_type_dat:
-        conf = matcher_dat_conf();
-      default:break;
-    }
-
-    if (conf == NULL) break;
-
-    matcher = matcher_construct_by_vocab(vocab, conf);
-    _release(conf);
-  } while (0);
-
-  return matcher;
-}
-
-matcher_t matcher_construct_by_file(matcher_type_e type, const char *path) {
-  vocab_t vocab = vocab_construct(stream_type_file, path);
-  matcher_t matcher = matcher_construct(type, vocab);
+matcher_t matcher_construct_by_file(const char* path) {
+  vocab_t vocab = vocab_construct(stream_type_file, (void*)path);
+  matcher_t matcher = matcher_construct(vocab);
   vocab_destruct(vocab);
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(matcher_type_e type, strlen_t string) {
+matcher_t matcher_construct_by_string(strlen_t string) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
-  matcher_t matcher = matcher_construct(type, vocab);
+  matcher_t matcher = matcher_construct(vocab);
   vocab_destruct(vocab);
   return matcher;
 }
 
-bool matcher_destruct(matcher_t matcher) {
-  if (matcher == NULL) return false;
-  return matcher->_func.destruct(matcher);
+void matcher_destruct(matcher_t matcher) {
+  if (matcher != NULL) {
+    reglet_destruct(matcher->reglet);
+    dat_destruct(matcher->datrie, (dat_node_free_f)free_expr_list);
+    matcher_free(matcher);
+  }
+}
+
+typedef struct _actrie_context_ {
+  reg_ctx_t reg_ctx;
+  dat_ctx_t dat_ctx;
+  word_s matched_word;
+} context_s;
+
+static context_t context_alloc() {
+  context_t context = amalloc(sizeof(context_s));
+  context->reg_ctx = NULL;
+  context->dat_ctx = NULL;
+  return context;
+}
+
+static void context_free(context_t context) {
+  afree(context);
 }
 
 context_t matcher_alloc_context(matcher_t matcher) {
-  if (matcher == NULL) return NULL;
-  return matcher->_func.alloc_context(matcher);
+  context_t context = context_alloc();
+  context->dat_ctx = dat_alloc_context(matcher->datrie);
+  context->reg_ctx = reglet_alloc_context(matcher->reglet);
+  return context;
 }
 
-bool matcher_free_context(context_t context) {
-  if (context == NULL) return false;
-  return context->_func.free_context(context);
+void matcher_free_context(context_t context) {
+  if (context != NULL) {
+    dat_free_context(context->dat_ctx);
+    reglet_free_context(context->reg_ctx);
+    context_free(context);
+  }
 }
 
 bool matcher_reset_context(context_t context, char content[], size_t len) {
-  if (context == NULL) return false;
-  return context->_func.reset_context(context, content, len);
+  dat_reset_context(context->dat_ctx, content, len);
+  reglet_reset_context(context->reg_ctx, content, len);
+  return true;
 }
 
-bool matcher_next(context_t context) {
-  if (context == NULL) return false;
-  return context->_func.next(context);
-}
-
-mdi_t matcher_matched_index(context_t context) {
-  return context->out_index;
-}
-
-strpos_s matcher_matched_pos(context_t context) {
-  return context->out_pos;
-}
-
-strlen_s matcher_matched_str(context_t context) {
-  return (strlen_s) {
-      .ptr = &context->content.ptr[context->out_pos.so],
-      .len = context->out_pos.eo - context->out_pos.so
-  };
-}
-
-
-#ifndef MATCHER_ALLOC_MIN_SIZE
-#define MATCHER_ALLOC_MIN_SIZE 16
-#endif
-
-/**
- * @note need call free() for return value
- */
-idx_pos_s *matcher_remaining_matched(context_t context, size_t *out_len) {
-  size_t size = MATCHER_ALLOC_MIN_SIZE, len = 0;
-  idx_pos_s *lst = malloc(sizeof(idx_pos_s) * size);
-  if (lst != NULL) {
-    while (matcher_next(context)) {
-      if (len == size) {
-        size <<= 1;
-        idx_pos_s *new = realloc(lst, sizeof(idx_pos_s) * size);
-        if (new == NULL) break; else lst = new;
+word_t matcher_next(context_t context) {
+  // 不保证输出有序
+  pos_cache_t matched = prique_pop(context->reg_ctx->output_queue);
+  if (matched == NULL) {
+    while (dat_ac_next_on_node(context->dat_ctx)) {
+      list_t expr_list = context->dat_ctx->_value;
+      while (expr_list != NULL) {
+        expr_t expr = _(list, expr_list, car);
+        pos_cache_t pos_cache = dynapool_alloc_node(context->reg_ctx->pos_cache_pool);
+        // datrie only output end offset, and set start offset in expr_text
+        pos_cache->pos.eo = context->dat_ctx->_e;
+        expr_feed_text(expr, pos_cache, context->reg_ctx);
+        expr_list = _(list, expr_list, cdr);
       }
-      lst[len] = (idx_pos_s) {
-          .idx = context->out_index,
-          .pos = context->out_pos
-      };
-      len++;
+      matched = prique_pop(context->reg_ctx->output_queue);
+      if (matched != NULL) {
+        break;
+      }
     }
   }
-  *out_len = len;
-  return lst;
-}
-
-idx_pos_s *matcher_match_all(context_t context, char *content, size_t len,
-                             size_t *out_len) {
-  matcher_reset_context(context, content, len);
-  return matcher_remaining_matched(context, out_len);
-}
-
-int cmp(const void *a, const void *b) {
-  idx_pos_s *sa = a, *sb = b;
-  if (sa->pos.so == sb->pos.so) {
-    return (int) sa->pos.eo - (int) sb->pos.eo;
-  } else {
-    return (int) sa->pos.so - (int) sb->pos.so;
+  if (matched == NULL) {
+    activate_ambi_queue(context->reg_ctx);
+    matched = prique_pop(context->reg_ctx->output_queue);
   }
-}
-
-idx_pos_s *matcher_sort_by_os(idx_pos_s *lst, size_t len) {
-  if (lst != NULL && len != 0)
-    qsort(lst, len, sizeof(idx_pos_s), cmp);
-  return lst;
-}
-
-idx_pos_s *matcher_match_with_sort(context_t context, char *content, size_t len,
-                                   size_t *out_len) {
-  idx_pos_s *lst = matcher_match_all(context, content, len, out_len);
-  return matcher_sort_by_os(lst, *out_len);
+  if (matched != NULL) {
+    // matche pattern, output
+    context->matched_word.keyword =
+        (strlen_s){.ptr = context->reg_ctx->content.ptr + matched->pos.so, .len = matched->pos.eo - matched->pos.so};
+    if (matched->embed.extra != NULL) {
+      context->matched_word.extra = (strlen_s){.ptr = matched->embed.extra->str, .len = matched->embed.extra->len};
+    } else {
+      context->matched_word.extra = strlen_empty;
+    }
+    context->matched_word.pos = matched->pos;
+    dynapool_free_node(context->reg_ctx->pos_cache_pool, matched);
+    return &context->matched_word;
+  }
+  return NULL;
 }

@@ -1,0 +1,5 @@
+# 优先级: plain > anti-ambi > anti-anto > dist > alter > wrap
+(?&!       # ambi
+anto       # anti-anto
+.{m,n}     # dist
+|          # alter

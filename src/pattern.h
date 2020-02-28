@@ -1,30 +1,36 @@
-//
-// Created by james on 1/22/18.
-//
+/**
+ * pattern.h
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
+#ifndef __ACTRIE_PATTERN_H__
+#define __ACTRIE_PATTERN_H__
 
-#ifndef _ACTRIE_PATTERN_H_
-#define _ACTRIE_PATTERN_H_
+#include <alib/object/aobj.h>
+#include <alib/object/dstr.h>
+#include <alib/object/list.h>
 
-#include <obj/aobj.h>
-#include <obj/dstr.h>
-#include <obj/list.h>
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-
-typedef enum ptrn_type {
+typedef enum _ptrn_type_ {
   ptrn_type_empty = 0,
   ptrn_type_pure,
-  ptrn_type_ambi,
-  ptrn_type_anto,
+  ptrn_type_anti_ambi,
+  ptrn_type_anti_anto,
   ptrn_type_dist,
   ptrn_type_alter
 } ptrn_type_e;
 
+// clang-format off
 aclass(ptrn,
   ptrn_type_e type;
-  void *desc;
-)
+  void* desc;
+);
+// clang-format on
 
-typedef struct _ptrn_dist_desc {
+typedef struct _ptrn_dist_desc_ {
   ptrn_t head;
   ptrn_t tail;
   int min, max;
@@ -36,4 +42,4 @@ afunc_delc(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi);
 afunc_delc(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto);
 afunc_delc(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, int min, int max);
 
-#endif //_ACTRIE_PATTERN_H_
+#endif  // __ACTRIE_PATTERN_H__

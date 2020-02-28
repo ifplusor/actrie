@@ -1,9 +1,11 @@
-//
-// Created by james on 11/14/17.
-//
-
-#include <utf8.h>
+/**
+ * utf8ctx.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
 #include "utf8ctx.h"
+
+#include <alib/string/utf8.h>
 
 wctx_t alloc_context(matcher_t matcher) {
   context_t context;
@@ -11,10 +13,14 @@ wctx_t alloc_context(matcher_t matcher) {
 
   do {
     context = matcher_alloc_context(matcher);
-    if (context == NULL) break;
+    if (context == NULL) {
+      break;
+    }
 
     wctx = malloc(sizeof(wctx_s));
-    if (wctx == NULL) break;
+    if (wctx == NULL) {
+      break;
+    }
 
     wctx->ctx = context;
     wctx->pos = NULL;
@@ -27,29 +33,33 @@ wctx_t alloc_context(matcher_t matcher) {
   return NULL;
 }
 
-bool free_context(wctx_t wctx) {
-  if (wctx == NULL)
-    return false;
-
-  free(wctx->pos);
-  context_t ctx = wctx->ctx;
-  free(wctx);
-  return matcher_free_context(ctx);
+void free_context(wctx_t wctx) {
+  if (wctx != NULL) {
+    matcher_free_context(wctx->ctx);
+    free(wctx->pos);
+    free(wctx);
+  }
 }
 
-bool reset_context(wctx_t wctx, char *content, int length) {
+bool reset_context(wctx_t wctx, char* content, int length) {
   do {
-    if (wctx == NULL)
+    if (wctx == NULL) {
       break;
+    }
 
-    if (!matcher_reset_context(wctx->ctx, content, (size_t) length))
+    if (!matcher_reset_context(wctx->ctx, content, (size_t)length)) {
       break;
+    }
 
-    if (wctx-> pos != NULL) free(wctx->pos);
+    if (wctx->pos != NULL) {
+      free(wctx->pos);
+    }
     wctx->pos = malloc((length + 1) * sizeof(size_t));
-    if (wctx->pos == NULL) break;
+    if (wctx->pos == NULL) {
+      break;
+    }
 
-    utf8_word_pos(content, (size_t) length, wctx->pos);
+    utf8_word_pos(content, (size_t)length, wctx->pos);
 
     return true;
   } while (0);
@@ -57,9 +67,10 @@ bool reset_context(wctx_t wctx, char *content, int length) {
   return false;
 }
 
-bool next(wctx_t wctx) {
-  if (wctx == NULL)
-    return false;
+word_t next(wctx_t wctx) {
+  if (wctx == NULL) {
+    return NULL;
+  }
 
   return matcher_next(wctx->ctx);
 }

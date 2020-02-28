@@ -1,17 +1,20 @@
-//
-// Created by james on 1/16/18.
-//
-
-#include <obj/pint.h>
+/**
+ * parser.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
 #include "parser.h"
+
+#include <alib/object/pint.h>
+
 #include "lr_table.h"
+#include "tokenizer.h"
 
-
-void reduce_only_pop(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
+void reduce_only_pop(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   *node = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 }
 
-void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
+void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t sign = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct pure-pattern
@@ -22,10 +25,10 @@ void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *
   *node = sign;
 }
 
-void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
-  lr_sign_t right = deque_pop_front(sign_stack, lr_sign_s, deque_elem); // ')'
+void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
+  lr_sign_t right = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // ')'
   lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
-  lr_sign_t left = deque_pop_front(sign_stack, lr_sign_s, deque_elem); // '(', '(?&!', '(?<!'
+  lr_sign_t left = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // '(', '(?&!', '(?<!'
 
   dynapool_free_node(sign_pool, right);
   dynapool_free_node(sign_pool, left);
@@ -33,38 +36,38 @@ void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *nod
   *node = origin;
 }
 
-void reduce_ambi(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
-  lr_sign_t anti = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+void reduce_ambi(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
+  lr_sign_t ambi = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct ambi-pattern
-  origin->data = _alloc(ptrn, ambi, origin->data, anti->data);
+  origin->data = _alloc(ptrn, ambi, origin->data, ambi->data);
 
-  dynapool_free_node(sign_pool, origin);
+  dynapool_free_node(sign_pool, ambi);
 
   *node = origin;
 }
 
-void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
+void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t anti = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct anto-pattern
-  anti->data = _alloc(ptrn, anto, origin->data, anti->data);
+  origin->data = _alloc(ptrn, anto, origin->data, anti->data);
 
-  dynapool_free_node(sign_pool, origin);
+  dynapool_free_node(sign_pool, anti);
 
-  *node = anti;
+  *node = origin;
 }
 
-void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
+void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t tail = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t dist = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t head = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
-  uptr_t data = (uptr_t) pint_get(dist->data);
-  int min = (int) (data & 0xFFFF);
-  int max = (int) ((data >> 16) & 0xFFFF);
+  uptr_t data = (uptr_t)pint_get(dist->data);
+  int min = (int)(data & 0xFFFFU);
+  int max = (int)((data >> 16U) & 0xFFFFU);
 
   // construct dist-pattern
   head->data = _alloc(ptrn, dist, head->data, tail->data, min, max);
@@ -75,9 +78,9 @@ void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node)
   *node = head;
 }
 
-void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node) {
+void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t after = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
-  lr_sign_t alter = deque_pop_front(sign_stack, lr_sign_s, deque_elem); // "|"
+  lr_sign_t alter = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // "|"
   lr_sign_t before = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct anto-pattern
@@ -96,7 +99,7 @@ void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node
  * @param node [OUT]
  * @param change [IO]
  */
-void parse_reduce(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node, lr_item_t change) {
+void parse_reduce(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node, lr_item_t change) {
   int pdct = change->index;
   // reduce
   lr_reduce_func_table[pdct](sign_pool, sign_stack, node);
@@ -109,9 +112,7 @@ void parse_reduce(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t *node
 ptrn_t parse_pattern0(stream_t stream) {
   ptrn_t pattern = NULL;
 
-  deque_node_s sentinel0, sentinel1;
-  deque_node_t sign_stack = &sentinel0;
-  deque_node_t token_deque = &sentinel1;
+  deque_node_s sign_stack[1], token_deque[1];
   deque_init(sign_stack);
   deque_init(token_deque);
 
@@ -121,7 +122,9 @@ ptrn_t parse_pattern0(stream_t stream) {
   int ch;
   dstr_t token;
   while ((ch = token_next(stream, &token)) != TOKEN_EOF) {
-    if (ch == TOKEN_ERR) break;
+    if (ch == TOKEN_ERR) {
+      break;
+    }
 
     if (token != NULL) {
       lr_sign_t node = dynapool_alloc_node(sign_pool);
@@ -130,13 +133,13 @@ ptrn_t parse_pattern0(stream_t stream) {
       deque_push_back(token_deque, node, lr_sign_s, deque_elem);
     }
 
-    if (ch != TOKEN_TEXT){
+    if (ch != TOKEN_TEXT) {  // sign
       lr_sign_t node = dynapool_alloc_node(sign_pool);
-      node->state = -ch;
+      node->state = -ch;  // every sign is negative
       if (ch == TOKEN_DIST) {
         int max = token_max_dist();
         int min = token_min_dist();
-        node->data = pint(((uptr_t) max & 0xFFFF) << 16 | ((uptr_t) min & 0xFFFF));
+        node->data = pint(((uptr_t)max & 0xFFFFU) << 16U | ((uptr_t)min & 0xFFFFU));
       } else {
         node->data = NULL;
       }
@@ -146,7 +149,7 @@ ptrn_t parse_pattern0(stream_t stream) {
 
   if (ch == TOKEN_ERR) {
     // tokenize error
-    goto lr_err;
+    goto lr_error;
   }
 
   // TOKEN_EOF 入队
@@ -166,12 +169,12 @@ ptrn_t parse_pattern0(stream_t stream) {
     sign = deque_peek_front(sign_stack, lr_sign_s, deque_elem);
     // check action table
     lr_item_s change = lr_action_table[sign->state][node->state];
-lr_rdc:
+  lr_reduce:
     switch (change.action) {
-      case deny:goto lr_err;
+      case deny:
+        goto lr_error;
       case acpt:
-
-        goto lr_acc;
+        goto lr_accept;
       case shft:
         // node 进栈，无需释放内存
         node->state = change.index;
@@ -181,15 +184,15 @@ lr_rdc:
         // node 放回 token_deque，规约产生式
         deque_push_front(token_deque, node, lr_sign_s, deque_elem);
         parse_reduce(sign_pool, sign_stack, &node, &change);
-        goto lr_rdc;
+        goto lr_reduce;
     }
   }
 
-lr_acc:
+lr_accept:
   sign = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   pattern = sign->data;
 
-lr_err:
+lr_error:
   while (!deque_empty(token_deque)) {
     node = deque_pop_front(token_deque, lr_sign_s, deque_elem);
     _release(node->data);
@@ -213,15 +216,20 @@ ptrn_t parse_pattern(strlen_t pattern) {
   return ptrn;
 }
 
-void *parse_vocab(vocab_t vocab) {
+bool parse_vocab(vocab_t vocab, have_pattern_f have_pattern, void* arg, bool ignore_bad_pattern) {
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
-    // TODO: parse pattern, output syntax tree
-    ptrn_t syntax = parse_pattern(&keyword);
-
-    _release(syntax);
+    // parse pattern, output syntax tree
+    ptrn_t pattern = parse_pattern(&keyword);
+    if (pattern == NULL) {
+      fprintf(stderr, "bad pattern: '%.*s'\n", (int)keyword.len, keyword.ptr);
+      if (!ignore_bad_pattern) {
+        return false;
+      }
+    }
+    have_pattern(pattern, &extra, arg);
+    _release(pattern);
   }
-
-  return NULL;
+  return true;
 }

@@ -1,15 +1,13 @@
-//
-// Created by james on 1/23/18.
-//
-
-#include "../src/parser.h"
+/**
+ * test_parser.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
+#include "../src/parser/parser.h"
 
 int main() {
-  char *str = "(?<!不)(好用|好吃|真棒.{1,3}(人|东西)";
-  strlen_s pattern = {
-      .ptr = str,
-      .len = strlen(str)
-  };
+  char* str = "(好用|好吃|真棒).{1,3}(人|东西)";
+  strlen_s pattern = {.ptr = str, .len = strlen(str)};
 
   tokenizer_init();
 

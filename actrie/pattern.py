@@ -1,14 +1,15 @@
 # coding=utf-8
 
 from abc import ABCMeta, abstractmethod
+
 try:
     from enum import Enum
 except:
     class Enum(object):
         pass
 
-from tokenizer import Tokenizer
-from tokenizer import convert2unicode, is_py3k
+from .tokenizer import Tokenizer
+from .util import convert2unicode, is_py3k
 
 meta_char = {u"(", u")", u"|", u"."}
 

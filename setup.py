@@ -4,7 +4,7 @@
 import os
 import platform
 import re
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 PYTHON_VERSION = platform.python_version()
 print("build for python" + PYTHON_VERSION)
@@ -36,8 +36,11 @@ warp_sources = [
 
 sources = warp_sources
 # build_library()
-library_dirs = [os.path.join(actrie_dir, 'lib')]
-libraries = ['actrie', 'alib', 'pcre']
+library_dirs = [
+    os.path.join(alib_dir, 'lib'),
+    os.path.join(actrie_dir, 'lib'),
+]
+libraries = ['actrie', 'alib']
 
 include_dir = [
     os.path.join(alib_dir, 'include'),

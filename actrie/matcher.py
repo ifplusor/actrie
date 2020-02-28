@@ -1,19 +1,10 @@
 # coding=utf-8
 
 import os
-import sys
 
 from . import _actrie
 from .context import Context
-
-is_py3k = bool(sys.version_info[0] == 3)
-
-
-def convert2pass(obj):
-    # we only convert unicode in python2 to utf-8
-    if not is_py3k and isinstance(obj, unicode):
-        obj = obj.encode("utf8")
-    return obj
+from .util import convert2pass
 
 
 class MatcherError(Exception):
@@ -42,7 +33,7 @@ class Matcher:
 
     @classmethod
     def create_by_file(cls, path):
-        matcher = Matcher()
+        matcher = cls()
         if matcher.load_from_file(path):
             return matcher
         return None
@@ -50,7 +41,7 @@ class Matcher:
     def load_from_string(self, keyword):
         if self._matcher:
             raise MatcherError("matcher is initialized")
-        if not keyword:
+        if keyword is None:
             return False
         keyword = convert2pass(keyword)
         self._matcher = _actrie.ConstructByString(keyword)
@@ -58,7 +49,7 @@ class Matcher:
 
     @classmethod
     def create_by_string(cls, keyword):
-        matcher = Matcher()
+        matcher = cls()
         if matcher.load_from_string(keyword):
             return matcher
         return None
@@ -78,7 +69,7 @@ class Matcher:
 
     @classmethod
     def create_by_collection(cls, strings):
-        matcher = Matcher()
+        matcher = cls()
         if matcher.load_from_collection(strings):
             return matcher
         return None
@@ -111,3 +102,17 @@ class Matcher:
         for matched in ctx:
             return matched
         return None
+
+
+class PrefixMatcher(Matcher):
+    def load_from_file(self, path):
+        raise MatcherError("not supported!")
+
+    def load_from_string(self, keyword):
+        if self._matcher:
+            raise MatcherError("matcher is initialized")
+        if not keyword:
+            return False
+        keyword = convert2pass(keyword)
+        self._matcher = _actrie.ConstructPrefixByString(keyword)
+        return self._matcher is not None

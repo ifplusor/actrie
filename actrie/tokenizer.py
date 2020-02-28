@@ -1,16 +1,6 @@
 # coding=utf-8
 
-
-import sys
-
-
-is_py3k = bool(sys.version_info[0] == 3)
-
-
-def convert2unicode(str):
-    if is_py3k or isinstance(str, unicode):
-        return str
-    return str.decode('utf-8')
+from .util import convert2unicode
 
 
 class TokenizerError(Exception):
@@ -45,7 +35,7 @@ class Tokenizer:
         elif ch == u")":
             return u")"
 
-        raise Tokenizer("'\\" + ch + "' is not a escape character")
+        raise TokenizerError("'\\" + ch + "' is not a escape character")
 
     def consume(self, stop=set()):
         s = u""
@@ -64,7 +54,7 @@ class Tokenizer:
                     is_escape = True
                     continue
 
-                if ch in stop:
+                if ch in stop and (ch != u"." or self.cur >= len(self.text) or self.text[self.cur] == "{"):
                     return s, ch
 
             s += ch
@@ -83,7 +73,7 @@ class Tokenizer:
 
     def expect(self, s, move=True):
         wlen = len(s)
-        if len(self.text) - self.cur >= wlen and self.text[self.cur : self.cur + wlen] == s:
+        if len(self.text) - self.cur >= wlen and self.text[self.cur:(self.cur + wlen)] == s:
             if move:
                 self.cur += wlen
             return True
@@ -91,4 +81,3 @@ class Tokenizer:
 
     def eof(self):
         return self.cur == len(self.text)
-

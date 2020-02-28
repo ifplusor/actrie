@@ -17,7 +17,7 @@ size_t trie_match(trie_t self, unsigned char content[], size_t len) {
       trie_node_t pNext = trie_next_node_by_binary(self, pCursor, content[j]);
       if (pNext == self->root) break;
       pCursor = pNext;
-      if (pNext->idxlist != NULL) c++;
+      if (pNext->value_list != NULL) c++;
     }
   }
   return c;
@@ -34,7 +34,7 @@ size_t trie_ac_match(trie_t self, unsigned char content[], size_t len) {
     }
     pCursor = pNext;
     while (pNext != self->root) {
-      if (pNext->idxlist != NULL) c++;
+      if (pNext->value_list != NULL) c++;
       pNext = trie_access_node(self, pNext->trie_failed);
     }
   }
@@ -44,7 +44,7 @@ size_t trie_ac_match(trie_t self, unsigned char content[], size_t len) {
 
 int main() {
 
-  vocab_t vocab = vocab_construct(stream_type_file, "raw_company.txt");
+  vocab_t vocab = vocab_construct(stream_type_file, "company.txt");
   aobj acdat_conf = matcher_root_conf(1);
   acdat_conf = dat_matcher_conf(1, matcher_type_dat, acdat_conf);
 
@@ -54,20 +54,21 @@ int main() {
 
   trie_conf_s trie_conf = {
       .filter = 1,
-      .enable_automation = true
+      .enable_automation = false
   };
   trie_t prime_trie = trie_construct(dict, &trie_conf);
   if (prime_trie == NULL) exit(-1);
 
   printf("use memory %llu\n", amalloc_used_memory());
+  printf("use node %llu\n", segarray_size(prime_trie->node_array));
 
-  FILE *fin = fopen("corpus.txt", "r");
+  FILE *fin = fopen("corpus1.txt", "r");
   if (fin == NULL) exit(-1);
 
   printf("load success!\n");
 
   char content[1500000];
-  int count = 0, c = 0, t = 5;
+  int count = 0, c = 0, t = 1;
   long long start = current_milliseconds();
 
   while (t--) {
