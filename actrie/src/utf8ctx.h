@@ -7,14 +7,15 @@
 #define __ACTRIE_UTF8POS_H__
 
 #include <matcher.h>
+#include <utf8helper.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 typedef struct context_wrapper {
-  context_t ctx;
-  size_t* pos;
+  context_t matcher_ctx;
+  utf8_ctx_s utf8_ctx;
 } wctx_s, *wctx_t;
 
 wctx_t alloc_context(matcher_t matcher);

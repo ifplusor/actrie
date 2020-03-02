@@ -46,7 +46,7 @@ void dat_destruct(dat_t datrie, dat_node_free_f node_free_func);
 
 dat_ctx_t dat_alloc_context(dat_t datrie);
 bool dat_free_context(dat_ctx_t context);
-bool dat_reset_context(dat_ctx_t context, char content[], size_t len);
+void dat_reset_context(dat_ctx_t context, char content[], size_t len);
 
 bool dat_match_end(dat_ctx_t ctx);
 

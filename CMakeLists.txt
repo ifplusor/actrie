@@ -62,6 +62,7 @@ endif()
 
 set(actrie_HEADER_FILES
     include/matcher.h
+    include/utf8helper.h
     src/vocab.h
     src/pattern.h
     src/parser/lr_reduce.h
@@ -93,7 +94,8 @@ set(actrie_SOURCE_FILES
     src/reglet/expr/dist.c
     src/trie/actrie.c
     src/trie/acdat.c
-    src/matcher.c)
+    src/matcher.c
+    src/utf8helper.c)
 
 add_library(actrie STATIC ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})
 target_include_directories(actrie PUBLIC include)

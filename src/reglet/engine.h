@@ -27,7 +27,8 @@ void reglet_add_pattern(reglet_t self, ptrn_t pattern, strlen_t extra);
 
 reg_ctx_t reglet_alloc_context(reglet_t reglet);
 void reglet_free_context(reg_ctx_t context);
-void reglet_reset_context(reg_ctx_t context, char content[], size_t len);
+void reglet_reset_context(reg_ctx_t context);
+void reglet_fix_pos(reg_ctx_t context, fix_pos_f fix_pos_func, void* fix_pos_arg);
 
 // void reglet_
 

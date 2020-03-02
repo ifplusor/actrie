@@ -83,6 +83,7 @@ void matcher_destruct(matcher_t matcher) {
 }
 
 typedef struct _actrie_context_ {
+  strlen_s content;
   reg_ctx_t reg_ctx;
   dat_ctx_t dat_ctx;
   word_s matched_word;
@@ -90,6 +91,8 @@ typedef struct _actrie_context_ {
 
 static context_t context_alloc() {
   context_t context = amalloc(sizeof(context_s));
+  context->content.ptr = NULL;
+  context->content.len = 0;
   context->reg_ctx = NULL;
   context->dat_ctx = NULL;
   return context;
@@ -114,10 +117,14 @@ void matcher_free_context(context_t context) {
   }
 }
 
-bool matcher_reset_context(context_t context, char content[], size_t len) {
+void matcher_fix_pos(context_t context, fix_pos_f fix_pos_func, void* fix_pos_arg) {
+  reglet_fix_pos(context->reg_ctx, fix_pos_func, fix_pos_arg);
+}
+
+void matcher_reset_context(context_t context, char content[], size_t len) {
+  context->content = (strlen_s){.ptr = content, .len = len};
   dat_reset_context(context->dat_ctx, content, len);
-  reglet_reset_context(context->reg_ctx, content, len);
-  return true;
+  reglet_reset_context(context->reg_ctx);
 }
 
 word_t matcher_next(context_t context) {
@@ -147,7 +154,7 @@ word_t matcher_next(context_t context) {
   if (matched != NULL) {
     // matche pattern, output
     context->matched_word.keyword =
-        (strlen_s){.ptr = context->reg_ctx->content.ptr + matched->pos.so, .len = matched->pos.eo - matched->pos.so};
+        (strlen_s){.ptr = context->content.ptr + matched->pos.so, .len = matched->pos.eo - matched->pos.so};
     if (matched->embed.extra != NULL) {
       context->matched_word.extra = (strlen_s){.ptr = matched->embed.extra->str, .len = matched->embed.extra->len};
     } else {

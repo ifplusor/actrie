@@ -39,12 +39,15 @@ sptr_t pos_cache_eo_in_word(avl_node_t node, void* arg);
 
 void free_pos_cache(avl_node_t node, void* arg);
 
+typedef size_t (*fix_pos_f)(size_t pos, size_t diff, bool plus_or_subtract, void* arg);
+
 typedef struct _regex_context_ {
-  strlen_s content;
-  avl_t expr_ctx_map;
   dynapool_t pos_cache_pool;
-  deque_node_s ambi_queue[1];
+  avl_t expr_ctx_map;
   prique_t output_queue;
+  deque_node_s ambi_queue[1];
+  fix_pos_f fix_pos_func;
+  void* fix_pos_arg;
 } reg_ctx_s, *reg_ctx_t;
 
 #ifdef __cplusplus

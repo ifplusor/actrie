@@ -5,8 +5,6 @@
  */
 #include "utf8ctx.h"
 
-#include <alib/string/utf8.h>
-
 wctx_t alloc_context(matcher_t matcher) {
   context_t context;
   wctx_t wctx;
@@ -22,8 +20,8 @@ wctx_t alloc_context(matcher_t matcher) {
       break;
     }
 
-    wctx->ctx = context;
-    wctx->pos = NULL;
+    wctx->matcher_ctx = context;
+    matcher_fix_pos(wctx->matcher_ctx, fix_utf8_pos, &wctx->utf8_ctx);
 
     return wctx;
   } while (0);
@@ -35,31 +33,23 @@ wctx_t alloc_context(matcher_t matcher) {
 
 void free_context(wctx_t wctx) {
   if (wctx != NULL) {
-    matcher_free_context(wctx->ctx);
-    free(wctx->pos);
+    matcher_free_context(wctx->matcher_ctx);
+    afree(wctx->utf8_ctx.pos);
     free(wctx);
   }
 }
 
-bool reset_context(wctx_t wctx, char* content, int length) {
+bool reset_context(wctx_t wctx, char* content, int len) {
   do {
     if (wctx == NULL) {
       break;
     }
 
-    if (!matcher_reset_context(wctx->ctx, content, (size_t)length)) {
+    if (!reset_utf8_context(&wctx->utf8_ctx, content, len)) {
       break;
     }
 
-    if (wctx->pos != NULL) {
-      free(wctx->pos);
-    }
-    wctx->pos = malloc((length + 1) * sizeof(size_t));
-    if (wctx->pos == NULL) {
-      break;
-    }
-
-    utf8_word_pos(content, (size_t)length, wctx->pos);
+    matcher_reset_context(wctx->matcher_ctx, content, len);
 
     return true;
   } while (0);
@@ -72,5 +62,5 @@ word_t next(wctx_t wctx) {
     return NULL;
   }
 
-  return matcher_next(wctx->ctx);
+  return matcher_next(wctx->matcher_ctx);
 }

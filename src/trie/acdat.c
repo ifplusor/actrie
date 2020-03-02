@@ -240,7 +240,7 @@ bool dat_free_context(dat_ctx_t context) {
   return true;
 }
 
-bool dat_reset_context(dat_ctx_t context, char content[], size_t len) {
+void dat_reset_context(dat_ctx_t context, char content[], size_t len) {
   context->content = (strlen_s){.ptr = content, .len = len};
 
   context->_e = 0;
@@ -248,8 +248,6 @@ bool dat_reset_context(dat_ctx_t context, char content[], size_t len) {
   context->_iCursor = DAT_ROOT_IDX;
   context->_matched = context->trie->root;
   context->_value = NULL;
-
-  return true;
 }
 
 bool dat_match_end(dat_ctx_t ctx) {

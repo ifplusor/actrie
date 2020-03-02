@@ -4,9 +4,10 @@
  * @author James Yin <ywhjames@hotmail.com>
  */
 #include <matcher.h>
+#include <utf8helper.h>
 
 int main() {
-  char* str = "(好用|好吃(?&!吃的)|真棒).{3,6}(人|东西)\t123\n东西.{0,6}(?<!的|和)真棒\t2\n";
+  char* str = "(好用|好吃(?&!吃的)|真棒).{1,22}(人|东西)\t123\n东西.{0,2}(?<!的|和)真棒\t2\n";
   strlen_s pattern = {.ptr = str, .len = strlen(str)};
 
   printf("use memory: %zu\n", amalloc_used_memory());
@@ -17,8 +18,12 @@ int main() {
     return -1;
   }
 
-  char* content = "好吃的东西给真棒的人";
+  utf8_ctx_t utf8_ctx = alloc_utf8_context();
   context_t context = matcher_alloc_context(matcher);
+  matcher_fix_pos(context, fix_utf8_pos, utf8_ctx);
+
+  char* content = "好吃的东西给真棒的人";
+  reset_utf8_context(utf8_ctx, content, strlen(content));
   matcher_reset_context(context, content, strlen(content));
 
   word_t matched = matcher_next(context);
@@ -30,6 +35,7 @@ int main() {
 
   printf("use memory: %zu\n", amalloc_used_memory());
   matcher_free_context(context);
+  free_utf8_context(utf8_ctx);
   printf("use memory: %zu\n", amalloc_used_memory());
 
   matcher_destruct(matcher);

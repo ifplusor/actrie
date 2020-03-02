@@ -28,7 +28,11 @@ void matcher_destruct(matcher_t matcher);
 context_t matcher_alloc_context(matcher_t matcher);
 void matcher_free_context(context_t context);
 
-bool matcher_reset_context(context_t context, char content[], size_t len);
+typedef size_t (*fix_pos_f)(size_t pos, size_t diff, bool plus_or_subtract, void* arg);
+
+void matcher_fix_pos(context_t context, fix_pos_f fix_pos_func, void* fix_pos_arg);
+
+void matcher_reset_context(context_t context, char content[], size_t len);
 
 typedef struct _actrie_matched_word_ {
   strlen_s keyword;

@@ -258,14 +258,26 @@ sptr_t expr_ctx_cmp(avl_node_t node, void* key) {
   return expr_ctx->expr - (expr_t)key;
 }
 
+static size_t default_fix_pos(size_t pos, size_t diff, bool plus_or_subtract, void* arg) {
+  if (plus_or_subtract) {
+    return pos + diff;
+  } else {
+    if (diff >= pos) {
+      return 0;
+    } else {
+      return pos - diff;
+    }
+  }
+}
+
 reg_ctx_t reglet_alloc_context(reglet_t reglet) {
   reg_ctx_t reg_ctx = amalloc(sizeof(reg_ctx_s));
-  reg_ctx->content.ptr = NULL;
-  reg_ctx->content.len = 0;
-  reg_ctx->expr_ctx_map = avl_construct(expr_ctx_cmp);
   reg_ctx->pos_cache_pool = dynapool_construct_with_type(pos_cache_s);
-  deque_init(reg_ctx->ambi_queue);
+  reg_ctx->expr_ctx_map = avl_construct(expr_ctx_cmp);
   reg_ctx->output_queue = prique_construct(pos_cache_cmp_output);
+  deque_init(reg_ctx->ambi_queue);
+  reg_ctx->fix_pos_func = default_fix_pos;
+  reg_ctx->fix_pos_arg = NULL;
   return reg_ctx;
 }
 
@@ -277,18 +289,35 @@ void free_expr_ctx(avl_node_t node, void* arg) {
 
 void reglet_free_context(reg_ctx_t context) {
   if (context != NULL) {
+    // free expr_ctx and map
     avl_walk_in_order(context->expr_ctx_map, NULL, free_expr_ctx, NULL, context);
     avl_destruct(context->expr_ctx_map);
+    // free pos_cache pool
     dynapool_destruct(context->pos_cache_pool);
+    // free output queue
     prique_destruct(context->output_queue);
+    // free context
     afree(context);
   }
 }
 
-void reglet_reset_context(reg_ctx_t context, char content[], size_t len) {
+void reglet_reset_context(reg_ctx_t context) {
   if (context != NULL) {
-    context->content = (strlen_s){.ptr = content, .len = len};
+    // free expression context, and clear map
     avl_walk_in_order(context->expr_ctx_map, NULL, free_expr_ctx, NULL, context);
     avl_reset(context->expr_ctx_map);
+    // clear ambi_ctx queue
+    deque_init(context->ambi_queue);
+    // TODO: clear output_queue
+  }
+}
+
+void reglet_fix_pos(reg_ctx_t context, fix_pos_f fix_pos_func, void* fix_pos_arg) {
+  if (fix_pos_func != NULL) {
+    context->fix_pos_func = fix_pos_func;
+    context->fix_pos_arg = fix_pos_arg;
+  } else {
+    context->fix_pos_func = default_fix_pos;
+    context->fix_pos_arg = NULL;
   }
 }

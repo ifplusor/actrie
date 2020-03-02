@@ -135,8 +135,8 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
 
 static inline PyObject* build_matched_output(wctx_t wctx, word_t matched_word) {
   return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len,
-                       wctx->pos[matched_word->pos.so], wctx->pos[matched_word->pos.eo], matched_word->extra.ptr,
-                       matched_word->extra.len);
+                       wctx->utf8_ctx.pos[matched_word->pos.so], wctx->utf8_ctx.pos[matched_word->pos.eo],
+                       matched_word->extra.ptr, matched_word->extra.len);
 }
 
 PyObject* wrap_next(PyObject* dummy, PyObject* args) {
