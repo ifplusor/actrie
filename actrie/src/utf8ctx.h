@@ -22,6 +22,7 @@ wctx_t alloc_context(matcher_t matcher);
 void free_context(wctx_t wctx);
 bool reset_context(wctx_t wctx, char* content, int length);
 word_t next(wctx_t wctx);
+word_t next_prefix(wctx_t wctx);
 
 #ifdef __cplusplus
 }

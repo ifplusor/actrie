@@ -64,3 +64,11 @@ word_t next(wctx_t wctx) {
 
   return matcher_next(wctx->matcher_ctx);
 }
+
+word_t next_prefix(wctx_t wctx) {
+  if (wctx == NULL) {
+    return NULL;
+  }
+
+  return matcher_next_prefix(wctx->matcher_ctx);
+}

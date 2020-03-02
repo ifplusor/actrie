@@ -3,7 +3,7 @@
 import os
 
 from . import _actrie
-from .context import Context
+from .context import Context, PrefixContext
 from .util import convert2pass
 
 
@@ -105,14 +105,17 @@ class Matcher:
 
 
 class PrefixMatcher(Matcher):
-    def load_from_file(self, path):
-        raise MatcherError("not supported!")
+    def match(self, content):
+        if not self._matcher:
+            raise MatcherError("matcher is not initialized")
+        return PrefixContext(self, content)
 
-    def load_from_string(self, keyword):
-        if self._matcher:
-            raise MatcherError("matcher is initialized")
-        if not keyword:
-            return False
-        keyword = convert2pass(keyword)
-        self._matcher = _actrie.ConstructPrefixByString(keyword)
-        return self._matcher is not None
+    def findall(self, content):
+        """Return a list of all matches of pattern in string.
+
+        :type content: str
+        :rtype: list[(str, int, int, str)]
+        """
+        if not self._matcher:
+            raise MatcherError("matcher is not initialized")
+        return _actrie.FindAllPrefix(self._matcher, content)

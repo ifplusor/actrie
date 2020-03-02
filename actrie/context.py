@@ -26,3 +26,11 @@ class Context(Iterator):
 
     def next(self):
         return self.__next__()
+
+
+class PrefixContext(Context):
+    def __next__(self):
+        matched = _actrie.NextPrefix(self._context)
+        if matched is None:
+            raise StopIteration
+        return matched

@@ -47,7 +47,9 @@ void trie_free(trie_t trie, trie_node_free_f node_free_func);
 
 void* trie_add_keyword(trie_t self, const char* keyword, size_t len, void* value);
 void* trie_search(trie_t self, const char* keyword, size_t len);
+void trie_sort_to_line(trie_t self);
 void trie_rebuild_parent_relation(trie_t self);
+void trie_build_automation(trie_t self);
 
 static inline trie_node_t trie_access_node(trie_t self, size_t index) {
 #ifdef CHECK

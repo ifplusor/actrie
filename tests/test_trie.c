@@ -1,11 +1,11 @@
-//
-// Created by james on 6/16/17.
-//
-
-
-#include "../src/actrie.h"
-#include "../src/acdat.h"
-
+/**
+ * test_trie.c
+ *
+ * @author James Yin <ywhjames@hotmail.com>
+ */
+#include "../src/trie/acdat.h"
+#include "../src/trie/actrie.h"
+#include "../src/vocab.h"
 
 trie_node_t trie_next_node_by_binary(trie_t self, trie_node_t pNode, unsigned char key);
 
@@ -15,9 +15,13 @@ size_t trie_match(trie_t self, unsigned char content[], size_t len) {
     trie_node_t pCursor = self->root;
     for (j = i; j < len; ++j) {
       trie_node_t pNext = trie_next_node_by_binary(self, pCursor, content[j]);
-      if (pNext == self->root) break;
+      if (pNext == self->root) {
+        break;
+      }
       pCursor = pNext;
-      if (pNext->value_list != NULL) c++;
+      if (pNext->value != NULL) {
+        c++;
+      }
     }
   }
   return c;
@@ -34,36 +38,45 @@ size_t trie_ac_match(trie_t self, unsigned char content[], size_t len) {
     }
     pCursor = pNext;
     while (pNext != self->root) {
-      if (pNext->value_list != NULL) c++;
+      if (pNext->value != NULL) {
+        c++;
+      }
       pNext = trie_access_node(self, pNext->trie_failed);
     }
   }
   return c;
 }
 
-
 int main() {
+  bool enable_automation = false;
 
   vocab_t vocab = vocab_construct(stream_type_file, "company.txt");
-  aobj acdat_conf = matcher_root_conf(1);
-  acdat_conf = dat_matcher_conf(1, matcher_type_dat, acdat_conf);
+  if (vocab == NULL) {
+    exit(-1);
+  }
 
-  match_dict_t dict = dict_alloc();
-  if (dict == NULL) exit(-1);
-  if (!dict_parse(dict, vocab, acdat_conf)) exit(-1);
+  trie_t prime_trie = trie_alloc();
+  if (prime_trie == NULL) {
+    exit(-1);
+  }
 
-  trie_conf_s trie_conf = {
-      .filter = 1,
-      .enable_automation = false
-  };
-  trie_t prime_trie = trie_construct(dict, &trie_conf);
-  if (prime_trie == NULL) exit(-1);
+  strlen_s keyword, extra;
+  vocab_reset(vocab);
+  while (vocab_next_word(vocab, &keyword, &extra)) {
+    trie_add_keyword(prime_trie, keyword.ptr, keyword.len, 1);
+  }
+  trie_sort_to_line(prime_trie);
+  if (enable_automation) {
+    trie_build_automation(prime_trie);
+  }
 
   printf("use memory %llu\n", amalloc_used_memory());
   printf("use node %llu\n", segarray_size(prime_trie->node_array));
 
-  FILE *fin = fopen("corpus1.txt", "r");
-  if (fin == NULL) exit(-1);
+  FILE* fin = fopen("corpus1.txt", "r");
+  if (fin == NULL) {
+    exit(-1);
+  }
 
   printf("load success!\n");
 
@@ -75,17 +88,18 @@ int main() {
     while (fscanf(fin, "%[^\n]\n", content) != EOF) {
       count++;
       size_t len = strlen(content);
-      if (trie_conf.enable_automation)
+      if (false) {
         c += trie_ac_match(prime_trie, content, len);
-      else
+      } else {
         c += trie_match(prime_trie, content, len);
+      }
     }
 
     fseek(fin, 0, SEEK_SET);
   }
 
   long long end = current_milliseconds();
-  double time = (double) (end - start) / 1000;
+  double time = (double)(end - start) / 1000;
   printf("time: %lfs\n", time);
   printf("line: %d\n", count);
   printf("match: %d\n", c);

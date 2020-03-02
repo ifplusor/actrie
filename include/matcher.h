@@ -41,6 +41,7 @@ typedef struct _actrie_matched_word_ {
 } word_s, *word_t;
 
 word_t matcher_next(context_t context);
+word_t matcher_next_prefix(context_t context);
 
 #ifdef __cplusplus
 }

@@ -99,12 +99,7 @@ set(actrie_SOURCE_FILES
 
 add_library(actrie STATIC ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})
 target_include_directories(actrie PUBLIC include)
-target_link_libraries(
-  actrie
-  PUBLIC alib
-  PUBLIC pcre)
-# we link pcre static lib, this is must in windows
-target_compile_definitions(actrie PUBLIC -DPCRE_STATIC)
+target_link_libraries(actrie PUBLIC alib)
 
 # python interface
 option(ENABLE_PYTHON "Enable compile python interface." OFF)

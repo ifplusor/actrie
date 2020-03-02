@@ -139,7 +139,9 @@ static inline PyObject* build_matched_output(wctx_t wctx, word_t matched_word) {
                        matched_word->extra.ptr, matched_word->extra.len);
 }
 
-PyObject* wrap_next(PyObject* dummy, PyObject* args) {
+typedef word_t (*wctx_next_f)(wctx_t wctx);
+
+PyObject* wrap_next0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_func) {
   unsigned long long temp;
   wctx_t wctx;
 
@@ -150,7 +152,7 @@ PyObject* wrap_next(PyObject* dummy, PyObject* args) {
 
   wctx = (wctx_t)temp;
 
-  word_t matched_word = next(wctx);
+  word_t matched_word = wctx_next_func(wctx);
   if (matched_word != NULL) {
     return build_matched_output(wctx, matched_word);
   }
@@ -158,7 +160,7 @@ PyObject* wrap_next(PyObject* dummy, PyObject* args) {
   Py_RETURN_NONE;
 }
 
-PyObject* wrap_find_all(PyObject* dummy, PyObject* args) {
+PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_func) {
   unsigned long long temp;
   matcher_t matcher;
   char* content;
@@ -181,16 +183,33 @@ PyObject* wrap_find_all(PyObject* dummy, PyObject* args) {
   }
 
   PyObject* list = PyList_New(0);
-  word_t matched_word = next(wctx);
+  word_t matched_word = wctx_next_func(wctx);
   while (matched_word != NULL) {
     PyObject* item = build_matched_output(wctx, matched_word);
     PyList_Append(list, item);
     Py_DECREF(item);
+    matched_word = wctx_next_func(wctx);
   }
 
   free_context(wctx);
 
   return list;
+}
+
+PyObject* wrap_next(PyObject* dummy, PyObject* args) {
+  return wrap_next0(dummy, args, next);
+}
+
+PyObject* wrap_find_all(PyObject* dummy, PyObject* args) {
+  return wrap_find_all0(dummy, args, next);
+}
+
+PyObject* wrap_next_prefix(PyObject* dummy, PyObject* args) {
+  return wrap_next0(dummy, args, next_prefix);
+}
+
+PyObject* wrap_find_all_prefix(PyObject* dummy, PyObject* args) {
+  return wrap_find_all0(dummy, args, next_prefix);
 }
 
 static PyMethodDef wrapMethods[] = {
@@ -202,6 +221,8 @@ static PyMethodDef wrapMethods[] = {
     {"ResetContext", wrap_reset_context, METH_VARARGS, "reset iterator context"},
     {"Next", wrap_next, METH_VARARGS, "iterator next"},
     {"FindAll", wrap_find_all, METH_VARARGS, "find all matched strings"},
+    {"NextPrefix", wrap_next_prefix, METH_VARARGS, "iterator next prefix"},
+    {"FindAllPrefix", wrap_find_all_prefix, METH_VARARGS, "find all matched prefix strings"},
     {NULL, NULL}};
 
 #ifdef IS_PY3K

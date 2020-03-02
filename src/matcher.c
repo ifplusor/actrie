@@ -31,8 +31,6 @@ static void add_pattern_to_matcher(ptrn_t pattern, strlen_t extra, void* arg) {
   reglet_add_pattern(matcher->reglet, pattern, extra);
 }
 
-void trie_sort_to_line(trie_t self);
-
 static void free_expr_list(void* trie, void* node) {
   list_t list = (list_t)node;
   _release(list);
@@ -127,11 +125,13 @@ void matcher_reset_context(context_t context, char content[], size_t len) {
   reglet_reset_context(context->reg_ctx);
 }
 
-word_t matcher_next(context_t context) {
+typedef bool (*dat_next_on_node_f)(dat_ctx_t ctx);
+
+static word_t matcher_next0(context_t context, dat_next_on_node_f dat_next_on_node_func) {
   // 不保证输出有序
   pos_cache_t matched = prique_pop(context->reg_ctx->output_queue);
   if (matched == NULL) {
-    while (dat_ac_next_on_node(context->dat_ctx)) {
+    while (dat_next_on_node_func(context->dat_ctx)) {
       list_t expr_list = context->dat_ctx->_value;
       while (expr_list != NULL) {
         expr_t expr = _(list, expr_list, car);
@@ -165,4 +165,12 @@ word_t matcher_next(context_t context) {
     return &context->matched_word;
   }
   return NULL;
+}
+
+word_t matcher_next(context_t context) {
+  return matcher_next0(context, dat_ac_next_on_node);
+}
+
+word_t matcher_next_prefix(context_t context) {
+  return matcher_next0(context, dat_prefix_next_on_node);
 }
