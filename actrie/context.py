@@ -15,7 +15,9 @@ class Context(Iterator):
     def __del__(self):
         _actrie.FreeContext(self._context)
 
-    def reset(self):
+    def reset(self, content=None):
+        if content is not None:
+            self._content = content
         _actrie.ResetContext(self._context, self._content)
 
     def __next__(self):
