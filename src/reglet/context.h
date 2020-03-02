@@ -48,6 +48,7 @@ typedef struct _regex_context_ {
   deque_node_s ambi_queue[1];
   fix_pos_f fix_pos_func;
   void* fix_pos_arg;
+  bool reset_or_free;
 } reg_ctx_s, *reg_ctx_t;
 
 #ifdef __cplusplus

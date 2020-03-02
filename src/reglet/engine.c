@@ -289,6 +289,7 @@ void free_expr_ctx(avl_node_t node, void* arg) {
 
 void reglet_free_context(reg_ctx_t context) {
   if (context != NULL) {
+    context->reset_or_free = false;
     // free expr_ctx and map
     avl_walk_in_order(context->expr_ctx_map, NULL, free_expr_ctx, NULL, context);
     avl_destruct(context->expr_ctx_map);
@@ -303,12 +304,17 @@ void reglet_free_context(reg_ctx_t context) {
 
 void reglet_reset_context(reg_ctx_t context) {
   if (context != NULL) {
+    context->reset_or_free = true;
     // free expression context, and clear map
     avl_walk_in_order(context->expr_ctx_map, NULL, free_expr_ctx, NULL, context);
     avl_reset(context->expr_ctx_map);
+    // clear output_queue
+    for (size_t i = 1; i <= context->output_queue->len; i++) {
+      dynapool_free_node(context->pos_cache_pool, context->output_queue->data);
+    }
+    context->output_queue->len = 0;
     // clear ambi_ctx queue
     deque_init(context->ambi_queue);
-    // TODO: clear output_queue
   }
 }
 

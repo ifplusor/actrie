@@ -7,7 +7,7 @@
 #include <utf8helper.h>
 
 int main() {
-  char* str = "(好用|好吃(?&!吃的)|真棒).{1,22}(人|东西)\t123\n东西.{0,2}(?<!的|和)真棒\t2\n";
+  char* str = "(好用|好.{1,1}吃(?&!难吃)|真棒).{1,7}(人|东西)\t123\n东西.{0,2}(?<!的|和)真棒\t2\n";
   strlen_s pattern = {.ptr = str, .len = strlen(str)};
 
   printf("use memory: %zu\n", amalloc_used_memory());

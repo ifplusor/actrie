@@ -16,10 +16,12 @@ typedef struct _expression_distance_context_ {
 void dist_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
   dist_ctx_t dist_ctx = container_of(expr_ctx, dist_ctx_s, header);
 
-  avl_walk_in_order(dist_ctx->prefix_cache, NULL, free_pos_cache, NULL, reg_ctx);
-  avl_destruct(dist_ctx->prefix_cache);
+  if (reg_ctx->reset_or_free) {
+    avl_walk_in_order(dist_ctx->prefix_cache, NULL, free_pos_cache, NULL, reg_ctx);
+    avl_walk_in_order(dist_ctx->suffix_cache, NULL, free_pos_cache, NULL, reg_ctx);
+  }
 
-  avl_walk_in_order(dist_ctx->suffix_cache, NULL, free_pos_cache, NULL, reg_ctx);
+  avl_destruct(dist_ctx->prefix_cache);
   avl_destruct(dist_ctx->suffix_cache);
 
   afree(dist_ctx);

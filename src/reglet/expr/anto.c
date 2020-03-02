@@ -13,7 +13,10 @@ typedef struct _expression_anti_antonym_context_ {
 void anto_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
   anto_ctx_t anto_ctx = container_of(expr_ctx, anto_ctx_s, header);
 
-  avl_walk_in_order(anto_ctx->antonym_cache, NULL, free_pos_cache, NULL, reg_ctx);
+  if (reg_ctx->reset_or_free) {
+    avl_walk_in_order(anto_ctx->antonym_cache, NULL, free_pos_cache, NULL, reg_ctx);
+  }
+
   avl_destruct(anto_ctx->antonym_cache);
 
   afree(anto_ctx);

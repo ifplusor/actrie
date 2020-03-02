@@ -16,15 +16,19 @@ typedef struct _expression_anti_ambiguity_context_ {
 void ambi_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
   ambi_ctx_t ambi_ctx = container_of(expr_ctx, ambi_ctx_s, header);
 
-  avl_walk_in_order(ambi_ctx->ambiguity_cache_eoso, NULL, free_pos_cache, NULL, reg_ctx);
+  if (reg_ctx->reset_or_free) {
+    avl_walk_in_order(ambi_ctx->ambiguity_cache_eoso, NULL, free_pos_cache, NULL, reg_ctx);
+    avl_walk_in_order(ambi_ctx->ambiguity_cache_soeo, NULL, free_pos_cache, NULL, reg_ctx);
+
+    pos_cache_t pos_cache = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
+    while (pos_cache != NULL) {
+      dynapool_free_node(reg_ctx->pos_cache_pool, pos_cache);
+      pos_cache = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
+    }
+  }
+
   avl_destruct(ambi_ctx->ambiguity_cache_eoso);
   avl_destruct(ambi_ctx->ambiguity_cache_soeo);
-
-  pos_cache_t pos_cache = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
-  while (pos_cache != NULL) {
-    dynapool_free_node(reg_ctx->pos_cache_pool, pos_cache);
-    pos_cache = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
-  }
 
   afree(ambi_ctx);
 }
