@@ -343,7 +343,7 @@ int token_next(stream_t stream, dstr_t* token) {
 
   while ((ch = stream_getc(stream)) != EOF) {
     if (ch == '\\') {  // 处理转义字符
-      ch = token_escape(ch, stream);
+      ch = token_escape(stream_getc(stream), stream);
     } else {
       ch = token_meta(ch, stream);
     }
