@@ -28,7 +28,7 @@ class Matcher:
             raise MatcherError("matcher is initialized")
         if not os.path.isfile(path):
             return False
-        self._matcher = _actrie.ConstructByFile(path)
+        self._matcher = _actrie.ConstructByFile(convert2pass(path))
         return self._matcher is not None
 
     @classmethod
@@ -43,8 +43,7 @@ class Matcher:
             raise MatcherError("matcher is initialized")
         if keyword is None:
             return False
-        keyword = convert2pass(keyword)
-        self._matcher = _actrie.ConstructByString(keyword)
+        self._matcher = _actrie.ConstructByString(convert2pass(keyword))
         return self._matcher is not None
 
     @classmethod
@@ -87,7 +86,7 @@ class Matcher:
         """
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return _actrie.FindAll(self._matcher, content)
+        return _actrie.FindAll(self._matcher, convert2pass(content))
 
     def finditer(self, content):
         return self.match(content)
@@ -118,4 +117,4 @@ class PrefixMatcher(Matcher):
         """
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return _actrie.FindAllPrefix(self._matcher, content)
+        return _actrie.FindAllPrefix(self._matcher, convert2pass(content))

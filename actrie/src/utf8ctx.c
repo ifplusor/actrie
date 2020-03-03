@@ -15,13 +15,16 @@ wctx_t alloc_context(matcher_t matcher) {
       break;
     }
 
-    wctx = malloc(sizeof(wctx_s));
+    wctx = amalloc(sizeof(wctx_s));
     if (wctx == NULL) {
       break;
     }
 
     wctx->matcher_ctx = context;
     matcher_fix_pos(wctx->matcher_ctx, fix_utf8_pos, &wctx->utf8_ctx);
+
+    wctx->utf8_ctx.pos = NULL;
+    wctx->utf8_ctx.len = 0;
 
     return wctx;
   } while (0);
@@ -35,7 +38,7 @@ void free_context(wctx_t wctx) {
   if (wctx != NULL) {
     matcher_free_context(wctx->matcher_ctx);
     afree(wctx->utf8_ctx.pos);
-    free(wctx);
+    afree(wctx);
   }
 }
 

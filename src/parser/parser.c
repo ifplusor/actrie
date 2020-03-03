@@ -220,6 +220,9 @@ bool parse_vocab(vocab_t vocab, have_pattern_f have_pattern, void* arg, bool ign
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
+    if (keyword.len <= 0) {
+      continue;
+    }
     // parse pattern, output syntax tree
     ptrn_t pattern = parse_pattern(&keyword);
     if (pattern == NULL) {

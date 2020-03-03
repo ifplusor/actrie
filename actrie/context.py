@@ -3,12 +3,13 @@
 from collections import Iterator
 
 from . import _actrie
+from .util import convert2pass
 
 
 class Context(Iterator):
     def __init__(self, matcher, content):
         self._matcher = matcher
-        self._content = content
+        self._content = convert2pass(content)
         self._context = _actrie.AllocContext(self._matcher._matcher)
         _actrie.ResetContext(self._context, self._content)
 
@@ -17,7 +18,7 @@ class Context(Iterator):
 
     def reset(self, content=None):
         if content is not None:
-            self._content = content
+            self._content = convert2pass(content)
         _actrie.ResetContext(self._context, self._content)
 
     def __next__(self):
