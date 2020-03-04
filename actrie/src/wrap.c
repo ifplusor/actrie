@@ -120,15 +120,16 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
   wctx_t wctx;
   char* content;
   int length;
+  PyObject* return_byte_pos;
 
-  if (!PyArg_ParseTuple(args, "Ks#", &temp, &content, &length)) {
+  if (!PyArg_ParseTuple(args, "Ks#O", &temp, &content, &length, &return_byte_pos)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_NONE;
   }
 
   wctx = (wctx_t)temp;
 
-  if (reset_context(wctx, content, length)) {
+  if (reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
     Py_RETURN_TRUE;
   }
 
@@ -136,9 +137,14 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
 }
 
 static inline PyObject* build_matched_output(wctx_t wctx, word_t matched_word) {
-  return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len,
-                       wctx->utf8_ctx.pos[matched_word->pos.so], wctx->utf8_ctx.pos[matched_word->pos.eo],
-                       matched_word->extra.ptr, matched_word->extra.len);
+  if (wctx->return_byte_pos) {
+    return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len, matched_word->pos.so,
+                         matched_word->pos.eo, matched_word->extra.ptr, matched_word->extra.len);
+  } else {
+    return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len,
+                         wctx->utf8_ctx.pos[matched_word->pos.so], wctx->utf8_ctx.pos[matched_word->pos.eo],
+                         matched_word->extra.ptr, matched_word->extra.len);
+  }
 }
 
 typedef word_t (*wctx_next_f)(wctx_t wctx);
@@ -167,8 +173,9 @@ PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_
   matcher_t matcher;
   char* content;
   int length;
+  PyObject* return_byte_pos;
 
-  if (!PyArg_ParseTuple(args, "Ks#", &temp, &content, &length)) {
+  if (!PyArg_ParseTuple(args, "Ks#O", &temp, &content, &length, &return_byte_pos)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_NONE;
   }
@@ -180,7 +187,7 @@ PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_
     Py_RETURN_NONE;
   }
 
-  if (!reset_context(wctx, content, length)) {
+  if (!reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
     Py_RETURN_NONE;
   }
 

@@ -16,11 +16,12 @@ extern "C" {
 typedef struct context_wrapper {
   context_t matcher_ctx;
   utf8_ctx_s utf8_ctx;
+  bool return_byte_pos;
 } wctx_s, *wctx_t;
 
 wctx_t alloc_context(matcher_t matcher);
 void free_context(wctx_t wctx);
-bool reset_context(wctx_t wctx, char* content, int length);
+bool reset_context(wctx_t wctx, char* content, int length, bool return_byte_pos);
 word_t next(wctx_t wctx);
 word_t next_prefix(wctx_t wctx);
 

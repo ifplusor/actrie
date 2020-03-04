@@ -26,6 +26,8 @@ wctx_t alloc_context(matcher_t matcher) {
     wctx->utf8_ctx.pos = NULL;
     wctx->utf8_ctx.len = 0;
 
+    wctx->return_byte_pos = false;
+
     return wctx;
   } while (0);
 
@@ -42,11 +44,13 @@ void free_context(wctx_t wctx) {
   }
 }
 
-bool reset_context(wctx_t wctx, char* content, int len) {
+bool reset_context(wctx_t wctx, char* content, int len, bool return_byte_pos) {
   do {
     if (wctx == NULL) {
       break;
     }
+
+    wctx->return_byte_pos = return_byte_pos;
 
     if (!reset_utf8_context(&wctx->utf8_ctx, content, len)) {
       break;

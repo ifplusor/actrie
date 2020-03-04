@@ -3,31 +3,31 @@
 
 from actrie import *
 
-pattern = "(f|(a|b).{0,5}(e(?&!ef)|g))"
-content = "abcdefg"
+pattern = "中国\n北京"
+content = "中国，北京"
 
 
 def test():
-    matcher = Matcher()
-    matcher.load_from_string(pattern)
+    matcher = Matcher.create_by_string(pattern)
 
-    print("\ntest context")
+    print("\ntest context:")
     context = matcher.match(content)
     for matched in context:
-        print(matched)
+        print("{}: so:{}, eo:{}, extra:{}".format(*matched))
 
-    print("\ntest not reset")
+    print("\ntest not reset:")
     for matched in context:
-        print(matched)
+        print("{}: so:{}, eo:{}, extra:{}".format(*matched))
 
-    print("\ntest reset")
-    context.reset()
+    print("\ntest reset:")
+    context.reset(return_byte_pos=True)
     for matched in context:
-        print(matched)
+        print("{}: so:{}, eo:{}, extra:{}".format(*matched))
 
-    print("\ntest find all")
-    ret = matcher.findall(content)
-    print(ret)
+    print("\ntest find all:")
+    matched_list = matcher.findall(content)
+    for matched in matched_list:
+        print("{}: so:{}, eo:{}, extra:{}".format(*matched))
 
 
 if __name__ == "__main__":

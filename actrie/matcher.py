@@ -75,12 +75,12 @@ class Matcher:
             return matcher
         return None
 
-    def match(self, content):
+    def match(self, content, return_byte_pos=False):
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return Context(self, content)
+        return Context(self, content, return_byte_pos)
 
-    def findall(self, content):
+    def findall(self, content, return_byte_pos=False):
         """Return a list of all matches of pattern in string.
 
         :type content: str
@@ -88,30 +88,30 @@ class Matcher:
         """
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return _actrie.FindAll(self._matcher, convert2pass(content))
+        return _actrie.FindAll(self._matcher, convert2pass(content), return_byte_pos)
 
-    def finditer(self, content):
-        return self.match(content)
+    def finditer(self, content, return_byte_pos=False):
+        return self.match(content, return_byte_pos)
 
-    def search(self, content):
+    def search(self, content, return_byte_pos=False):
         """Return first matched.
 
         :type content: str
         :rtype: (str, int, int, str)
         """
-        ctx = self.finditer(content)
+        ctx = self.finditer(content, return_byte_pos)
         for matched in ctx:
             return matched
         return None
 
 
 class PrefixMatcher(Matcher):
-    def match(self, content):
+    def match(self, content, return_byte_pos=False):
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return PrefixContext(self, content)
+        return PrefixContext(self, content, return_byte_pos)
 
-    def findall(self, content):
+    def findall(self, content, return_byte_pos=False):
         """Return a list of all matches of pattern in string.
 
         :type content: str
@@ -119,4 +119,4 @@ class PrefixMatcher(Matcher):
         """
         if not self._matcher:
             raise MatcherError("matcher is not initialized")
-        return _actrie.FindAllPrefix(self._matcher, convert2pass(content))
+        return _actrie.FindAllPrefix(self._matcher, convert2pass(content), return_byte_pos)
