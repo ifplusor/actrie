@@ -7,7 +7,7 @@
 
 #include <alib/string/utf8.h>
 
-utf8_ctx_t alloc_utf8_context() {
+utf8_ctx_t alloc_utf8_context(void) {
   utf8_ctx_t utf8_ctx = amalloc(sizeof(utf8_ctx_s));
   if (utf8_ctx != NULL) {
     utf8_ctx->pos = NULL;

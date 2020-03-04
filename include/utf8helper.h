@@ -17,7 +17,7 @@ typedef struct _actrie_utf8_context_ {
   size_t len;
 } utf8_ctx_s, *utf8_ctx_t;
 
-utf8_ctx_t alloc_utf8_context();
+utf8_ctx_t alloc_utf8_context(void);
 void free_utf8_context(utf8_ctx_t context);
 
 bool reset_utf8_context(utf8_ctx_t context, char content[], size_t len);
