@@ -6,13 +6,32 @@ is_py3k = bool(sys.version_info[0] == 3)
 
 
 def convert2pass(obj):
-    # we only convert unicode in python2 to utf-8
-    if not is_py3k and isinstance(obj, unicode):
-        obj = obj.encode("utf-8")
+    if is_py3k:
+        if isinstance(obj, bytes):
+            return obj.decode("utf-8")
+    else:
+        if isinstance(obj, unicode):
+            return obj.encode("utf-8")
     return obj
 
 
-def convert2unicode(str):
+def convert2unicode(obj):
+    if is_py3k:
+        if isinstance(obj, bytes):
+            return obj.decode("utf-8")
+    else:
+        if isinstance(obj, str):
+            return obj.decode("utf-8")
+    return obj
+
+
+def replace_escap(word):
     if is_py3k or isinstance(str, unicode):
-        return str
-    return str.decode('utf-8')
+        for old, new in ((u"\\", u"\\\\"), (u"\t", u"\\t"), (u"\r", u"\\r"), (u"\n", u"\\n"),
+                         (u"(", u"\\("), (u")", u"\\)"), (u".", u"\\."), (u"|", u"\\|")):
+            word = word.replace(old, new)
+    else:
+        for old, new in (("\\", "\\\\"), ("\t", "\\t"), ("\r", "\\r"), ("\n", "\\n"),
+                         ("(", "\\("), (")", "\\)"), (".", "\\."), ("|", "\\|")):
+            word = word.replace(old, new)
+    return word
