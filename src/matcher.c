@@ -36,12 +36,12 @@ static void free_expr_list(void* trie, void* node) {
   _release(list);
 }
 
-matcher_t matcher_construct(vocab_t vocab) {
+static matcher_t matcher_construct(vocab_t vocab, bool ignore_bad_pattern) {
   matcher_t matcher = matcher_alloc();
 
   // build reglet
   matcher->reglet = reglet_construct();
-  if (!parse_vocab(vocab, add_pattern_to_matcher, matcher, false)) {
+  if (!parse_vocab(vocab, add_pattern_to_matcher, matcher, ignore_bad_pattern)) {
     trie_free(matcher->reglet->trie, (trie_node_free_f)free_expr_list);
     matcher->reglet->trie = NULL;
     matcher_destruct(matcher);
@@ -58,16 +58,16 @@ matcher_t matcher_construct(vocab_t vocab) {
   return matcher;
 }
 
-matcher_t matcher_construct_by_file(const char* path) {
+matcher_t matcher_construct_by_file(const char* path, bool ignore_bad_pattern) {
   vocab_t vocab = vocab_construct(stream_type_file, (void*)path);
-  matcher_t matcher = matcher_construct(vocab);
+  matcher_t matcher = matcher_construct(vocab, ignore_bad_pattern);
   vocab_destruct(vocab);
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(strlen_t string) {
+matcher_t matcher_construct_by_string(strlen_t string, bool ignore_bad_pattern) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
-  matcher_t matcher = matcher_construct(vocab);
+  matcher_t matcher = matcher_construct(vocab, ignore_bad_pattern);
   vocab_destruct(vocab);
   return matcher;
 }

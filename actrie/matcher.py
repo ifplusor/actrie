@@ -23,37 +23,39 @@ class Matcher:
         if self._matcher:
             _actrie.Destruct(self._matcher)
 
-    def load_from_file(self, path):
+    def load_from_file(self, path, ignore_bad_pattern=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if not os.path.isfile(path):
             return False
-        self._matcher = _actrie.ConstructByFile(convert2pass(path))
+        self._matcher = _actrie.ConstructByFile(
+            convert2pass(path), ignore_bad_pattern)
         return self._matcher is not None
 
     @classmethod
-    def create_by_file(cls, path):
+    def create_by_file(cls, path, ignore_bad_pattern=True):
         matcher = cls()
-        if matcher.load_from_file(path):
+        if matcher.load_from_file(path, ignore_bad_pattern):
             return matcher
         return None
 
-    def load_from_string(self, keyword):
+    def load_from_string(self, keyword, ignore_bad_pattern=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if keyword is None:
             return False
-        self._matcher = _actrie.ConstructByString(convert2pass(keyword))
+        self._matcher = _actrie.ConstructByString(
+            convert2pass(keyword), ignore_bad_pattern)
         return self._matcher is not None
 
     @classmethod
-    def create_by_string(cls, keyword):
+    def create_by_string(cls, keyword, ignore_bad_pattern=True):
         matcher = cls()
-        if matcher.load_from_string(keyword):
+        if matcher.load_from_string(keyword, ignore_bad_pattern):
             return matcher
         return None
 
-    def load_from_collection(self, strings):
+    def load_from_collection(self, strings, ignore_bad_pattern=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if isinstance(strings, list) or isinstance(strings, set):
@@ -64,12 +66,12 @@ class Matcher:
                  if convert2pass(word) is not None])
         else:
             raise MatcherError("should be list or set")
-        return self.load_from_string(keywords)
+        return self.load_from_string(keywords, ignore_bad_pattern)
 
     @classmethod
-    def create_by_collection(cls, strings):
+    def create_by_collection(cls, strings, ignore_bad_pattern=True):
         matcher = cls()
-        if matcher.load_from_collection(strings):
+        if matcher.load_from_collection(strings, ignore_bad_pattern):
             return matcher
         return None
 

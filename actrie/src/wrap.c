@@ -27,14 +27,15 @@
 
 PyObject* wrap_construct_by_file(PyObject* dummy, PyObject* args) {
   const char* path;
+  PyObject* ignore_bad_pattern;
   matcher_t matcher;
 
-  if (!PyArg_ParseTuple(args, "s", &path)) {
+  if (!PyArg_ParseTuple(args, "sO", &path, &ignore_bad_pattern)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_NONE;
   }
 
-  matcher = matcher_construct_by_file(path);
+  matcher = matcher_construct_by_file(path, PyObject_IsTrue(ignore_bad_pattern));
   if (matcher == NULL) {
     Py_RETURN_NONE;
   }
@@ -45,15 +46,16 @@ PyObject* wrap_construct_by_file(PyObject* dummy, PyObject* args) {
 PyObject* wrap_construct_by_string(PyObject* dummy, PyObject* args) {
   const char* string;
   int length;
+  PyObject* ignore_bad_pattern;
   matcher_t matcher;
 
-  if (!PyArg_ParseTuple(args, "s#", &string, &length)) {
+  if (!PyArg_ParseTuple(args, "s#O", &string, &length, &ignore_bad_pattern)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_NONE;
   }
 
   strlen_s vocab = {.ptr = (char*)string, .len = (size_t)length};
-  matcher = matcher_construct_by_string(&vocab);
+  matcher = matcher_construct_by_string(&vocab, PyObject_IsTrue(ignore_bad_pattern));
   if (matcher == NULL) {
     Py_RETURN_NONE;
   }
