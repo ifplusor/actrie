@@ -61,9 +61,18 @@ data = open(os.path.join(actrie_dir, 'actrie', '__init__.py')).read()
 kwds['version'] = eval(pat.search(data).group(1))
 
 setup(name="actrie",
-      description="actrie",
+      description="Aho-Corasick automation for large-scale multi-pattern matching.",
       author="James Yin",
       author_email="ywhjames@hotmail.com",
+      url="https://github.com/ifplusor/actrie",
       packages=['actrie', 'actrie.tests'],
       ext_modules=[actrie],
+      classifiers=[
+          "Programming Language :: Python :: 2",
+          "Programming Language :: Python :: 3",
+          "Programming Language :: C",
+          "Programming Language :: Python :: Implementation :: CPython",
+          "License :: OSI Approved :: BSD License",
+          "Operating System :: OS Independent",
+      ],
       **kwds)
