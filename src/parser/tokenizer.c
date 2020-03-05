@@ -86,10 +86,10 @@ const int hex_char2num[256] = {
 };
 // clang-format on
 
-tls_key_t dist_key;
+tls_key_t rept_key;
 
 bool tokenizer_init() {
-  return tls_create_key(&dist_key, free);
+  return tls_create_key(&rept_key, free);
 }
 
 /**
@@ -223,9 +223,13 @@ int token_escape(int ch, stream_t stream) {
       return '\r';
     case 'n':
       return '\n';
-    case ' ':
+    case 'd':
+      return TOKEN_NUM;
+    // case ' ':
     case '(':
     case ')':
+    case '{':
+    // case '}':
     case '.':
     case '|':
       return ch;
@@ -245,43 +249,41 @@ int token_escape(int ch, stream_t stream) {
   }
 }
 
-typedef struct _token_dist_s {
+typedef struct _token_rept_s {
   int min, max;
-} dist_s, *dist_t;
+} rept_s, *rept_t;
 
-void token_set_dist(int min, int max) {
-  dist_t dist = tls_get_value(dist_key);
-  if (dist == NULL) {
-    dist = malloc(sizeof(dist_s));
-    tls_set_value(dist_key, dist);
+void token_set_rept(int min, int max) {
+  rept_t rept = tls_get_value(rept_key);
+  if (rept == NULL) {
+    rept = malloc(sizeof(rept_s));
+    tls_set_value(rept_key, rept);
   }
-  dist->min = min;
-  dist->max = max;
+  rept->min = min;
+  rept->max = max;
 }
 
-int token_min_dist() {
-  dist_t dist = tls_get_value(dist_key);
-  if (dist == NULL) {
+int token_rept_min() {
+  rept_t rept = tls_get_value(rept_key);
+  if (rept == NULL) {
     return -1;
   }
-  return dist->min;
+  return rept->min;
 }
 
-int token_max_dist() {
-  dist_t dist = tls_get_value(dist_key);
-  if (dist == NULL) {
+int token_rept_max() {
+  rept_t rept = tls_get_value(rept_key);
+  if (rept == NULL) {
     return -1;
   }
-  return dist->max;
+  return rept->max;
 }
 
-int token_dist(int ch, stream_t stream) {
-  // dist-pattern: .{min,max}
+int token_rept(int ch, stream_t stream) {
+  // rept: {min,max}
   do {
     int min, max;
-    if (!token_expect_char(stream, '{')) {
-      break;
-    }
+
     token_skip_space(stream);
     if (!token_consume_integer(stream, &min) || min < 0) {
       break;
@@ -300,9 +302,9 @@ int token_dist(int ch, stream_t stream) {
     }
 
     // set min and max
-    token_set_dist(min, max);
+    token_set_rept(min, max);
 
-    return TOKEN_DIST;
+    return TOKEN_REPT;
   } while (0);
   return TOKEN_ERR;
 }
@@ -326,8 +328,10 @@ int token_meta(int ch, stream_t stream) {
       return token_subs(ch, stream);
     case ')':
       return TOKEN_SUBE;
-    case '.':  // dist-pattern
-      return token_dist(ch, stream);
+    case '{':  // rept
+      return token_rept(ch, stream);
+    case '.':
+      return TOKEN_ANY;
     case '|':
       return TOKEN_ALT;
     default:

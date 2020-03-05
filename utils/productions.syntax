@@ -5,6 +5,7 @@ pattern -> term
 term -> wrap
 term -> alter
 term -> dist
+term -> ddist
 term -> anti-anto
 term -> anti-ambi
 term -> plain
@@ -16,7 +17,8 @@ wrap -> ( term )
 alter -> term | term
 
 # 距离
-dist -> term .{m,n} term
+dist -> term . {m,n} term
+ddist -> term \d {m,n} term
 
 # 反义
 anti-anto -> anto term

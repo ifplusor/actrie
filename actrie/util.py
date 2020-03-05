@@ -27,11 +27,9 @@ def convert2unicode(obj):
 
 def replace_escap(word):
     if is_py3k or isinstance(str, unicode):
-        for old, new in ((u"\\", u"\\\\"), (u"\t", u"\\t"), (u"\r", u"\\r"), (u"\n", u"\\n"),
-                         (u"(", u"\\("), (u")", u"\\)"), (u".", u"\\."), (u"|", u"\\|")):
+        for old, new in ((u"\\", u"\\\\"), (u"(", u"\\("), (u")", u"\\)"), (u"{", u"\\{"), (u".", u"\\."), (u"|", u"\\|")):
             word = word.replace(old, new)
     else:
-        for old, new in (("\\", "\\\\"), ("\t", "\\t"), ("\r", "\\r"), ("\n", "\\n"),
-                         ("(", "\\("), (")", "\\)"), (".", "\\."), ("|", "\\|")):
+        for old, new in (("\\", "\\\\"), ("(", "\\("), (")", "\\)"), ("{", "\\{"), (".", "\\."), ("|", "\\|")):
             word = word.replace(old, new)
     return word

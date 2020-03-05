@@ -83,11 +83,11 @@ class Item:
         :return: item 的符号表示
         """
         if anchor >= pdct.length:
-            _str = "{} -> {} .".format(pdct.gen, " ".join(pdct.tokens))
+            _str = "{} -> {} #".format(pdct.gen, " ".join(pdct.tokens))
         elif anchor <= 0:
-            _str = "{} -> . {}".format(pdct.gen, " ".join(pdct.tokens))
+            _str = "{} -> # {}".format(pdct.gen, " ".join(pdct.tokens))
         else:
-            _str = "{} -> {} . {}".format(pdct.gen, " ".join(pdct.tokens[:anchor]), " ".join(pdct.tokens[anchor:]))
+            _str = "{} -> {} # {}".format(pdct.gen, " ".join(pdct.tokens[:anchor]), " ".join(pdct.tokens[anchor:]))
         if forward is not None:
             _str += "; {}".format(forward)
         return _str
@@ -230,6 +230,16 @@ class LRAnalyzer:
     """LR(1) 分析器"""
 
     gen_super = "pattern"
+    gen_term = "term"
+    gen_wrap = "wrap"
+    gen_alter = "alter"
+    gen_dist = "dist"
+    gen_ddist = "ddist"
+    gen_anti_anto = "anti-anto"
+    gen_anto = "anto"
+    gen_anti_ambi = "anti-ambi"
+    gen_ambi = "ambi"
+    gen_plain = "plain"
 
     token_text = "text"
     token_eof = "$"
@@ -238,7 +248,9 @@ class LRAnalyzer:
     token_sube = ")"
     token_ambi = "(?&!"
     token_anto = "(?<!"
-    token_dist = ".{m,n}"
+    token_any = "."
+    token_num = "\\d"
+    token_rept = "{m,n}"
     token_alt = "|"
 
     action_deny = "deny"
@@ -440,19 +452,19 @@ class LRAnalyzer:
         return closure
 
     def reduce_over_shift(self, pdct, token):
-        operator = set(pdct.tokens) & self.priority_set
-        if len(operator) != 1:
+        try:
+            pdct_priority = self.priority_list.index(pdct.gen)
+            token_priority = self.priority_list.index(token)
+        except:
+            # 未出现在优先级表中的符号默认优先级低
             raise Exception("Priority not recognized.\n production: {}\n token: {}".format(pdct, token))
-        operator = list(operator)[0]
-        if token not in self.priority_set:  # 未出现在优先级表中的符号默认优先级低
-            ret = True
+
+        if pdct_priority > token_priority:  # 左结合
+            print("priority: '{}' > '{}'".format(pdct, token))
+            return True
         else:
-            ret = self.priority_list.index(operator) <= self.priority_list.index(token)  # 左结合
-        if ret:
-            print("priority: {} > {}".format(operator, token))
-        else:
-            print("priority: {} > {}".format(token, operator))
-        return ret
+            print("priority: '{}' < '{}'".format(pdct, token))
+            return False
 
     def build_dfa(self):
         # 初态, 增广规则
@@ -546,7 +558,9 @@ class LRAnalyzer:
                 (LRAnalyzer.token_sube, "TOKEN_SUBE"),
                 (LRAnalyzer.token_ambi, "TOKEN_AMBI"),
                 (LRAnalyzer.token_anto, "TOKEN_ANTO"),
-                (LRAnalyzer.token_dist, "TOKEN_DIST"),
+                (LRAnalyzer.token_any,  "TOKEN_ANY"),
+                (LRAnalyzer.token_num,  "TOKEN_NUM"),
+                (LRAnalyzer.token_rept, "TOKEN_REPT"),
                 (LRAnalyzer.token_alt,  "TOKEN_ALT")
             ]
 
@@ -589,27 +603,20 @@ static const lr_reduce_func lr_reduce_func_table[LR_PDCT_NUM] = {
             for pdct in self.pdct_list:
                 if pdct.gen == LRAnalyzer.gen_super:
                     fp.write("    NULL,\n")
-                elif pdct.length == 1:
-                    if pdct.tokens[0] == LRAnalyzer.token_text:
-                        fp.write("    reduce_text2pure,\n")
-                    else:
-                        fp.write("    reduce_only_pop,\n")
-                elif pdct.length == 2:
-                    if pdct.tokens[0] == "anto":
-                        fp.write("    reduce_anto,\n")
-                    elif pdct.tokens[1] == "ambi":
-                        fp.write("    reduce_ambi,\n")
-                    else:
-                        raise Exception("error production")
-                elif pdct.length == 3:
-                    if pdct.tokens[1] == LRAnalyzer.token_alt:
-                        fp.write("    reduce_alter,\n")
-                    elif pdct.tokens[1] == LRAnalyzer.token_dist:
-                        fp.write("    reduce_dist,\n")
-                    elif pdct.tokens[2] == LRAnalyzer.token_sube:
-                        fp.write("    reduce_unwrap,\n")
-                    else:
-                        raise Exception("error production")
+                elif pdct.gen == LRAnalyzer.gen_term:
+                    fp.write("    reduce_only_pop,\n")
+                elif pdct.gen == LRAnalyzer.gen_plain:
+                    fp.write("    reduce_text2pure,\n")
+                elif pdct.gen == LRAnalyzer.gen_alter:
+                    fp.write("    reduce_alter,\n")
+                elif pdct.gen in {LRAnalyzer.gen_dist, LRAnalyzer.gen_ddist}:
+                    fp.write("    reduce_dist,\n")
+                elif pdct.gen == LRAnalyzer.gen_anti_anto:
+                    fp.write("    reduce_anto,\n")
+                elif pdct.gen == LRAnalyzer.gen_anti_ambi:
+                    fp.write("    reduce_ambi,\n")
+                elif pdct.gen in {LRAnalyzer.gen_wrap, LRAnalyzer.gen_anto, LRAnalyzer.gen_ambi}:
+                    fp.write("    reduce_unwrap,\n")
                 else:
                     raise Exception("error production")
 

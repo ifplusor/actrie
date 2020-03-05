@@ -62,18 +62,25 @@ void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node)
 
 void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t tail = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
-  lr_sign_t dist = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t rept = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t char_set = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t head = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
-  uptr_t data = (uptr_t)pint_get(dist->data);
-  int min = (int)(data & 0xFFFFU);
-  int max = (int)((data >> 16U) & 0xFFFFU);
+  uptr_t rept_data = (uptr_t)pint_get(rept->data);
+  int min = (int)(rept_data & 0xFFFFU);
+  int max = (int)((rept_data >> 16U) & 0xFFFFU);
 
   // construct dist-pattern
-  head->data = _alloc(ptrn, dist, head->data, tail->data, min, max);
+  int charset = pint_get(char_set->data);
+  if (charset == TOKEN_NUM) {
+    head->data = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_num, min, max);
+  } else {
+    head->data = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_any, min, max);
+  }
 
   dynapool_free_node(sign_pool, tail);
-  dynapool_free_node(sign_pool, dist);
+  dynapool_free_node(sign_pool, rept);
+  dynapool_free_node(sign_pool, char_set);
 
   *node = head;
 }
@@ -136,12 +143,12 @@ ptrn_t parse_pattern0(stream_t stream) {
     if (ch != TOKEN_TEXT) {  // sign
       lr_sign_t node = dynapool_alloc_node(sign_pool);
       node->state = -ch;  // every sign is negative
-      if (ch == TOKEN_DIST) {
-        int max = token_max_dist();
-        int min = token_min_dist();
+      if (ch == TOKEN_REPT) {
+        int max = token_rept_max();
+        int min = token_rept_min();
         node->data = pint(((uptr_t)max & 0xFFFFU) << 16U | ((uptr_t)min & 0xFFFFU));
       } else {
-        node->data = NULL;
+        node->data = pint(ch);
       }
       deque_push_back(token_deque, node, lr_sign_s, deque_elem);
     }

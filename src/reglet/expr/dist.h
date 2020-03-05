@@ -22,6 +22,9 @@ void expr_init_dist(expr_dist_t self, expr_t target, expr_feed_f feed, uint32_t 
 void expr_feed_dist_prefix(expr_t self, pos_cache_t prefix, reg_ctx_t context);
 void expr_feed_dist_suffix(expr_t self, pos_cache_t suffix, reg_ctx_t context);
 
+void expr_feed_ddist_prefix(expr_t self, pos_cache_t prefix, reg_ctx_t context);
+void expr_feed_ddist_suffix(expr_t self, pos_cache_t suffix, reg_ctx_t context);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

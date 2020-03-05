@@ -7,6 +7,8 @@
 
 #include <alib/collections/map/avl.h>
 
+const bool dec_number_bitmap[256];
+
 typedef struct _expression_distance_context_ {
   expr_ctx_s header;
   avl_t prefix_cache;
@@ -55,7 +57,30 @@ static void prefix_match_suffix(avl_node_t node, void* arg) {
   expr_feed_target(expr, keyword, reg_ctx);
 }
 
-void expr_feed_dist_prefix(expr_t expr, pos_cache_t prefix, reg_ctx_t context) {
+static void prefix_match_suffix_check_num(avl_node_t node, void* arg) {
+  pos_cache_t suffix = container_of(node, pos_cache_s, embed.avl_elem);
+  expr_feed_arg_t feed_arg = (expr_feed_arg_t)arg;
+
+  expr_t expr = feed_arg->expr;
+  pos_cache_t prefix = feed_arg->keyword;
+  reg_ctx_t reg_ctx = feed_arg->context;
+
+  for (size_t i = prefix->pos.eo; i < suffix->pos.so; i++) {
+    if (!dec_number_bitmap[(unsigned char)reg_ctx->content.ptr[i]]) {
+      return;
+    }
+  }
+
+  pos_cache_t keyword = dynapool_alloc_node(reg_ctx->pos_cache_pool);
+  keyword->pos.so = prefix->pos.so;
+  keyword->pos.eo = suffix->pos.eo;
+  expr_feed_target(expr, keyword, reg_ctx);
+}
+
+static void expr_feed_dist_prefix0(expr_t expr,
+                                   pos_cache_t prefix,
+                                   reg_ctx_t context,
+                                   avl_walk_op_f prefix_match_suffix_func) {
   expr_dist_t self = container_of(expr, expr_dist_s, header);
 
   dist_ctx_t dist_ctx;
@@ -72,7 +97,15 @@ void expr_feed_dist_prefix(expr_t expr, pos_cache_t prefix, reg_ctx_t context) {
   strpos_s suffix_range = {.so = context->fix_pos_func(prefix->pos.eo, self->min, true, context->fix_pos_arg),
                            .eo = context->fix_pos_func(prefix->pos.eo, self->max, true, context->fix_pos_arg)};
   expr_feed_arg_s feed_arg = {.expr = expr, .keyword = prefix, .context = context};
-  avl_walk_in_order(dist_ctx->suffix_cache, pos_cache_so_in_range, prefix_match_suffix, &suffix_range, &feed_arg);
+  avl_walk_in_order(dist_ctx->suffix_cache, pos_cache_so_in_range, prefix_match_suffix_func, &suffix_range, &feed_arg);
+}
+
+void expr_feed_dist_prefix(expr_t expr, pos_cache_t prefix, reg_ctx_t context) {
+  expr_feed_dist_prefix0(expr, prefix, context, prefix_match_suffix);
+}
+
+void expr_feed_ddist_prefix(expr_t expr, pos_cache_t prefix, reg_ctx_t context) {
+  expr_feed_dist_prefix0(expr, prefix, context, prefix_match_suffix_check_num);
 }
 
 static void suffix_match_prefix(avl_node_t node, void* arg) {
@@ -89,7 +122,30 @@ static void suffix_match_prefix(avl_node_t node, void* arg) {
   expr_feed_target(expr, keyword, reg_ctx);
 }
 
-void expr_feed_dist_suffix(expr_t expr, pos_cache_t suffix, reg_ctx_t context) {
+static void suffix_match_prefix_check_num(avl_node_t node, void* arg) {
+  pos_cache_t prefix = container_of(node, pos_cache_s, embed.avl_elem);
+  expr_feed_arg_t feed_arg = (expr_feed_arg_t)arg;
+
+  expr_t expr = feed_arg->expr;
+  pos_cache_t suffix = feed_arg->keyword;
+  reg_ctx_t reg_ctx = feed_arg->context;
+
+  for (size_t i = prefix->pos.eo; i < suffix->pos.so; i++) {
+    if (!dec_number_bitmap[(unsigned char)reg_ctx->content.ptr[i]]) {
+      return;
+    }
+  }
+
+  pos_cache_t keyword = dynapool_alloc_node(reg_ctx->pos_cache_pool);
+  keyword->pos.so = prefix->pos.so;
+  keyword->pos.eo = suffix->pos.eo;
+  expr_feed_target(expr, keyword, reg_ctx);
+}
+
+static void expr_feed_dist_suffix0(expr_t expr,
+                                   pos_cache_t suffix,
+                                   reg_ctx_t context,
+                                   avl_walk_op_f suffix_match_prefix_func) {
   expr_dist_t self = container_of(expr, expr_dist_s, header);
 
   dist_ctx_t dist_ctx;
@@ -106,5 +162,13 @@ void expr_feed_dist_suffix(expr_t expr, pos_cache_t suffix, reg_ctx_t context) {
   strpos_s prefix_range = {.so = context->fix_pos_func(suffix->pos.so, self->max, false, context->fix_pos_arg),
                            .eo = context->fix_pos_func(suffix->pos.so, self->min, false, context->fix_pos_arg)};
   expr_feed_arg_s feed_arg = {.expr = expr, .keyword = suffix, .context = context};
-  avl_walk_in_order(dist_ctx->prefix_cache, pos_cache_eo_in_range, suffix_match_prefix, &prefix_range, &feed_arg);
+  avl_walk_in_order(dist_ctx->prefix_cache, pos_cache_eo_in_range, suffix_match_prefix_func, &prefix_range, &feed_arg);
+}
+
+void expr_feed_dist_suffix(expr_t expr, pos_cache_t suffix, reg_ctx_t context) {
+  expr_feed_dist_suffix0(expr, suffix, context, suffix_match_prefix);
+}
+
+void expr_feed_ddist_suffix(expr_t expr, pos_cache_t suffix, reg_ctx_t context) {
+  expr_feed_dist_suffix0(expr, suffix, context, suffix_match_prefix_check_num);
 }

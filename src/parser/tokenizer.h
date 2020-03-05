@@ -16,12 +16,14 @@
 #define TOKEN_SUBE (-4)
 #define TOKEN_AMBI (-5)
 #define TOKEN_ANTO (-6)
-#define TOKEN_DIST (-7)
-#define TOKEN_ALT (-8)
+#define TOKEN_ANY (-7)
+#define TOKEN_NUM (-8)
+#define TOKEN_REPT (-9)
+#define TOKEN_ALT (-10)
 
 bool tokenizer_init();
 int token_next(stream_t stream, dstr_t* token);
-int token_min_dist();
-int token_max_dist();
+int token_rept_min();
+int token_rept_max();
 
 #endif  // __ACTRIE_TOKENIZER_H__

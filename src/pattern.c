@@ -136,13 +136,14 @@ afunc_defn(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto) {
 // distance pattern
 // ===========================
 
-afunc_defn(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, int min, int max) {
+afunc_defn(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, ptrn_dist_type_e type, int min, int max) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {
     ptrn->type = ptrn_type_dist;
     pdd_t pdd = amalloc(sizeof(pdd_s));
     pdd->head = head;
     pdd->tail = tail;
+    pdd->type = type;
     pdd->min = min;
     pdd->max = max;
     ptrn->desc = pdd;

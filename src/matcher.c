@@ -122,7 +122,7 @@ void matcher_fix_pos(context_t context, fix_pos_f fix_pos_func, void* fix_pos_ar
 void matcher_reset_context(context_t context, char content[], size_t len) {
   context->content = (strlen_s){.ptr = content, .len = len};
   dat_reset_context(context->dat_ctx, content, len);
-  reglet_reset_context(context->reg_ctx);
+  reglet_reset_context(context->reg_ctx, content, len);
 }
 
 typedef bool (*dat_next_on_node_f)(dat_ctx_t ctx);

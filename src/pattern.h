@@ -23,6 +23,8 @@ typedef enum _ptrn_type_ {
   ptrn_type_alter
 } ptrn_type_e;
 
+typedef enum _ptrn_dist_type_ { ptrn_dist_type_any = 0, ptrn_dist_type_num } ptrn_dist_type_e;
+
 // clang-format off
 aclass(ptrn,
   ptrn_type_e type;
@@ -33,6 +35,7 @@ aclass(ptrn,
 typedef struct _ptrn_dist_desc_ {
   ptrn_t head;
   ptrn_t tail;
+  ptrn_dist_type_e type;
   int min, max;
 } pdd_s, *pdd_t;
 
@@ -40,6 +43,6 @@ afunc_delc(ptrn, pure, aobj, dstr_t text);
 afunc_delc(ptrn, cat, aobj, ptrn_t before, ptrn_t after);
 afunc_delc(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi);
 afunc_delc(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto);
-afunc_delc(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, int min, int max);
+afunc_delc(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, ptrn_dist_type_e type, int min, int max);
 
 #endif  // __ACTRIE_PATTERN_H__

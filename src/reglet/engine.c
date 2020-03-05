@@ -189,8 +189,13 @@ static expr_t reglet_build_expr_for_dist(reglet_t self, ptrn_t pattern, expr_t t
   pdd_t pdd = pattern->desc;
   expr_dist_t expr_dist = dynapool_alloc_node(self->expr_pool);
   expr_init_dist(expr_dist, target, feed, pdd->min, pdd->max);
-  reglet_build_expr(self, pdd->head, &expr_dist->header, expr_feed_dist_prefix);
-  reglet_build_expr(self, pdd->tail, &expr_dist->header, expr_feed_dist_suffix);
+  if (pdd->type == ptrn_dist_type_num) {
+    reglet_build_expr(self, pdd->head, &expr_dist->header, expr_feed_ddist_prefix);
+    reglet_build_expr(self, pdd->tail, &expr_dist->header, expr_feed_ddist_suffix);
+  } else {
+    reglet_build_expr(self, pdd->head, &expr_dist->header, expr_feed_dist_prefix);
+    reglet_build_expr(self, pdd->tail, &expr_dist->header, expr_feed_dist_suffix);
+  }
   return &expr_dist->header;
 }
 
@@ -302,8 +307,10 @@ void reglet_free_context(reg_ctx_t context) {
   }
 }
 
-void reglet_reset_context(reg_ctx_t context) {
+void reglet_reset_context(reg_ctx_t context, char content[], size_t len) {
   if (context != NULL) {
+    context->content = (strlen_s){.ptr = content, .len = len};
+
     context->reset_or_free = true;
     // free expression context, and clear map
     avl_walk_in_order(context->expr_ctx_map, NULL, free_expr_ctx, NULL, context);

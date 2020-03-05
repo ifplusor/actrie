@@ -42,6 +42,7 @@ void free_pos_cache(avl_node_t node, void* arg);
 typedef size_t (*fix_pos_f)(size_t pos, size_t diff, bool plus_or_subtract, void* arg);
 
 typedef struct _regex_context_ {
+  strlen_s content;
   dynapool_t pos_cache_pool;
   avl_t expr_ctx_map;
   prique_t output_queue;
