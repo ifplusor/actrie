@@ -22,11 +22,14 @@ if not actrie_dir:
     actrie_dir = get_root_dir()
 
 if not alib_dir:
-    alib_dir = os.path.join(actrie_dir, '..', 'alib')
+    alib_dir = os.path.join(actrie_dir, 'deps', 'alib')
 
 
 def build_library():
     os.system(os.path.join(actrie_dir, "utils", "build.sh"))
+
+
+# build_library()
 
 
 warp_sources = [
@@ -34,12 +37,11 @@ warp_sources = [
     os.path.join(actrie_dir, 'actrie', 'src', 'utf8ctx.c')
 ]
 
-sources = warp_sources
-# build_library()
 library_dirs = [
     os.path.join(alib_dir, 'lib'),
     os.path.join(actrie_dir, 'lib'),
 ]
+
 libraries = ['actrie', 'alib']
 
 include_dir = [
@@ -48,7 +50,7 @@ include_dir = [
 ]
 
 actrie = Extension('actrie._actrie',
-                   sources=sources,
+                   sources=warp_sources,
                    # extra_compile_args=["/utf-8"],
                    include_dirs=include_dir,
                    library_dirs=library_dirs,
@@ -75,4 +77,5 @@ setup(name="actrie",
           "License :: OSI Approved :: BSD License",
           "Operating System :: OS Independent",
       ],
+      zip_safe=False,
       **kwds)

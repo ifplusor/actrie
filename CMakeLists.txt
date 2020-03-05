@@ -38,7 +38,7 @@ endif()
 
 option(IMPORT_ALIB "Enable import alib library." ON)
 if(NOT (DEFINED alib_DIR))
-  set(alib_DIR "${PROJECT_SOURCE_DIR}/../alib")
+  set(alib_DIR "${PROJECT_SOURCE_DIR}/deps/alib")
 endif()
 if(IMPORT_ALIB)
   add_subdirectory(${alib_DIR} alib)

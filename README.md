@@ -38,12 +38,8 @@ Now, we support more types of pattern: anti-ambiguity pattern, anti-antonym patt
 ## Build and install
 
 ```bash
-# make project directory
-mkdir actrie_project && cd actrie_project
-
 # download source
-git clone --depth=1 https://github.com/ifplusor/actrie
-git clone --depth=1 https://github.com/ifplusor/alib
+git clone --depth=1 --recurse-submodules --shallow-submodules https://github.com/ifplusor/actrie.git
 
 # change directory
 cd actrie

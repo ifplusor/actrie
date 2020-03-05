@@ -1,0 +1,3 @@
+[submodule "deps/alib"]
+	path = deps/alib
+	url = https://github.com/ifplusor/alib.git
