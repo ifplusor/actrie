@@ -229,6 +229,8 @@ bool parse_vocab(vocab_t vocab, have_pattern_f have_pattern, void* arg, bool ign
       fprintf(stderr, "bad pattern: '%.*s'\n", (int)keyword.len, keyword.ptr);
       if (!ignore_bad_pattern) {
         return false;
+      } else {
+        continue;
       }
     }
     have_pattern(pattern, &extra, arg);
