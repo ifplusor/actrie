@@ -24,7 +24,7 @@ void free_utf8_context(utf8_ctx_t context) {
 }
 
 bool reset_utf8_context(utf8_ctx_t context, char content[], size_t len) {
-  if (context->len < len) {
+  if (context->len < len || context->pos == NULL) {
     if (context->pos != NULL) {
       free(context->pos);
     }

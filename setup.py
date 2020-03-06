@@ -67,6 +67,7 @@ setup(name="actrie",
       author="James Yin",
       author_email="ywhjames@hotmail.com",
       url="https://github.com/ifplusor/actrie",
+      license="BSD",
       packages=['actrie', 'actrie.tests'],
       ext_modules=[actrie],
       classifiers=[
