@@ -23,39 +23,39 @@ class Matcher:
         if self._matcher:
             _actrie.Destruct(self._matcher)
 
-    def load_from_file(self, path, ignore_bad_pattern=True):
+    def load_from_file(self, path, ignore_bad_pattern=False, bad_as_plain=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if not os.path.isfile(path):
             return False
         self._matcher = _actrie.ConstructByFile(
-            convert2pass(path), ignore_bad_pattern)
+            convert2pass(path), ignore_bad_pattern, bad_as_plain)
         return self._matcher is not None
 
     @classmethod
-    def create_by_file(cls, path, ignore_bad_pattern=True):
+    def create_by_file(cls, path, ignore_bad_pattern=False, bad_as_plain=True):
         matcher = cls()
-        if matcher.load_from_file(path, ignore_bad_pattern):
+        if matcher.load_from_file(path, ignore_bad_pattern, bad_as_plain):
             return matcher
         return None
 
-    def load_from_string(self, keyword, ignore_bad_pattern=True):
+    def load_from_string(self, keyword, ignore_bad_pattern=False, bad_as_plain=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if keyword is None:
             return False
         self._matcher = _actrie.ConstructByString(
-            convert2pass(keyword), ignore_bad_pattern)
+            convert2pass(keyword), ignore_bad_pattern, bad_as_plain)
         return self._matcher is not None
 
     @classmethod
-    def create_by_string(cls, keyword, ignore_bad_pattern=True):
+    def create_by_string(cls, keyword, ignore_bad_pattern=False, bad_as_plain=True):
         matcher = cls()
-        if matcher.load_from_string(keyword, ignore_bad_pattern):
+        if matcher.load_from_string(keyword, ignore_bad_pattern, bad_as_plain):
             return matcher
         return None
 
-    def load_from_collection(self, strings, ignore_bad_pattern=True):
+    def load_from_collection(self, strings, ignore_bad_pattern=False, bad_as_plain=True):
         if self._matcher:
             raise MatcherError("matcher is initialized")
         if isinstance(strings, list) or isinstance(strings, set):
@@ -66,12 +66,12 @@ class Matcher:
                  if convert2pass(word) is not None])
         else:
             raise MatcherError("should be list or set")
-        return self.load_from_string(keywords, ignore_bad_pattern)
+        return self.load_from_string(keywords, ignore_bad_pattern, bad_as_plain)
 
     @classmethod
-    def create_by_collection(cls, strings, ignore_bad_pattern=True):
+    def create_by_collection(cls, strings, ignore_bad_pattern=False, bad_as_plain=True):
         matcher = cls()
-        if matcher.load_from_collection(strings, ignore_bad_pattern):
+        if matcher.load_from_collection(strings, ignore_bad_pattern, bad_as_plain):
             return matcher
         return None
 

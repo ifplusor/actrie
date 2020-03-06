@@ -39,14 +39,14 @@ warp_sources = [
 
 library_dirs = [
     os.path.join(alib_dir, 'lib'),
-    os.path.join(actrie_dir, 'lib'),
+    os.path.join(actrie_dir, 'lib')
 ]
 
 libraries = ['actrie', 'alib']
 
 include_dir = [
     os.path.join(alib_dir, 'include'),
-    os.path.join(actrie_dir, 'include'),
+    os.path.join(actrie_dir, 'include')
 ]
 
 actrie = Extension('actrie._actrie',
@@ -70,12 +70,13 @@ setup(name="actrie",
       packages=['actrie', 'actrie.tests'],
       ext_modules=[actrie],
       classifiers=[
+          "Programming Language :: C",
           "Programming Language :: Python :: 2",
           "Programming Language :: Python :: 3",
-          "Programming Language :: C",
           "Programming Language :: Python :: Implementation :: CPython",
           "License :: OSI Approved :: BSD License",
           "Operating System :: OS Independent",
+          "Topic :: Utilities"
       ],
       zip_safe=False,
       **kwds)
