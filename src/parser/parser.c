@@ -179,8 +179,11 @@ ptrn_t parse_pattern0(stream_t stream) {
   lr_reduce:
     switch (change.action) {
       case deny:
+        // node 放回 token_deque，等待后续清理
+        deque_push_front(token_deque, node, lr_sign_s, deque_elem);
         goto lr_error;
       case acpt:
+        // node 是 TOKEN_EOF
         goto lr_accept;
       case shft:
         // node 进栈，无需释放内存
