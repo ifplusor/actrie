@@ -200,6 +200,7 @@ static expr_t reglet_build_expr_for_dist(reglet_t self, ptrn_t pattern, expr_t t
 }
 
 static expr_t reglet_build_expr_for_alter(reglet_t self, ptrn_t pattern, expr_t target, expr_feed_f feed) {
+#ifdef EXPR_PASS_FOR_ALTER
   expr_pass_t expr_pass = dynapool_alloc_node(self->expr_pool);
   expr_init_pass(expr_pass, target, feed);
   for (list_t con = pattern->desc; con != NULL; con = con->cdr) {
@@ -207,6 +208,13 @@ static expr_t reglet_build_expr_for_alter(reglet_t self, ptrn_t pattern, expr_t 
     reglet_build_expr(self, sub_ptrn, &expr_pass->header, expr_feed_pass);
   }
   return &expr_pass->header;
+#else
+  for (list_t con = pattern->desc; con != NULL; con = con->cdr) {
+    ptrn_t sub_ptrn = con->car;
+    reglet_build_expr(self, sub_ptrn, target, feed);
+  }
+  return NULL;
+#endif
 }
 
 static expr_t reglet_build_expr(reglet_t self, ptrn_t pattern, expr_t target, expr_feed_f feed) {
