@@ -148,7 +148,7 @@ static word_t matcher_next0(context_t context, dat_next_on_node_f dat_next_on_no
     }
   }
   if (matched == NULL) {
-    activate_ambi_queue(context->reg_ctx);
+    reglet_activate_expr_ctx(context->reg_ctx);
     matched = prique_pop(context->reg_ctx->output_queue);
   }
   if (matched != NULL) {

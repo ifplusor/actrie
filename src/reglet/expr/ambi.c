@@ -10,7 +10,6 @@ typedef struct _expression_anti_ambiguity_context_ {
   avl_t ambiguity_cache_eoso;
   avl_t ambiguity_cache_soeo;
   deque_node_s center_queue[1];
-  deque_node_s deque_elem;
 } ambi_ctx_s, *ambi_ctx_t;
 
 void ambi_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
@@ -33,9 +32,11 @@ void ambi_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
   afree(ambi_ctx);
 }
 
+void expr_activate_ambi_ctx(expr_ctx_t expr_ctx, reg_ctx_t context);
+
 ambi_ctx_t ambi_ctx_alloc(expr_ambi_t expr_ambi) {
   ambi_ctx_t ambi_ctx = amalloc(sizeof(ambi_ctx_s));
-  expr_ctx_init(&ambi_ctx->header, &expr_ambi->header, ambi_ctx_free);
+  expr_ctx_init(&ambi_ctx->header, &expr_ambi->header, ambi_ctx_free, expr_activate_ambi_ctx);
   ambi_ctx->ambiguity_cache_eoso = avl_construct(pos_cache_cmp_eoso);
   ambi_ctx->ambiguity_cache_soeo = avl_construct(pos_cache_cmp_soeo);
   deque_init(ambi_ctx->center_queue);
@@ -77,12 +78,13 @@ void expr_feed_ambi_center(expr_t expr, pos_cache_t center, reg_ctx_t context) {
   }
 
   if (deque_empty(ambi_ctx->center_queue)) {
-    deque_push_back(context->ambi_queue, ambi_ctx, ambi_ctx_s, deque_elem);
+    prique_push(context->activate_queue, &ambi_ctx->header);
   }
   deque_push_back(ambi_ctx->center_queue, center, pos_cache_s, embed.deque_elem);
 }
 
-void activate_ambi_ctx(ambi_ctx_t ambi_ctx, reg_ctx_t context) {
+void expr_activate_ambi_ctx(expr_ctx_t expr_ctx, reg_ctx_t context) {
+  ambi_ctx_t ambi_ctx = container_of(expr_ctx, ambi_ctx_s, header);
   pos_cache_t center = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
   while (center != NULL) {
     if (avl_search_ext(ambi_ctx->ambiguity_cache_eoso, center, pos_cache_eo_in_word) == NULL &&
@@ -92,13 +94,5 @@ void activate_ambi_ctx(ambi_ctx_t ambi_ctx, reg_ctx_t context) {
       dynapool_free_node(context->pos_cache_pool, center);
     }
     center = deque_pop_front(ambi_ctx->center_queue, pos_cache_s, embed.deque_elem);
-  }
-}
-
-void activate_ambi_queue(reg_ctx_t context) {
-  ambi_ctx_t ambi_ctx = deque_pop_front(context->ambi_queue, ambi_ctx_s, deque_elem);
-  while (ambi_ctx != NULL) {
-    activate_ambi_ctx(ambi_ctx, context);
-    ambi_ctx = deque_pop_front(context->ambi_queue, ambi_ctx_s, deque_elem);
   }
 }

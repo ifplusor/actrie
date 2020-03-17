@@ -31,7 +31,7 @@ void dist_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
 
 dist_ctx_t dist_ctx_alloc(expr_dist_t expr_dist) {
   dist_ctx_t dist_ctx = amalloc(sizeof(dist_ctx_s));
-  expr_ctx_init(&dist_ctx->header, &expr_dist->header, dist_ctx_free);
+  expr_ctx_init(&dist_ctx->header, &expr_dist->header, dist_ctx_free, NULL);
   dist_ctx->prefix_cache = avl_construct(pos_cache_cmp_eoso);
   dist_ctx->suffix_cache = avl_construct(pos_cache_cmp_soeo);
   return dist_ctx;

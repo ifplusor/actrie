@@ -57,16 +57,19 @@ typedef struct _expr_feed_arg_ {
 // expression context
 
 typedef void (*expr_ctx_free_f)(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx);
+typedef void (*expr_ctx_activate_f)(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx);
 
 struct _expression_context_ {
   expr_t expr;
   expr_ctx_free_f free_func;
+  expr_ctx_activate_f activate_func;
   avl_node_s avl_elem;
 };
 
-inline void expr_ctx_init(expr_ctx_t self, expr_t expr, expr_ctx_free_f free) {
+inline void expr_ctx_init(expr_ctx_t self, expr_t expr, expr_ctx_free_f free, expr_ctx_activate_f activate) {
   self->expr = expr;
   self->free_func = free;
+  self->activate_func = activate;
 }
 
 #ifdef __cplusplus

@@ -7,7 +7,10 @@
 #include <utf8helper.h>
 
 int main() {
-  char* str = "东西.真棒\n";
+  char* str =
+      "(?<!不(?&!没有一个不|还不|一天不|难道不|难道就不|就以为不|这不|能不能不)|无|没|不是(?&!是不是|难道不是|何尝不是|"
+      "这不是|还不是)|没有|不太|不会(?&!会不会|都不会|真的不会)|不能|希望|希望能|不可能|不怎么|不可以|不是很|不是说|"
+      "不用为|不是非常|如果|没有很)(好)";
   strlen_s pattern = {.ptr = str, .len = strlen(str)};
 
   printf("use memory: %zu\n", amalloc_used_memory());
@@ -22,7 +25,7 @@ int main() {
   context_t context = matcher_alloc_context(matcher);
   matcher_fix_pos(context, fix_utf8_pos, utf8_ctx);
 
-  char* content = "好吃的东西.真棒的人";
+  char* content = "真的不会好";
   reset_utf8_context(utf8_ctx, content, strlen(content));
   matcher_reset_context(context, content, strlen(content));
 

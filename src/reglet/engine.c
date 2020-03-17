@@ -10,7 +10,7 @@
 extern inline void expr_init(expr_t self, expr_t target, expr_feed_f feed);
 extern inline void expr_feed_target(expr_t self, pos_cache_t keyword, reg_ctx_t context);
 
-extern inline void expr_ctx_init(expr_ctx_t self, expr_t expr, expr_ctx_free_f free);
+extern inline void expr_ctx_init(expr_ctx_t self, expr_t expr, expr_ctx_free_f free, expr_ctx_activate_f activate);
 
 //
 // compare
@@ -80,10 +80,10 @@ sptr_t pos_cache_eo_in_range(avl_node_t node, void* arg) {
 sptr_t pos_cache_so_in_word(avl_node_t node, void* arg) {
   pos_cache_t pos_cache = container_of(node, pos_cache_s, embed.avl_elem);
   strpos_t pos_word = (strpos_t)arg;
-  if (pos_cache->pos.so < pos_word->so) {
-    return -1;
-  } else if (pos_cache->pos.so >= pos_word->eo) {
+  if (pos_cache->pos.so >= pos_word->eo) {
     return 1;
+  } else if (pos_cache->pos.so < pos_word->so && pos_cache->pos.eo <= pos_word->so) {
+    return -1;
   } else {
     return 0;
   }
@@ -94,7 +94,7 @@ sptr_t pos_cache_eo_in_word(avl_node_t node, void* arg) {
   strpos_t pos_word = (strpos_t)arg;
   if (pos_cache->pos.eo <= pos_word->so) {
     return -1;
-  } else if (pos_cache->pos.eo > pos_word->eo) {
+  } else if (pos_cache->pos.eo > pos_word->eo && pos_cache->pos.so >= pos_word->eo) {
     return 1;
   } else {
     return 0;
@@ -263,6 +263,11 @@ sptr_t expr_ctx_cmp(avl_node_t node, void* key) {
   return expr_ctx->expr - (expr_t)key;
 }
 
+sptr_t expr_ctx_cmp2(void* node1, void* node2) {
+  expr_ctx_t expr_ctx1 = node1, expr_ctx2 = node2;
+  return -(expr_ctx1->expr - expr_ctx2->expr);
+}
+
 static size_t default_fix_pos(size_t pos, size_t diff, bool plus_or_subtract, void* arg) {
   if (plus_or_subtract) {
     return pos + diff;
@@ -280,7 +285,7 @@ reg_ctx_t reglet_alloc_context(reglet_t reglet) {
   reg_ctx->pos_cache_pool = dynapool_construct_with_type(pos_cache_s);
   reg_ctx->expr_ctx_map = avl_construct(expr_ctx_cmp);
   reg_ctx->output_queue = prique_construct(pos_cache_cmp_output);
-  deque_init(reg_ctx->ambi_queue);
+  reg_ctx->activate_queue = prique_construct(expr_ctx_cmp2);
   reg_ctx->fix_pos_func = default_fix_pos;
   reg_ctx->fix_pos_arg = NULL;
   return reg_ctx;
@@ -302,6 +307,8 @@ void reglet_free_context(reg_ctx_t context) {
     dynapool_destruct(context->pos_cache_pool);
     // free output queue
     prique_destruct(context->output_queue);
+    // free activate queue
+    prique_destruct(context->activate_queue);
     // free context
     afree(context);
   }
@@ -320,8 +327,8 @@ void reglet_reset_context(reg_ctx_t context, char content[], size_t len) {
       dynapool_free_node(context->pos_cache_pool, context->output_queue->data);
     }
     context->output_queue->len = 0;
-    // clear ambi_ctx queue
-    deque_init(context->ambi_queue);
+    // clear activate expr_ctx queue
+    context->activate_queue->len = 0;
   }
 }
 
@@ -332,5 +339,13 @@ void reglet_fix_pos(reg_ctx_t context, fix_pos_f fix_pos_func, void* fix_pos_arg
   } else {
     context->fix_pos_func = default_fix_pos;
     context->fix_pos_arg = NULL;
+  }
+}
+
+void reglet_activate_expr_ctx(reg_ctx_t context) {
+  expr_ctx_t expr_ctx = prique_pop(context->activate_queue);
+  while (expr_ctx != NULL) {
+    expr_ctx->activate_func(expr_ctx, context);
+    expr_ctx = prique_pop(context->activate_queue);
   }
 }

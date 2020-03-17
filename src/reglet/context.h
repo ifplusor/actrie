@@ -46,7 +46,7 @@ typedef struct _regex_context_ {
   dynapool_t pos_cache_pool;
   avl_t expr_ctx_map;
   prique_t output_queue;
-  deque_node_s ambi_queue[1];
+  prique_t activate_queue;
   fix_pos_f fix_pos_func;
   void* fix_pos_arg;
   bool reset_or_free;
