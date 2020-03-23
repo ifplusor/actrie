@@ -41,8 +41,8 @@ typedef struct _ptrn_dist_desc_ {
 
 afunc_delc(ptrn, pure, aobj, dstr_t text);
 afunc_delc(ptrn, cat, aobj, ptrn_t before, ptrn_t after);
-afunc_delc(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi);
-afunc_delc(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto);
+afunc_delc(ptrn, ambi, aobj, ptrn_t center, ptrn_t ambi);
+afunc_delc(ptrn, anto, aobj, ptrn_t center, ptrn_t anto);
 afunc_delc(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, ptrn_dist_type_e type, int min, int max);
 
 #endif  // __ACTRIE_PATTERN_H__

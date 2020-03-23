@@ -86,10 +86,13 @@ const int hex_char2num[256] = {
 };
 // clang-format on
 
-tls_key_t rept_key;
+static once_flag rept_flag = ONCE_FLAG_INIT;
+static tss_t rept_key;
 
-bool tokenizer_init() {
-  return tls_create_key(&rept_key, free);
+static void rept_init(void) {
+  if (tss_create(&rept_key, free) != thrd_success) {
+    ALOG_FATAL("rept_init failed!");
+  }
 }
 
 /**
@@ -254,17 +257,18 @@ typedef struct _token_rept_s {
 } rept_s, *rept_t;
 
 void token_set_rept(int min, int max) {
-  rept_t rept = tls_get_value(rept_key);
+  call_once(&rept_flag, rept_init);
+  rept_t rept = tss_get(rept_key);
   if (rept == NULL) {
     rept = malloc(sizeof(rept_s));
-    tls_set_value(rept_key, rept);
+    tss_set(rept_key, rept);
   }
   rept->min = min;
   rept->max = max;
 }
 
 int token_rept_min() {
-  rept_t rept = tls_get_value(rept_key);
+  rept_t rept = tss_get(rept_key);
   if (rept == NULL) {
     return -1;
   }
@@ -272,7 +276,7 @@ int token_rept_min() {
 }
 
 int token_rept_max() {
-  rept_t rept = tls_get_value(rept_key);
+  rept_t rept = tss_get(rept_key);
   if (rept == NULL) {
     return -1;
   }

@@ -21,7 +21,6 @@
 #define TOKEN_REPT (-9)
 #define TOKEN_ALT (-10)
 
-bool tokenizer_init();
 int token_next(stream_t stream, dstr_t* token);
 int token_rept_min();
 int token_rept_max();

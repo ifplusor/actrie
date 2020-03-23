@@ -31,11 +31,14 @@ void ptrn_clean(aobj id) {
         pdd_t pdd = ptrn->desc;
         _release(pdd->head);
         _release(pdd->tail);
-        afree(ptrn->desc);
-      } break;
-      default:  // 默认 ptrn->desc 也是 aobj
+        afree(pdd);
+        break;
+      }
+      default: {
+        // 默认 ptrn->desc 也是 aobj
         _release(ptrn->desc);
         break;
+      }
     }
   }
 }
@@ -60,11 +63,12 @@ afunc_defn(ptrn, pure, aobj, dstr_t text) {
  * ptrn_cat - concatenate two patterns.
  *
  * after call this function, 'before' and 'after' object will be released,
- * a new merge object will be generated.
+ * a new ptrn_cat object will be generated.
  */
 afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
-  if (before == NULL || after == NULL)
+  if (before == NULL || after == NULL) {
     return NULL;
+  }
 
   if (before->type == ptrn_type_alter) {
     // reuse before
@@ -108,12 +112,18 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
 // ambiguity pattern
 // ===========================
 
-afunc_defn(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi) {
+/**
+ * ptrn_ambi -
+ *
+ * after call this function, 'center' and 'ambi' object will be released,
+ * a new ptrn_ambi object will be generated.
+ */
+afunc_defn(ptrn, ambi, aobj, ptrn_t center, ptrn_t ambi) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {
     ptrn->type = ptrn_type_anti_ambi;
-    ptrn->desc = _alloc(list, cons, origin, ambi);
-    _release(origin);
+    ptrn->desc = _alloc(list, cons, center, ambi);
+    _release(center);
     _release(ambi);
   }
   return ptrn;
@@ -122,12 +132,18 @@ afunc_defn(ptrn, ambi, aobj, ptrn_t origin, ptrn_t ambi) {
 // antonym pattern
 // ===========================
 
-afunc_defn(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto) {
+/**
+ * ptrn_anto -
+ *
+ * after call this function, 'center' and 'anto' object will be released,
+ * a new ptrn_anto object will be generated.
+ */
+afunc_defn(ptrn, anto, aobj, ptrn_t center, ptrn_t anto) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {
     ptrn->type = ptrn_type_anti_anto;
-    ptrn->desc = _alloc(list, cons, origin, anto);
-    _release(origin);
+    ptrn->desc = _alloc(list, cons, center, anto);
+    _release(center);
     _release(anto);
   }
   return ptrn;
@@ -136,6 +152,12 @@ afunc_defn(ptrn, anto, aobj, ptrn_t origin, ptrn_t anto) {
 // distance pattern
 // ===========================
 
+/**
+ * ptrn_dist -
+ *
+ * after call this function, 'head' and 'tail' object will be released,
+ * a new ptrn_dist object will be generated.
+ */
 afunc_defn(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, ptrn_dist_type_e type, int min, int max) {
   ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
   if (ptrn != NULL) {

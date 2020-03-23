@@ -238,7 +238,6 @@ void trie_free(trie_t trie, trie_node_free_f node_free_func) {
 
 trie_t trie_alloc() {
   size_t root;
-  int i;
   trie_t trie = NULL;
 
   do {

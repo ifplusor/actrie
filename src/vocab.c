@@ -81,7 +81,6 @@ bool vocab_reset(vocab_t self) {
 }
 
 bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
-  // FIXME: EOL is '\r\n'
   strpos_s keyword_pos, extra_pos;
   int ch;
   if (self == NULL) {
@@ -98,7 +97,15 @@ bool vocab_next_word(vocab_t self, strlen_t keyword, strlen_t extra) {
       ch = dynabuf_consume_until(&self->_buf, self->_stream, "\n", &extra_pos);
       dynabuf_write_eos(&self->_buf, NULL, 0);
       *extra = dynabuf_split(&self->_buf, extra_pos);
+      if (extra->len > 0 && extra->ptr[extra->len - 1] == '\r') {  // EOL is '\r\n'
+        extra->len -= 1;
+        extra->ptr[extra->len] = '\0';
+      }
     } else {
+      if (keyword->len > 0 && keyword->ptr[keyword->len - 1] == '\r') {  // EOL is '\r\n'
+        keyword->len -= 1;
+        keyword->ptr[keyword->len] = '\0';
+      }
       *extra = strlen_empty;
     }
   }

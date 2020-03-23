@@ -19,45 +19,57 @@ void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* 
 
   // construct pure-pattern
   dstr_t text = sign->data;
-  sign->data = _alloc(ptrn, pure, text);
+  ptrn_t pure_ptrn = _alloc(ptrn, pure, text);
   _release(text);
 
+  // reuse sign
+  sign->data = pure_ptrn;
   *node = sign;
 }
 
 void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t right = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // ')'
-  lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t center = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t left = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // '(', '(?&!', '(?<!'
 
-  dynapool_free_node(sign_pool, right);
-  dynapool_free_node(sign_pool, left);
+  // reuse center
+  *node = center;
 
-  *node = origin;
+  // clean other
+  _release(right->data);
+  dynapool_free_node(sign_pool, right);
+  _release(left->data);
+  dynapool_free_node(sign_pool, left);
 }
 
 void reduce_ambi(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t ambi = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
-  lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t center = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct ambi-pattern
-  origin->data = _alloc(ptrn, ambi, origin->data, ambi->data);
+  ptrn_t ambi_ptrn = _alloc(ptrn, ambi, center->data, ambi->data);
 
+  // reuse center
+  center->data = ambi_ptrn;
+  *node = center;
+
+  // clean other
   dynapool_free_node(sign_pool, ambi);
-
-  *node = origin;
 }
 
 void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
-  lr_sign_t origin = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
-  lr_sign_t anti = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t center = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t anto = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
   // construct anto-pattern
-  origin->data = _alloc(ptrn, anto, origin->data, anti->data);
+  ptrn_t anto_ptrn = _alloc(ptrn, anto, center->data, anto->data);
 
-  dynapool_free_node(sign_pool, anti);
+  // reuse center
+  center->data = anto_ptrn;
+  *node = center;
 
-  *node = origin;
+  // clean other
+  dynapool_free_node(sign_pool, anto);
 }
 
 void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
@@ -71,18 +83,24 @@ void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node)
   int max = (int)((rept_data >> 16U) & 0xFFFFU);
 
   // construct dist-pattern
+  ptrn_t dist_ptrn;
   int charset = pint_get(char_set->data);
   if (charset == TOKEN_NUM) {
-    head->data = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_num, min, max);
+    dist_ptrn = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_num, min, max);
   } else {
-    head->data = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_any, min, max);
+    dist_ptrn = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_any, min, max);
   }
 
-  dynapool_free_node(sign_pool, tail);
-  dynapool_free_node(sign_pool, rept);
-  dynapool_free_node(sign_pool, char_set);
-
+  // reuse head
+  head->data = dist_ptrn;
   *node = head;
+
+  // clean other
+  dynapool_free_node(sign_pool, tail);
+  _release(rept->data);
+  dynapool_free_node(sign_pool, rept);
+  _release(char_set->data);
+  dynapool_free_node(sign_pool, char_set);
 }
 
 void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
@@ -90,13 +108,17 @@ void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node
   lr_sign_t alter = deque_pop_front(sign_stack, lr_sign_s, deque_elem);  // "|"
   lr_sign_t before = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
 
-  // construct anto-pattern
-  before->data = _alloc(ptrn, cat, before->data, after->data);
+  // construct alter-pattern
+  ptrn_t alter_ptrn = _alloc(ptrn, cat, before->data, after->data);
 
-  dynapool_free_node(sign_pool, after);
-  dynapool_free_node(sign_pool, alter);
-
+  // reuse before
+  before->data = alter_ptrn;
   *node = before;
+
+  // clean other
+  dynapool_free_node(sign_pool, after);
+  _release(alter->data);
+  dynapool_free_node(sign_pool, alter);
 }
 
 /**
@@ -183,7 +205,8 @@ ptrn_t parse_pattern0(stream_t stream) {
         deque_push_front(token_deque, node, lr_sign_s, deque_elem);
         goto lr_error;
       case acpt:
-        // node 是 TOKEN_EOF
+        // node 是 TOKEN_EOF, 放回 token_deque，等待后续清理
+        deque_push_front(token_deque, node, lr_sign_s, deque_elem);
         goto lr_accept;
       case shft:
         // node 进栈，无需释放内存
@@ -199,8 +222,9 @@ ptrn_t parse_pattern0(stream_t stream) {
   }
 
 lr_accept:
-  sign = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  sign = deque_peek_front(sign_stack, lr_sign_s, deque_elem);
   pattern = sign->data;
+  _retain(pattern);
 
 lr_error:
   while (!deque_empty(token_deque)) {
