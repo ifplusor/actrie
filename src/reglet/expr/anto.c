@@ -8,7 +8,7 @@
 typedef struct _expression_anti_antonym_context_ {
   expr_ctx_s header;
   avl_t antonym_cache;
-  deque_node_s center_queue[0];
+  deque_node_s center_queue[1];
 } anto_ctx_s, *anto_ctx_t;
 
 void anto_ctx_free(expr_ctx_t expr_ctx, reg_ctx_t reg_ctx) {
