@@ -21,6 +21,7 @@ void reduce_text2pure(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* 
 void reduce_unwrap(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
 void reduce_ambi(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
 void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
+void reduce_join(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
 void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
 void reduce_alter(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node);
 

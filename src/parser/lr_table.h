@@ -16,26 +16,28 @@
  *    0: pattern -> term
  *    1: term -> wrap
  *    2: term -> alter
- *    3: term -> dist
- *    4: term -> ddist
- *    5: term -> anti-anto
- *    6: term -> anti-ambi
- *    7: term -> plain
- *    8: wrap -> ( term )
- *    9: alter -> term | term
- *   10: dist -> term . {m,n} term
- *   11: ddist -> term \d {m,n} term
- *   12: anti-anto -> anto term
- *   13: anto -> (?<! term )
- *   14: anti-ambi -> term ambi
- *   15: ambi -> (?&! term )
- *   16: plain -> text
+ *    3: term -> join
+ *    4: term -> dist
+ *    5: term -> ddist
+ *    6: term -> anti-anto
+ *    7: term -> anti-ambi
+ *    8: term -> plain
+ *    9: wrap -> ( term )
+ *   10: alter -> term | term
+ *   11: join -> term term
+ *   12: dist -> term . {m,n} term
+ *   13: ddist -> term \d {m,n} term
+ *   14: anti-anto -> anto term
+ *   15: anto -> (?<! term )
+ *   16: anti-ambi -> term ambi
+ *   17: ambi -> (?&! term )
+ *   18: plain -> text
  */
 
-#define LR_PDCT_NUM 17
+#define LR_PDCT_NUM 19
 
 static const int lr_pdct2nonid[LR_PDCT_NUM] = {
-  2, 0, 0, 0, 0, 0, 0, 0, 9, 10, 1, 4, 7, 5, 3, 6, 8, 
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 9, 11, 1, 10, 4, 7, 5, 3, 6, 8, 
 };
 
 static const lr_reduce_func lr_reduce_func_table[LR_PDCT_NUM] = {
@@ -47,8 +49,10 @@ static const lr_reduce_func lr_reduce_func_table[LR_PDCT_NUM] = {
     reduce_only_pop,
     reduce_only_pop,
     reduce_only_pop,
+    reduce_only_pop,
     reduce_unwrap,
     reduce_alter,
+    reduce_join,
     reduce_dist,
     reduce_dist,
     reduce_anto,
@@ -74,122 +78,130 @@ typedef struct _lr_table_item {
 } lr_item_s, *lr_item_t;
 
 
-lr_item_s lr_action_table[55][11] = {
+lr_item_s lr_action_table[59][11] = {
 /*          TOKEN_TEXT,    TOKEN_EOF,    TOKEN_ERR,   TOKEN_SUBS,   TOKEN_SUBE,   TOKEN_AMBI,   TOKEN_ANTO,    TOKEN_ANY,    TOKEN_NUM,   TOKEN_REPT,    TOKEN_ALT, */
-/*   0 */ { { shft,  3 }, { deny, -1 }, { deny, -1 }, { shft,  8 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   1 */ { { deny, -1 }, { acpt, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 15 }, { deny, -1 }, { shft, 14 }, { shft, 13 }, { deny, -1 }, { shft, 17 },  },
-/*   2 */ { { deny, -1 }, { rduc,  3 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 },  },
-/*   3 */ { { deny, -1 }, { rduc, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 },  },
-/*   4 */ { { deny, -1 }, { rduc,  6 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 },  },
-/*   5 */ { { deny, -1 }, { rduc,  4 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 },  },
-/*   6 */ { { shft,  3 }, { deny, -1 }, { deny, -1 }, { shft,  8 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   7 */ { { deny, -1 }, { rduc,  5 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 },  },
-/*   8 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   9 */ { { deny, -1 }, { rduc,  1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 },  },
-/*  10 */ { { deny, -1 }, { rduc,  2 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 },  },
-/*  11 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  12 */ { { deny, -1 }, { rduc,  7 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 },  },
-/*  13 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 31 }, { deny, -1 },  },
-/*  14 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 32 }, { deny, -1 },  },
-/*  15 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  16 */ { { deny, -1 }, { rduc, 14 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 },  },
-/*  17 */ { { shft,  3 }, { deny, -1 }, { deny, -1 }, { shft,  8 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  18 */ { { deny, -1 }, { rduc, 12 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 15 }, { deny, -1 }, { rduc, 12 }, { rduc, 12 }, { deny, -1 }, { rduc, 12 },  },
-/*  19 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 35 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { shft, 40 },  },
-/*  20 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 },  },
-/*  21 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 },  },
-/*  22 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 },  },
-/*  23 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 },  },
-/*  24 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  25 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 },  },
-/*  26 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  27 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 },  },
-/*  28 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 },  },
-/*  29 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 },  },
-/*  30 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 43 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { shft, 40 },  },
-/*  31 */ { { shft,  3 }, { deny, -1 }, { deny, -1 }, { shft,  8 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  32 */ { { shft,  3 }, { deny, -1 }, { deny, -1 }, { shft,  8 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  33 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 46 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { shft, 40 },  },
-/*  34 */ { { deny, -1 }, { rduc,  9 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 15 }, { deny, -1 }, { shft, 14 }, { shft, 13 }, { deny, -1 }, { rduc,  9 },  },
-/*  35 */ { { deny, -1 }, { rduc,  8 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 },  },
-/*  36 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 47 }, { deny, -1 },  },
-/*  37 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 48 }, { deny, -1 },  },
-/*  38 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 },  },
-/*  39 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  40 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  41 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 12 }, { shft, 39 }, { deny, -1 }, { rduc, 12 }, { rduc, 12 }, { deny, -1 }, { rduc, 12 },  },
-/*  42 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 51 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { shft, 40 },  },
-/*  43 */ { { rduc, 13 }, { deny, -1 }, { deny, -1 }, { rduc, 13 }, { deny, -1 }, { deny, -1 }, { rduc, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  44 */ { { deny, -1 }, { rduc, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 15 }, { deny, -1 }, { rduc, 11 }, { rduc, 11 }, { deny, -1 }, { rduc, 11 },  },
-/*  45 */ { { deny, -1 }, { rduc, 10 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 15 }, { deny, -1 }, { rduc, 10 }, { rduc, 10 }, { deny, -1 }, { rduc, 10 },  },
-/*  46 */ { { deny, -1 }, { rduc, 15 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 15 }, { deny, -1 }, { rduc, 15 }, { rduc, 15 }, { deny, -1 }, { rduc, 15 },  },
-/*  47 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  48 */ { { shft, 21 }, { deny, -1 }, { deny, -1 }, { shft, 26 }, { deny, -1 }, { deny, -1 }, { shft, 11 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  49 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 54 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { shft, 40 },  },
-/*  50 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  9 }, { shft, 39 }, { deny, -1 }, { shft, 36 }, { shft, 37 }, { deny, -1 }, { rduc,  9 },  },
-/*  51 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 },  },
-/*  52 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 10 }, { shft, 39 }, { deny, -1 }, { rduc, 10 }, { rduc, 10 }, { deny, -1 }, { rduc, 10 },  },
-/*  53 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 11 }, { shft, 39 }, { deny, -1 }, { rduc, 11 }, { rduc, 11 }, { deny, -1 }, { rduc, 11 },  },
-/*  54 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { rduc, 15 }, { rduc, 15 }, { deny, -1 }, { rduc, 15 }, { rduc, 15 }, { deny, -1 }, { rduc, 15 },  },
+/*   0 */ { { shft,  9 }, { deny, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   1 */ { { shft,  9 }, { acpt, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { shft, 19 }, { shft, 13 }, { shft, 18 }, { shft, 16 }, { deny, -1 }, { shft, 15 },  },
+/*   2 */ { { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 },  },
+/*   3 */ { { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 },  },
+/*   4 */ { { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 },  },
+/*   5 */ { { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 },  },
+/*   6 */ { { shft,  9 }, { deny, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   7 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   8 */ { { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 },  },
+/*   9 */ { { rduc, 18 }, { rduc, 18 }, { deny, -1 }, { rduc, 18 }, { deny, -1 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { deny, -1 }, { rduc, 18 },  },
+/*  10 */ { { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 },  },
+/*  11 */ { { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 },  },
+/*  12 */ { { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 },  },
+/*  13 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  14 */ { { rduc, 11 }, { rduc, 11 }, { deny, -1 }, { rduc, 11 }, { deny, -1 }, { shft, 19 }, { rduc, 11 }, { rduc, 11 }, { rduc, 11 }, { deny, -1 }, { rduc, 11 },  },
+/*  15 */ { { shft,  9 }, { deny, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  16 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 35 }, { deny, -1 },  },
+/*  17 */ { { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 },  },
+/*  18 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 36 }, { deny, -1 },  },
+/*  19 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  20 */ { { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 }, { deny, -1 }, { shft, 19 }, { rduc, 14 }, { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 },  },
+/*  21 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { shft, 39 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { shft, 41 },  },
+/*  22 */ { { rduc,  4 }, { deny, -1 }, { deny, -1 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { rduc,  4 }, { deny, -1 }, { rduc,  4 },  },
+/*  23 */ { { rduc,  8 }, { deny, -1 }, { deny, -1 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { rduc,  8 }, { deny, -1 }, { rduc,  8 },  },
+/*  24 */ { { rduc,  7 }, { deny, -1 }, { deny, -1 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { rduc,  7 }, { deny, -1 }, { rduc,  7 },  },
+/*  25 */ { { rduc,  5 }, { deny, -1 }, { deny, -1 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { rduc,  5 }, { deny, -1 }, { rduc,  5 },  },
+/*  26 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  27 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  28 */ { { rduc,  6 }, { deny, -1 }, { deny, -1 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { rduc,  6 }, { deny, -1 }, { rduc,  6 },  },
+/*  29 */ { { rduc, 18 }, { deny, -1 }, { deny, -1 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { rduc, 18 }, { deny, -1 }, { rduc, 18 },  },
+/*  30 */ { { rduc,  1 }, { deny, -1 }, { deny, -1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { rduc,  1 }, { deny, -1 }, { rduc,  1 },  },
+/*  31 */ { { rduc,  3 }, { deny, -1 }, { deny, -1 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { rduc,  3 }, { deny, -1 }, { rduc,  3 },  },
+/*  32 */ { { rduc,  2 }, { deny, -1 }, { deny, -1 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { rduc,  2 }, { deny, -1 }, { rduc,  2 },  },
+/*  33 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { shft, 47 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { shft, 41 },  },
+/*  34 */ { { rduc, 10 }, { rduc, 10 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { shft, 19 }, { shft, 13 }, { shft, 18 }, { shft, 16 }, { deny, -1 }, { rduc, 10 },  },
+/*  35 */ { { shft,  9 }, { deny, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  36 */ { { shft,  9 }, { deny, -1 }, { deny, -1 }, { shft,  7 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  37 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { shft, 50 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { shft, 41 },  },
+/*  38 */ { { rduc, 11 }, { deny, -1 }, { deny, -1 }, { rduc, 11 }, { rduc, 11 }, { shft, 44 }, { rduc, 11 }, { rduc, 11 }, { rduc, 11 }, { deny, -1 }, { rduc, 11 },  },
+/*  39 */ { { rduc,  9 }, { rduc,  9 }, { deny, -1 }, { rduc,  9 }, { deny, -1 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { deny, -1 }, { rduc,  9 },  },
+/*  40 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 51 }, { deny, -1 },  },
+/*  41 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  42 */ { { rduc, 16 }, { deny, -1 }, { deny, -1 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { rduc, 16 }, { deny, -1 }, { rduc, 16 },  },
+/*  43 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 53 }, { deny, -1 },  },
+/*  44 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  45 */ { { rduc, 14 }, { deny, -1 }, { deny, -1 }, { rduc, 14 }, { rduc, 14 }, { shft, 44 }, { rduc, 14 }, { rduc, 14 }, { rduc, 14 }, { deny, -1 }, { rduc, 14 },  },
+/*  46 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { shft, 55 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { shft, 41 },  },
+/*  47 */ { { rduc, 15 }, { deny, -1 }, { deny, -1 }, { rduc, 15 }, { deny, -1 }, { deny, -1 }, { rduc, 15 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  48 */ { { rduc, 13 }, { rduc, 13 }, { deny, -1 }, { rduc, 13 }, { deny, -1 }, { shft, 19 }, { rduc, 13 }, { rduc, 13 }, { rduc, 13 }, { deny, -1 }, { rduc, 13 },  },
+/*  49 */ { { rduc, 12 }, { rduc, 12 }, { deny, -1 }, { rduc, 12 }, { deny, -1 }, { shft, 19 }, { rduc, 12 }, { rduc, 12 }, { rduc, 12 }, { deny, -1 }, { rduc, 12 },  },
+/*  50 */ { { rduc, 17 }, { rduc, 17 }, { deny, -1 }, { rduc, 17 }, { deny, -1 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { deny, -1 }, { rduc, 17 },  },
+/*  51 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  52 */ { { rduc, 10 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { rduc, 10 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { rduc, 10 },  },
+/*  53 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { deny, -1 }, { deny, -1 }, { shft, 13 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  54 */ { { shft, 29 }, { deny, -1 }, { deny, -1 }, { shft, 27 }, { shft, 58 }, { shft, 44 }, { shft, 13 }, { shft, 43 }, { shft, 40 }, { deny, -1 }, { shft, 41 },  },
+/*  55 */ { { rduc,  9 }, { deny, -1 }, { deny, -1 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { rduc,  9 }, { deny, -1 }, { rduc,  9 },  },
+/*  56 */ { { rduc, 13 }, { deny, -1 }, { deny, -1 }, { rduc, 13 }, { rduc, 13 }, { shft, 44 }, { rduc, 13 }, { rduc, 13 }, { rduc, 13 }, { deny, -1 }, { rduc, 13 },  },
+/*  57 */ { { rduc, 12 }, { deny, -1 }, { deny, -1 }, { rduc, 12 }, { rduc, 12 }, { shft, 44 }, { rduc, 12 }, { rduc, 12 }, { rduc, 12 }, { deny, -1 }, { rduc, 12 },  },
+/*  58 */ { { rduc, 17 }, { deny, -1 }, { deny, -1 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { rduc, 17 }, { deny, -1 }, { rduc, 17 },  },
 };
 
 
-lr_item_s lr_goto_table[55][11] = {
-/*   0 */ { { shft,  1 }, { shft,  2 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  7 }, { shft, 12 }, { shft,  9 }, { shft, 10 },  },
-/*   1 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   2 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   3 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   4 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   5 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   6 */ { { shft, 18 }, { shft,  2 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  7 }, { shft, 12 }, { shft,  9 }, { shft, 10 },  },
-/*   7 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*   8 */ { { shft, 19 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*   9 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  10 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  11 */ { { shft, 30 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  12 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  13 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  14 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  15 */ { { shft, 33 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  16 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  17 */ { { shft, 34 }, { shft,  2 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  7 }, { shft, 12 }, { shft,  9 }, { shft, 10 },  },
-/*  18 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  19 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  20 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  21 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  22 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  23 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  24 */ { { shft, 41 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  25 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  26 */ { { shft, 42 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  27 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  28 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  29 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  30 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  31 */ { { shft, 44 }, { shft,  2 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  7 }, { shft, 12 }, { shft,  9 }, { shft, 10 },  },
-/*  32 */ { { shft, 45 }, { shft,  2 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  7 }, { shft, 12 }, { shft,  9 }, { shft, 10 },  },
-/*  33 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  34 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  35 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  36 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  37 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  38 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  39 */ { { shft, 49 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  40 */ { { shft, 50 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  41 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  42 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  43 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  44 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  45 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 16 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  46 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  47 */ { { shft, 52 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  48 */ { { shft, 53 }, { shft, 20 }, { deny, -1 }, { shft, 22 }, { shft, 23 }, { shft, 24 }, { deny, -1 }, { shft, 25 }, { shft, 29 }, { shft, 27 }, { shft, 28 },  },
-/*  49 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  50 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  51 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  52 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  53 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { shft, 38 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
-/*  54 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+lr_item_s lr_goto_table[59][12] = {
+/*   0 */ { { shft,  1 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*   1 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*   2 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   3 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   4 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   5 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   6 */ { { shft, 20 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*   7 */ { { shft, 21 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*   8 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*   9 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  10 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  11 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  12 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  13 */ { { shft, 33 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  14 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  15 */ { { shft, 34 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  16 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  17 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  18 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  19 */ { { shft, 37 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  20 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  21 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  22 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  23 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  24 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  25 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  26 */ { { shft, 45 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  27 */ { { shft, 46 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  28 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  29 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  30 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  31 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  32 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  33 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  34 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  35 */ { { shft, 48 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  36 */ { { shft, 49 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { deny, -1 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  37 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  38 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  39 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  40 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  41 */ { { shft, 52 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  42 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  43 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  44 */ { { shft, 54 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  45 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  46 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  47 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  48 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  49 */ { { shft, 14 }, { shft, 11 }, { deny, -1 }, { shft,  4 }, { shft,  5 }, { shft,  6 }, { shft, 17 }, { shft,  8 }, { shft,  3 }, { shft, 10 }, { shft,  2 }, { shft, 12 },  },
+/*  50 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  51 */ { { shft, 56 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  52 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  53 */ { { shft, 57 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { deny, -1 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  54 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  55 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
+/*  56 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  57 */ { { shft, 38 }, { shft, 31 }, { deny, -1 }, { shft, 24 }, { shft, 25 }, { shft, 26 }, { shft, 42 }, { shft, 28 }, { shft, 23 }, { shft, 30 }, { shft, 22 }, { shft, 32 },  },
+/*  58 */ { { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 }, { deny, -1 },  },
 };
 
 // clang-format on

@@ -4,6 +4,7 @@ pattern -> term
 # 优先级: plain > anti-ambi > anti-anto > dist > alter > wrap
 term -> wrap
 term -> alter
+term -> join
 term -> dist
 term -> ddist
 term -> anti-anto
@@ -15,6 +16,9 @@ wrap -> ( term )
 
 # 并列
 alter -> term | term
+
+# 相临
+join -> term term
 
 # 距离
 dist -> term . {m,n} term

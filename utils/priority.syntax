@@ -1,8 +1,12 @@
 # 优先级: plain > anti-ambi > anti-anto > dist = ddist > alter > wrap
+text
 |           # alter,    左结合
 alter
+(           # wrap
+(?<!        # anti-anto
 .           # dist,     左结合
 \d          # ddist,    左结合
+join
 dist
 ddist
 anti-anto

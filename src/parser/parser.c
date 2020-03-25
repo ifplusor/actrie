@@ -72,6 +72,21 @@ void reduce_anto(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node)
   dynapool_free_node(sign_pool, anto);
 }
 
+void reduce_join(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
+  lr_sign_t tail = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+  lr_sign_t head = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
+
+  // construct dist-pattern
+  ptrn_t dist_ptrn = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_any, 0, 0);
+
+  // reuse head
+  head->data = dist_ptrn;
+  *node = head;
+
+  // clean other
+  dynapool_free_node(sign_pool, tail);
+}
+
 void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node) {
   lr_sign_t tail = deque_pop_front(sign_stack, lr_sign_s, deque_elem);
   lr_sign_t rept = deque_pop_front(sign_stack, lr_sign_s, deque_elem);

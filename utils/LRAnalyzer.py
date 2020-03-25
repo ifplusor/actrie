@@ -233,6 +233,7 @@ class LRAnalyzer:
     gen_term = "term"
     gen_wrap = "wrap"
     gen_alter = "alter"
+    gen_join = "join"
     gen_dist = "dist"
     gen_ddist = "ddist"
     gen_anti_anto = "anti-anto"
@@ -609,6 +610,8 @@ static const lr_reduce_func lr_reduce_func_table[LR_PDCT_NUM] = {
                     fp.write("    reduce_text2pure,\n")
                 elif pdct.gen == LRAnalyzer.gen_alter:
                     fp.write("    reduce_alter,\n")
+                elif pdct.gen == LRAnalyzer.gen_join:
+                    fp.write("    reduce_join,\n")
                 elif pdct.gen in {LRAnalyzer.gen_dist, LRAnalyzer.gen_ddist}:
                     fp.write("    reduce_dist,\n")
                 elif pdct.gen == LRAnalyzer.gen_anti_anto:
