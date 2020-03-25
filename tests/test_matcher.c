@@ -14,7 +14,7 @@ int main() {
   strlen_s pattern = {.ptr = str, .len = strlen(str)};
 
   printf("use memory: %zu\n", amalloc_used_memory());
-  matcher_t matcher = matcher_construct_by_string(&pattern, false, true);
+  matcher_t matcher = matcher_construct_by_string(&pattern, false, false, true);
   printf("use memory: %zu\n", amalloc_used_memory());
   if (matcher == NULL) {
     printf("build matcher failed!");
