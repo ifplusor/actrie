@@ -265,7 +265,12 @@ ptrn_t parse_pattern(strlen_t pattern) {
   return ptrn;
 }
 
-bool parse_vocab(vocab_t vocab, have_pattern_f have_pattern, void* arg, bool ignore_bad_pattern, bool bad_as_plain) {
+bool parse_vocab(vocab_t vocab,
+                 have_pattern_f have_pattern,
+                 void* arg,
+                 bool all_as_plain,
+                 bool ignore_bad_pattern,
+                 bool bad_as_plain) {
   strlen_s keyword, extra;
   vocab_reset(vocab);
   while (vocab_next_word(vocab, &keyword, &extra)) {
@@ -273,20 +278,28 @@ bool parse_vocab(vocab_t vocab, have_pattern_f have_pattern, void* arg, bool ign
       continue;
     }
     // parse pattern, output syntax tree
-    ptrn_t pattern = parse_pattern(&keyword);
-    if (pattern == NULL) {
-      fprintf(stderr, "bad pattern: '%.*s'\n", (int)keyword.len, keyword.ptr);
-      if (!ignore_bad_pattern) {
-        if (bad_as_plain) {
-          // construct pure-pattern
-          dstr_t text = dstr(&keyword);
-          pattern = _alloc(ptrn, pure, text);
-          _release(text);
+    ptrn_t pattern;
+    if (all_as_plain) {
+      // construct pure-pattern
+      dstr_t text = dstr(&keyword);
+      pattern = _alloc(ptrn, pure, text);
+      _release(text);
+    } else {
+      pattern = parse_pattern(&keyword);
+      if (pattern == NULL) {
+        fprintf(stderr, "bad pattern: '%.*s'\n", (int)keyword.len, keyword.ptr);
+        if (!ignore_bad_pattern) {
+          if (bad_as_plain) {
+            // construct pure-pattern
+            dstr_t text = dstr(&keyword);
+            pattern = _alloc(ptrn, pure, text);
+            _release(text);
+          } else {
+            return false;
+          }
         } else {
-          return false;
+          continue;
         }
-      } else {
-        continue;
       }
     }
     have_pattern(pattern, &extra, arg);
