@@ -1,5 +1,6 @@
 # Project **actrie**
 
+English | [简体中文](./README.zh_cn.md)
 
 ## What is actrie?
 
