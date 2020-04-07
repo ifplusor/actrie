@@ -33,6 +33,12 @@ static void add_pattern_to_matcher(ptrn_t pattern, strlen_t extra, void* arg) {
 
 static void free_expr_list(void* trie, void* node) {
   list_t list = (list_t)node;
+  while (list != NULL) {
+    // NOTE: car of list is expr_t, and it is not aobj!!!
+    list->car = NULL;
+    list = list->cdr;
+  }
+  list = (list_t)node;
   _release(list);
 }
 
@@ -74,8 +80,8 @@ matcher_t matcher_construct_by_string(strlen_t string, bool all_as_plain, bool i
 
 void matcher_destruct(matcher_t matcher) {
   if (matcher != NULL) {
-    reglet_destruct(matcher->reglet);
     dat_destruct(matcher->datrie, (dat_node_free_f)free_expr_list);
+    reglet_destruct(matcher->reglet);
     matcher_free(matcher);
   }
 }

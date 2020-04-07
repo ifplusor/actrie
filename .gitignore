@@ -18,6 +18,7 @@ cmake-build-*
 
 .vs
 .vscode
+.VSCodeCounter
 CMakeSettings.json
 
 cmake-build/
