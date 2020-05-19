@@ -21,10 +21,10 @@ wctx_t alloc_context(matcher_t matcher) {
     }
 
     wctx->matcher_ctx = context;
-    matcher_fix_pos(wctx->matcher_ctx, fix_utf8_pos, &wctx->utf8_ctx);
 
     wctx->utf8_ctx.pos = NULL;
     wctx->utf8_ctx.len = 0;
+    matcher_fix_pos(wctx->matcher_ctx, fix_utf8_pos, &wctx->utf8_ctx);
 
     wctx->return_byte_pos = false;
 

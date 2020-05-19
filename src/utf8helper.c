@@ -26,7 +26,7 @@ void free_utf8_context(utf8_ctx_t context) {
 bool reset_utf8_context(utf8_ctx_t context, char content[], size_t len) {
   if (context->len < len || context->pos == NULL) {
     if (context->pos != NULL) {
-      free(context->pos);
+      afree(context->pos);
     }
     context->pos = amalloc((len + 1) * sizeof(size_t));
     if (context->pos == NULL) {
@@ -34,7 +34,7 @@ bool reset_utf8_context(utf8_ctx_t context, char content[], size_t len) {
     }
   }
 
-  context->len = (size_t)len;
+  context->len = len;
   utf8_word_pos(content, context->len, context->pos);
 
   return true;
