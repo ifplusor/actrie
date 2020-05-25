@@ -5,9 +5,9 @@ set -e
 PLAT=manylinux2010_x86_64
 
 PROJECT_NAME=actrie
-PROJECT_DIR=/opt/actrie/
-PROJECT_DIST=/opt/${PROJECT_NAME}_dist/
-DIST_DIR=/opt/wheelhouse/
+PROJECT_DIR=~/${PROJECT_NAME}/
+PROJECT_DIST=~/${PROJECT_NAME}_dist/
+DIST_DIR=~/wheelhouse/
 
 # Compile wheels
 for PYBIN in /opt/python/*/bin; do

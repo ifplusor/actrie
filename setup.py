@@ -79,5 +79,7 @@ setup(name="actrie",
           "Operating System :: OS Independent",
           "Topic :: Utilities"
       ],
+      keywords=["matcher", "trie", "aho-corasick automation", "ac-automation",
+                "string matching", "string search", "string matcher"],
       zip_safe=False,
       **kwds)
