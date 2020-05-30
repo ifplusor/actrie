@@ -130,16 +130,16 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
 
   if (!PyArg_ParseTuple(args, "Ks#O", &temp, &content, &length, &return_byte_pos)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    Py_RETURN_NONE;
+    Py_RETURN_FALSE;
   }
 
   wctx = (wctx_t)temp;
 
-  if (reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
-    Py_RETURN_TRUE;
+  if (!reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
+    Py_RETURN_FALSE;
   }
 
-  Py_RETURN_FALSE;
+  Py_RETURN_TRUE;
 }
 
 static inline PyObject* build_matched_output(wctx_t wctx, word_t matched_word) {
