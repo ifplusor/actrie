@@ -65,20 +65,37 @@ pip install dist/actrie-*.whl
 
 ## Python example
 
+### vocab.txt
+
+```text
+pattern0
+pattern1
+pattern2
+...
+```
+
+### example.py
+
 ```python
 #!/usr/bin/env python
 # coding=utf-8
 
 from actrie import *
 
-pattern = "f|(a|b).{0,5}(e(?&!ef)|g)"
+pattern = r"f|(a|b).{0,5}(e(?&!ef)|g)
+abc
+efg"
+
 content = "abcdefg"
 
 
 def test():
     global pattern, content
 
-    # create matcher
+    # create matcher by file
+    #matcher = Matcher.create_by_file("vocab.txt")
+
+    # create matcher by string
     matcher = Matcher.create_by_string(pattern)
 
     # iterator
