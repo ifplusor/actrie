@@ -21,8 +21,16 @@ typedef struct _actrie_matcher_* matcher_t;
 struct _actrie_context_;
 typedef struct _actrie_context_* context_t;
 
-matcher_t matcher_construct_by_file(const char* path, bool all_as_plain, bool ignore_bad_pattern, bool bad_as_plain);
-matcher_t matcher_construct_by_string(strlen_t string, bool all_as_plain, bool ignore_bad_pattern, bool bad_as_plain);
+matcher_t matcher_construct_by_file(const char* path,
+                                    bool all_as_plain,
+                                    bool ignore_bad_pattern,
+                                    bool bad_as_plain,
+                                    bool deduplicate_extra);
+matcher_t matcher_construct_by_string(strlen_t string,
+                                      bool all_as_plain,
+                                      bool ignore_bad_pattern,
+                                      bool bad_as_plain,
+                                      bool deduplicate_extra);
 void matcher_destruct(matcher_t matcher);
 
 context_t matcher_alloc_context(matcher_t matcher);

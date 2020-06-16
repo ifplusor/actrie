@@ -11,14 +11,16 @@
 #include "trie/acdat.h"
 
 typedef struct _actrie_matcher_ {
-  reglet_t reglet;
   dat_t datrie;
+  reglet_t reglet;
+  segarray_t extra_store;
 } matcher_s;
 
 static matcher_t matcher_alloc() {
   matcher_t matcher = amalloc(sizeof(matcher_s));
-  matcher->reglet = NULL;
   matcher->datrie = NULL;
+  matcher->reglet = NULL;
+  matcher->extra_store = NULL;
   return matcher;
 }
 
@@ -26,12 +28,35 @@ static void matcher_free(matcher_t matcher) {
   afree(matcher);
 }
 
+typedef struct _add_pattern_params_ {
+  matcher_t matcher;
+  trie_t extra_trie;
+} add_pattern_params_s, *add_pattern_params_t;
+
 static void add_pattern_to_matcher(ptrn_t pattern, strlen_t extra, void* arg) {
-  matcher_t matcher = (matcher_t)arg;
-  reglet_add_pattern(matcher->reglet, pattern, extra);
+  add_pattern_params_t args = (add_pattern_params_t)arg;
+  dstr_t ds = NULL;
+  if (extra->len > 0) {
+    if (args->extra_trie != NULL) {
+      ds = trie_search(args->extra_trie, extra->ptr, extra->len);
+    }
+    if (ds == NULL) {
+      size_t alloced = segarray_size(args->matcher->extra_store);
+      if (segarray_extend(args->matcher->extra_store, 1) != 1) {
+        // alloc failed!!!
+        exit(-1);
+      }
+      dstr_t* dsc = (dstr_t*)segarray_access(args->matcher->extra_store, alloced);
+      ds = *dsc = dstr(extra);
+      if (args->extra_trie != NULL) {
+        trie_add_keyword(args->extra_trie, extra->ptr, extra->len, ds);
+      }
+    }
+  }
+  reglet_add_pattern(args->matcher->reglet, pattern, ds);
 }
 
-static void free_expr_list(void* trie, void* node) {
+static void expr_list_free(void* trie, void* node) {
   list_t list = (list_t)node;
   while (list != NULL) {
     // NOTE: car of list is expr_t, and it is not aobj!!!
@@ -42,13 +67,22 @@ static void free_expr_list(void* trie, void* node) {
   _release(list);
 }
 
-static matcher_t matcher_construct(vocab_t vocab, bool all_as_plain, bool ignore_bad_pattern, bool bad_as_plain) {
-  matcher_t matcher = matcher_alloc();
+static matcher_t matcher_construct(vocab_t vocab,
+                                   bool all_as_plain,
+                                   bool ignore_bad_pattern,
+                                   bool bad_as_plain,
+                                   bool deduplicate_extra) {
+  trie_t extra_trie = deduplicate_extra ? trie_alloc() : NULL;
 
-  // build reglet
+  // create matcher
+  matcher_t matcher = matcher_alloc();
+  matcher->extra_store = segarray_construct_with_type(dstr_t);
   matcher->reglet = reglet_construct();
-  if (!parse_vocab(vocab, add_pattern_to_matcher, matcher, all_as_plain, ignore_bad_pattern, bad_as_plain)) {
-    trie_free(matcher->reglet->trie, (trie_node_free_f)free_expr_list);
+
+  // load vocabulary
+  add_pattern_params_s add_pattern_args = {.matcher = matcher, .extra_trie = extra_trie};
+  if (!parse_vocab(vocab, add_pattern_to_matcher, &add_pattern_args, all_as_plain, ignore_bad_pattern, bad_as_plain)) {
+    trie_free(matcher->reglet->trie, (trie_node_free_f)expr_list_free);
     matcher->reglet->trie = NULL;
     matcher_destruct(matcher);
     return NULL;
@@ -61,27 +95,52 @@ static matcher_t matcher_construct(vocab_t vocab, bool all_as_plain, bool ignore
   trie_free(matcher->reglet->trie, NULL);
   matcher->reglet->trie = NULL;
 
+  // free extra_trie
+  if (extra_trie) {
+    trie_free(extra_trie, NULL);
+  }
+
   return matcher;
 }
 
-matcher_t matcher_construct_by_file(const char* path, bool all_as_plain, bool ignore_bad_pattern, bool bad_as_plain) {
+matcher_t matcher_construct_by_file(const char* path,
+                                    bool all_as_plain,
+                                    bool ignore_bad_pattern,
+                                    bool bad_as_plain,
+                                    bool deduplicate_extra) {
   vocab_t vocab = vocab_construct(stream_type_file, (void*)path);
-  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain);
+  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
   vocab_destruct(vocab);
   return matcher;
 }
 
-matcher_t matcher_construct_by_string(strlen_t string, bool all_as_plain, bool ignore_bad_pattern, bool bad_as_plain) {
+matcher_t matcher_construct_by_string(strlen_t string,
+                                      bool all_as_plain,
+                                      bool ignore_bad_pattern,
+                                      bool bad_as_plain,
+                                      bool deduplicate_extra) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
-  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain);
+  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
   vocab_destruct(vocab);
   return matcher;
+}
+
+static void extra_store_free(segarray_t extra_store) {
+  if (extra_store != NULL) {
+    size_t store_size = segarray_size(extra_store);
+    for (size_t idx = 0; idx < store_size; idx++) {
+      dstr_t ds = *(dstr_t*)segarray_access(extra_store, idx);
+      _release(ds);
+    }
+    segarray_destruct(extra_store);
+  }
 }
 
 void matcher_destruct(matcher_t matcher) {
   if (matcher != NULL) {
-    dat_destruct(matcher->datrie, (dat_node_free_f)free_expr_list);
+    dat_destruct(matcher->datrie, (dat_node_free_f)expr_list_free);
     reglet_destruct(matcher->reglet);
+    extra_store_free(matcher->extra_store);
     matcher_free(matcher);
   }
 }

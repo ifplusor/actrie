@@ -132,19 +132,12 @@ reglet_t reglet_construct() {
   expr_size = alib_max(expr_size, sizeof(expr_anto_s));
   expr_size = alib_max(expr_size, sizeof(expr_pass_s));
   reglet->expr_pool = dynapool_construct(expr_size);
-  reglet->extra_store = trie_alloc();
   reglet->trie = trie_alloc();
   return reglet;
 }
 
-static void free_extra_in_store(trie_t trie, void* node) {
-  dstr_t ds = (dstr_t)node;
-  _release(ds);
-}
-
 void reglet_destruct(reglet_t reglet) {
   dynapool_destruct(reglet->expr_pool);
-  trie_free(reglet->extra_store, free_extra_in_store);
   trie_free(reglet->trie, NULL);
   reglet_free(reglet);
 }
@@ -252,17 +245,9 @@ static void expr_feed_output(expr_t expr, pos_cache_t keyword, reg_ctx_t context
   prique_push(context->output_queue, keyword);
 }
 
-void reglet_add_pattern(reglet_t self, ptrn_t pattern, strlen_t extra) {
+void reglet_add_pattern(reglet_t self, ptrn_t pattern, dstr_t extra) {
   expr_output_t expr_output = dynapool_alloc_node(self->expr_pool);
-  dstr_t ds = NULL;
-  if (extra->len > 0) {
-    ds = trie_search(self->extra_store, extra->ptr, extra->len);
-    if (ds == NULL) {
-      ds = dstr(extra);
-      trie_add_keyword(self->extra_store, extra->ptr, extra->len, ds);
-    }
-  }
-  expr_init_output(expr_output, ds);
+  expr_init_output(expr_output, extra);
   reglet_build_expr(self, pattern, &expr_output->header, expr_feed_output);
 }
 
