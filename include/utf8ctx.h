@@ -17,13 +17,13 @@ typedef struct context_wrapper {
   context_t matcher_ctx;
   utf8_ctx_s utf8_ctx;
   bool return_byte_pos;
-} wctx_s, *wctx_t;
+} utf8ctx_s, *utf8ctx_t;
 
-wctx_t alloc_context(matcher_t matcher);
-void free_context(wctx_t wctx);
-bool reset_context(wctx_t wctx, char* content, int length, bool return_byte_pos);
-word_t next(wctx_t wctx);
-word_t next_prefix(wctx_t wctx);
+utf8ctx_t utf8ctx_alloc_context(matcher_t matcher);
+void utf8ctx_free_context(utf8ctx_t utf8ctx);
+bool utf8ctx_reset_context(utf8ctx_t utf8ctx, char* content, int length, bool return_byte_pos);
+word_t utf8ctx_next(utf8ctx_t utf8ctx);
+word_t utf8ctx_next_prefix(utf8ctx_t utf8ctx);
 
 #ifdef __cplusplus
 }

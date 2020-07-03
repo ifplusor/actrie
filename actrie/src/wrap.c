@@ -91,7 +91,7 @@ PyObject* wrap_destroy(PyObject* dummy, PyObject* args) {
 PyObject* wrap_alloc_context(PyObject* dummy, PyObject* args) {
   unsigned long long temp;
   matcher_t matcher;
-  wctx_t wctx;
+  utf8ctx_t utf8ctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
@@ -100,33 +100,33 @@ PyObject* wrap_alloc_context(PyObject* dummy, PyObject* args) {
 
   matcher = (matcher_t)temp;
 
-  wctx = alloc_context(matcher);
-  if (wctx == NULL) {
+  utf8ctx = utf8ctx_alloc_context(matcher);
+  if (utf8ctx == NULL) {
     Py_RETURN_NONE;
   }
 
-  return Py_BuildValue("K", wctx);
+  return Py_BuildValue("K", utf8ctx);
 }
 
 PyObject* wrap_free_context(PyObject* dummy, PyObject* args) {
   unsigned long long temp;
-  wctx_t wctx;
+  utf8ctx_t utf8ctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_FALSE;
   }
 
-  wctx = (wctx_t)temp;
+  utf8ctx = (utf8ctx_t)temp;
 
-  free_context(wctx);
+  utf8ctx_free_context(utf8ctx);
 
   Py_RETURN_TRUE;
 }
 
 PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
   unsigned long long temp;
-  wctx_t wctx;
+  utf8ctx_t utf8ctx;
   char* content;
   int length;
   PyObject* return_byte_pos;
@@ -136,48 +136,42 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
     Py_RETURN_FALSE;
   }
 
-  wctx = (wctx_t)temp;
+  utf8ctx = (utf8ctx_t)temp;
 
-  if (!reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
+  if (!utf8ctx_reset_context(utf8ctx, content, length, PyObject_IsTrue(return_byte_pos))) {
     Py_RETURN_FALSE;
   }
 
   Py_RETURN_TRUE;
 }
 
-static inline PyObject* build_matched_output(wctx_t wctx, word_t matched_word) {
-  if (wctx->return_byte_pos) {
-    return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len, matched_word->pos.so,
-                         matched_word->pos.eo, matched_word->extra.ptr, matched_word->extra.len);
-  } else {
-    return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len,
-                         wctx->utf8_ctx.pos[matched_word->pos.so], wctx->utf8_ctx.pos[matched_word->pos.eo],
-                         matched_word->extra.ptr, matched_word->extra.len);
-  }
+static inline PyObject* build_matched_output(utf8ctx_t utf8ctx, word_t matched_word) {
+  return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len, matched_word->pos.so,
+                       matched_word->pos.eo, matched_word->extra.ptr, matched_word->extra.len);
 }
 
-typedef word_t (*wctx_next_f)(wctx_t wctx);
+typedef word_t (*utf8ctx_next_f)(utf8ctx_t utf8ctx);
 
-PyObject* wrap_next0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_func) {
+PyObject* wrap_next0(PyObject* dummy, PyObject* args, utf8ctx_next_f utf8ctx_next_func) {
   unsigned long long temp;
-  wctx_t wctx;
+  utf8ctx_t utf8ctx;
 
   if (!PyArg_ParseTuple(args, "K", &temp)) {
     fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
     Py_RETURN_NONE;
   }
 
-  wctx = (wctx_t)temp;
+  utf8ctx = (utf8ctx_t)temp;
 
-  word_t matched_word = wctx_next_func(wctx);
+  word_t matched_word = utf8ctx_next_func(utf8ctx);
   if (matched_word != NULL) {
-    return build_matched_output(wctx, matched_word);
+    return build_matched_output(utf8ctx, matched_word);
   }
 
   Py_RETURN_NONE;
 }
 
-PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_func) {
+PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, utf8ctx_next_f utf8ctx_next_func) {
   unsigned long long temp;
   matcher_t matcher;
   char* content;
@@ -191,43 +185,43 @@ PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, wctx_next_f wctx_next_
 
   matcher = (matcher_t)temp;
 
-  wctx_t wctx = alloc_context(matcher);
-  if (wctx == NULL) {
+  utf8ctx_t utf8ctx = utf8ctx_alloc_context(matcher);
+  if (utf8ctx == NULL) {
     Py_RETURN_NONE;
   }
 
-  if (!reset_context(wctx, content, length, PyObject_IsTrue(return_byte_pos))) {
+  if (!utf8ctx_reset_context(utf8ctx, content, length, PyObject_IsTrue(return_byte_pos))) {
     Py_RETURN_NONE;
   }
 
   PyObject* list = PyList_New(0);
-  word_t matched_word = wctx_next_func(wctx);
+  word_t matched_word = utf8ctx_next_func(utf8ctx);
   while (matched_word != NULL) {
-    PyObject* item = build_matched_output(wctx, matched_word);
+    PyObject* item = build_matched_output(utf8ctx, matched_word);
     PyList_Append(list, item);
     Py_DECREF(item);
-    matched_word = wctx_next_func(wctx);
+    matched_word = utf8ctx_next_func(utf8ctx);
   }
 
-  free_context(wctx);
+  utf8ctx_free_context(utf8ctx);
 
   return list;
 }
 
 PyObject* wrap_next(PyObject* dummy, PyObject* args) {
-  return wrap_next0(dummy, args, next);
+  return wrap_next0(dummy, args, utf8ctx_next);
 }
 
 PyObject* wrap_find_all(PyObject* dummy, PyObject* args) {
-  return wrap_find_all0(dummy, args, next);
+  return wrap_find_all0(dummy, args, utf8ctx_next);
 }
 
 PyObject* wrap_next_prefix(PyObject* dummy, PyObject* args) {
-  return wrap_next0(dummy, args, next_prefix);
+  return wrap_next0(dummy, args, utf8ctx_next_prefix);
 }
 
 PyObject* wrap_find_all_prefix(PyObject* dummy, PyObject* args) {
-  return wrap_find_all0(dummy, args, next_prefix);
+  return wrap_find_all0(dummy, args, utf8ctx_next_prefix);
 }
 
 static PyMethodDef wrapMethods[] = {

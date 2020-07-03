@@ -14,9 +14,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 message("build for python")
 
-set(HEADER_FILES src/utf8ctx.h)
+set(HEADER_FILES)
 
-set(SOURCE_FILES src/utf8ctx.c src/wrap.c)
+set(SOURCE_FILES src/wrap.c)
 
 add_library(_actrie SHARED ${HEADER_FILES} ${SOURCE_FILES})
 set_target_properties(_actrie PROPERTIES PREFIX "")

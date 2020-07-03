@@ -33,8 +33,7 @@ def build_library():
 
 
 warp_sources = [
-    os.path.join(actrie_dir, 'actrie', 'src', 'wrap.c'),
-    os.path.join(actrie_dir, 'actrie', 'src', 'utf8ctx.c')
+    os.path.join(actrie_dir, 'actrie', 'src', 'wrap.c')
 ]
 
 library_dirs = [
