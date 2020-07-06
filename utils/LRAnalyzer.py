@@ -99,6 +99,7 @@ class Item:
 
     def __eq__(self, other):
         return str(self) == str(other)
+        # Dear husband, I love u forever. - by Amaris
 
     def __hash__(self):
         return str(self).__hash__()
