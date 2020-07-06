@@ -13,7 +13,10 @@ __pycache__/
 
 *.swp
 
-.idea
+.classpath
+.project
+.settings/
+.idea/
 cmake-build-*
 
 .vs
@@ -21,9 +24,17 @@ cmake-build-*
 .VSCodeCounter
 CMakeSettings.json
 
+# cmake
 cmake-build/
 build/
 lib/
+
+# python
 dist/
-data/
 /actrie/**/*.so
+
+# java
+/jni/target/
+
+# test
+data/
