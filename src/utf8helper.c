@@ -24,16 +24,12 @@ void free_utf8_context(utf8_ctx_t context) {
 }
 
 bool reset_utf8_context(utf8_ctx_t context, char content[], size_t len) {
-  if (context->len < len || context->pos == NULL) {
-    if (context->pos != NULL) {
-      afree(context->pos);
-    }
-    context->pos = amalloc((len + 1) * sizeof(size_t));
-    if (context->pos == NULL) {
-      return false;
-    }
+  void* ptr = arealloc(context->pos, (len + 1) * sizeof(size_t));
+  if (ptr == NULL) {
+    return false;
   }
 
+  context->pos = ptr;
   context->len = len;
   utf8_word_pos(content, context->len, context->pos);
 
