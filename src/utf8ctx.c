@@ -20,6 +20,9 @@ utf8ctx_t utf8ctx_alloc_context(matcher_t matcher) {
       break;
     }
 
+    utf8ctx->content.ptr = NULL;
+    utf8ctx->content.len = 0;
+
     utf8ctx->matcher_ctx = context;
 
     utf8ctx->utf8_ctx.pos = NULL;
@@ -40,6 +43,7 @@ void utf8ctx_free_context(utf8ctx_t utf8ctx) {
   if (utf8ctx != NULL) {
     matcher_free_context(utf8ctx->matcher_ctx);
     afree(utf8ctx->utf8_ctx.pos);
+    afree(utf8ctx->content.ptr);
     afree(utf8ctx);
   }
 }
@@ -50,13 +54,23 @@ bool utf8ctx_reset_context(utf8ctx_t utf8ctx, char* content, int len, bool retur
       break;
     }
 
+    // copy content
+    void* ptr = arealloc(utf8ctx->content.ptr, len);
+    if (ptr == NULL) {
+      break;
+    }
+    memcpy(ptr, content, len);
+
+    utf8ctx->content.ptr = ptr;
+    utf8ctx->content.len = len;
+
     utf8ctx->return_byte_pos = return_byte_pos;
 
-    if (!reset_utf8_context(&utf8ctx->utf8_ctx, content, len)) {
+    if (!reset_utf8_context(&utf8ctx->utf8_ctx, utf8ctx->content.ptr, utf8ctx->content.len)) {
       break;
     }
 
-    matcher_reset_context(utf8ctx->matcher_ctx, content, len);
+    matcher_reset_context(utf8ctx->matcher_ctx, utf8ctx->content.ptr, utf8ctx->content.len);
 
     return true;
   } while (0);

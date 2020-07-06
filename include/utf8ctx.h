@@ -14,6 +14,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef struct context_wrapper {
+  strlen_s content;
   context_t matcher_ctx;
   utf8_ctx_s utf8_ctx;
   bool return_byte_pos;
