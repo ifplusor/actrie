@@ -109,6 +109,10 @@ matcher_t matcher_construct_by_file(const char* path,
                                     bool bad_as_plain,
                                     bool deduplicate_extra) {
   vocab_t vocab = vocab_construct(stream_type_file, (void*)path);
+  if (vocab == NULL) {
+    return NULL;
+  }
+
   matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
   vocab_destruct(vocab);
   return matcher;
