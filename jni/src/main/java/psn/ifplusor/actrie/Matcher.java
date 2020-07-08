@@ -77,6 +77,9 @@ public class Matcher implements AutoCloseable {
     }
 
     public Context match(String content, boolean returnBytePos) throws MatcherError {
+        if (this.nativeMatcher == 0) {
+            throw new MatcherError("Matcher is not initialized.");
+        }
         return new Context(this, content, returnBytePos);
     }
 
