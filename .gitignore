@@ -1,40 +1,37 @@
-testdata/
-report*
-gmon.out
-
 *.i
 *.s
 *.o
 *.out
+*.swp
 
+# macOS
+.DS_Store
+
+# Eclipse
+.settings/
+.classpath
+.project
+
+# Intellij IDEA
+.idea/
+
+# VS Code
+.vs/
+.vscode/
+.VSCodeCounter/
+CMakeSettings.json
+
+# Python
+dist/
 __pycache__/
 *.egg-info
 *.pyc
-
-*.swp
-
-.classpath
-.project
-.settings/
-.idea/
-cmake-build-*
-
-.vs
-.vscode
-.VSCodeCounter
-CMakeSettings.json
-
-# cmake
-cmake-build/
-build/
-lib/
-
-# python
-dist/
 /actrie/**/*.so
 
-# java
-/jni/target/
+# Maven
+target/
 
-# test
-data/
+# Project
+/build*/
+/lib/
+/data/
