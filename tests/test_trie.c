@@ -70,8 +70,8 @@ int main() {
     trie_build_automation(prime_trie);
   }
 
-  printf("use memory %llu\n", amalloc_used_memory());
-  printf("use node %llu\n", segarray_size(prime_trie->node_array));
+  printf("use memory %zu\n", amalloc_used_memory());
+  printf("use node %zu\n", segarray_size(prime_trie->node_array));
 
   FILE* fin = fopen("corpus1.txt", "r");
   if (fin == NULL) {
