@@ -9,6 +9,9 @@ content = "中国，北京"
 
 def test():
     matcher = Matcher.create_by_string(pattern)
+    if matcher is None:
+        print("create matcher failed!")
+        return
 
     print("\ntest context:")
     context = matcher.match(content)

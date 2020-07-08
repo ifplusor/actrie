@@ -31,17 +31,11 @@ PyObject* wrap_construct_by_file(PyObject* dummy, PyObject* args) {
   PyObject* ignore_bad_pattern;
   PyObject* bad_as_plain;
   PyObject* deduplicate_extra;
-  matcher_t matcher;
+  matcher_t matcher = NULL;
 
-  if (!PyArg_ParseTuple(args, "sOOOO", &path, &all_as_plain, &ignore_bad_pattern, &bad_as_plain, &deduplicate_extra)) {
-    fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    Py_RETURN_NONE;
-  }
-
-  matcher = matcher_construct_by_file(path, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
-                                      PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
-  if (matcher == NULL) {
-    Py_RETURN_NONE;
+  if (PyArg_ParseTuple(args, "sOOOO", &path, &all_as_plain, &ignore_bad_pattern, &bad_as_plain, &deduplicate_extra)) {
+    matcher = matcher_construct_by_file(path, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
+                                        PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
   }
 
   return Py_BuildValue("K", matcher);
@@ -54,19 +48,13 @@ PyObject* wrap_construct_by_string(PyObject* dummy, PyObject* args) {
   PyObject* ignore_bad_pattern;
   PyObject* bad_as_plain;
   PyObject* deduplicate_extra;
-  matcher_t matcher;
+  matcher_t matcher = NULL;
 
-  if (!PyArg_ParseTuple(args, "s#OOOO", &string, &length, &all_as_plain, &ignore_bad_pattern, &bad_as_plain,
-                        &deduplicate_extra)) {
-    fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    Py_RETURN_NONE;
-  }
-
-  strlen_s vocab = {.ptr = (char*)string, .len = (size_t)length};
-  matcher = matcher_construct_by_string(&vocab, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
-                                        PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
-  if (matcher == NULL) {
-    Py_RETURN_NONE;
+  if (PyArg_ParseTuple(args, "s#OOOO", &string, &length, &all_as_plain, &ignore_bad_pattern, &bad_as_plain,
+                       &deduplicate_extra)) {
+    strlen_s vocab = {.ptr = (char*)string, .len = (size_t)length};
+    matcher = matcher_construct_by_string(&vocab, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
+                                          PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
   }
 
   return Py_BuildValue("K", matcher);
@@ -82,7 +70,6 @@ PyObject* wrap_destroy(PyObject* dummy, PyObject* args) {
   }
 
   matcher = (matcher_t)temp;
-
   matcher_destruct(matcher);
 
   Py_RETURN_TRUE;
@@ -91,18 +78,11 @@ PyObject* wrap_destroy(PyObject* dummy, PyObject* args) {
 PyObject* wrap_alloc_context(PyObject* dummy, PyObject* args) {
   unsigned long long temp;
   matcher_t matcher;
-  utf8ctx_t utf8ctx;
+  utf8ctx_t utf8ctx = NULL;
 
-  if (!PyArg_ParseTuple(args, "K", &temp)) {
-    fprintf(stderr, "%s:%d wrong args\n", __FUNCTION__, __LINE__);
-    Py_RETURN_NONE;
-  }
-
-  matcher = (matcher_t)temp;
-
-  utf8ctx = utf8ctx_alloc_context(matcher);
-  if (utf8ctx == NULL) {
-    Py_RETURN_NONE;
+  if (PyArg_ParseTuple(args, "K", &temp)) {
+    matcher = (matcher_t)temp;
+    utf8ctx = utf8ctx_alloc_context(matcher);
   }
 
   return Py_BuildValue("K", utf8ctx);
@@ -118,7 +98,6 @@ PyObject* wrap_free_context(PyObject* dummy, PyObject* args) {
   }
 
   utf8ctx = (utf8ctx_t)temp;
-
   utf8ctx_free_context(utf8ctx);
 
   Py_RETURN_TRUE;
@@ -137,7 +116,6 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
   }
 
   utf8ctx = (utf8ctx_t)temp;
-
   if (!utf8ctx_reset_context(utf8ctx, content, length, PyObject_IsTrue(return_byte_pos))) {
     Py_RETURN_FALSE;
   }
@@ -162,7 +140,6 @@ PyObject* wrap_next0(PyObject* dummy, PyObject* args, utf8ctx_next_f utf8ctx_nex
   }
 
   utf8ctx = (utf8ctx_t)temp;
-
   word_t matched_word = utf8ctx_next_func(utf8ctx);
   if (matched_word != NULL) {
     return build_matched_output(utf8ctx, matched_word);

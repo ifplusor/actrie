@@ -1,4 +1,8 @@
+# coding=utf-8
+
+
 class MatcherError(Exception):
+
     def __init__(self, value):
         self.value = value
 

@@ -9,21 +9,21 @@ from .util import convert2pass
 
 
 class Matcher:
+
     def __init__(self):
-        self._matcher = None
+        self._matcher = 0
 
     def __del__(self):
-        if self._matcher:
-            _actrie.Destruct(self._matcher)
+        _actrie.Destruct(self._matcher)
 
     def load_from_file(self, path, all_as_plain=False, ignore_bad_pattern=False, bad_as_plain=True, deduplicate_extra=True):
         if self._matcher:
-            raise MatcherError("matcher is initialized")
+            raise MatcherError("Matcher is already initialized.")
         if not os.path.isfile(path):
             return False
         self._matcher = _actrie.ConstructByFile(
             convert2pass(path), all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra)
-        return self._matcher is not None
+        return self._matcher != 0
 
     @classmethod
     def create_by_file(cls, path, all_as_plain=False, ignore_bad_pattern=False, bad_as_plain=True, deduplicate_extra=True):
@@ -34,12 +34,12 @@ class Matcher:
 
     def load_from_string(self, keywords, all_as_plain=False, ignore_bad_pattern=False, bad_as_plain=True, deduplicate_extra=True):
         if self._matcher:
-            raise MatcherError("matcher is initialized")
+            raise MatcherError("Matcher is already initialized.")
         if keywords is None:
             return False
         self._matcher = _actrie.ConstructByString(
             convert2pass(keywords), all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra)
-        return self._matcher is not None
+        return self._matcher != 0
 
     @classmethod
     def create_by_string(cls, keywords, all_as_plain=False, ignore_bad_pattern=False, bad_as_plain=True, deduplicate_extra=True):
@@ -50,7 +50,7 @@ class Matcher:
 
     def load_from_collection(self, keywords, all_as_plain=False, ignore_bad_pattern=False, bad_as_plain=True, deduplicate_extra=True):
         if self._matcher:
-            raise MatcherError("matcher is initialized")
+            raise MatcherError("Matcher is already initialized.")
         if isinstance(keywords, list) or isinstance(keywords, set):
             # for utf-8 '\n' is 0x0a, in other words, utf-8 is ascii compatible.
             # but in python3, str.join is only accept str as argument
@@ -58,7 +58,7 @@ class Matcher:
                 [convert2pass(keyword) for keyword in keywords
                  if convert2pass(keyword)])
         else:
-            raise MatcherError("should be list or set")
+            raise MatcherError("Keywords should be list or set.")
         return self.load_from_string(keywords, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra)
 
     @classmethod
@@ -70,7 +70,7 @@ class Matcher:
 
     def match(self, content, return_byte_pos=False):
         if not self._matcher:
-            raise MatcherError("matcher is not initialized")
+            raise MatcherError("Matcher is not initialized.")
         return Context(self, content, return_byte_pos)
 
     def findall(self, content, return_byte_pos=False):
@@ -80,7 +80,7 @@ class Matcher:
         :rtype: list[(str, int, int, str)]
         """
         if not self._matcher:
-            raise MatcherError("matcher is not initialized")
+            raise MatcherError("Matcher is not initialized.")
         return _actrie.FindAll(self._matcher, convert2pass(content), return_byte_pos)
 
     def finditer(self, content, return_byte_pos=False):
@@ -99,9 +99,10 @@ class Matcher:
 
 
 class PrefixMatcher(Matcher):
+
     def match(self, content, return_byte_pos=False):
         if not self._matcher:
-            raise MatcherError("matcher is not initialized")
+            raise MatcherError("Matcher is not initialized.")
         return PrefixContext(self, content, return_byte_pos)
 
     def findall(self, content, return_byte_pos=False):
@@ -111,5 +112,5 @@ class PrefixMatcher(Matcher):
         :rtype: list[(str, int, int, str)]
         """
         if not self._matcher:
-            raise MatcherError("matcher is not initialized")
+            raise MatcherError("Matcher is not initialized.")
         return _actrie.FindAllPrefix(self._matcher, convert2pass(content), return_byte_pos)
