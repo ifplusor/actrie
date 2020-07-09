@@ -1,5 +1,13 @@
 # actrie项目
 
+[![GitHub issues](https://img.shields.io/github/issues/ifplusor/actrie)](https://github.com/ifplusor/actrie/issues)
+[![GitHub forks](https://img.shields.io/github/forks/ifplusor/actrie)](https://github.com/ifplusor/actrie/network)
+[![GitHub stars](https://img.shields.io/github/stars/ifplusor/actrie)](https://github.com/ifplusor/actrie/stargazers)
+[![GitHub license](https://img.shields.io/github/license/ifplusor/actrie)](https://github.com/ifplusor/actrie/blob/master/LICENSE)
+![PyPI - Implementation](https://img.shields.io/pypi/implementation/actrie)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/actrie)
+[![PyPI - Wheel](https://img.shields.io/pypi/wheel/actrie)](https://pypi.org/project/actrie/)
+
 [English](./README.md) | 简体中文
 
 ## 什么是actrie?
@@ -93,6 +101,8 @@ actrie是为多模式匹配创建的工具库，支持C和Python，核心算法�
 
 ## 构建和安装
 
+### 1. 构建C库
+
 ```bash
 # 下载源码
 git clone --depth=1 --recurse-submodules --shallow-submodules https://github.com/ifplusor/actrie.git
@@ -101,37 +111,57 @@ git clone --depth=1 --recurse-submodules --shallow-submodules https://github.com
 cd actrie
 
 # 创建build目录并进入
-mkdir build && cd build
+mkdir build && pushd build
 
 # 配置cmake工程
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 
 # 构建alib和actrie库
 make actrie
 
 # 离开build目录
-cd ..
+popd
+```
 
-# 构建python的wheel包
+### 2. 构建和安装Python包
+
+```bash
+# 构建wheel包
 python setup.py bdist_wheel
 
-# 安装python包
+# 安装wheel包
 pip install dist/actrie-*.whl
+
+# 也可以从PyPI安装
+pip install actrie
 ```
 
+### 3. 构建和安装Java包
 
-## Python使用样例
+```bash
+# 进入jni目录
+pushd jni
 
-### vocab.txt
+# 构建nar包
+mvn clean package
+
+# 安装到本地maven仓库
+mvn install
+
+popd
+```
+
+## 使用样例
+
+### **词表文件**: vocab.txt
 
 ```text
-pattern0
-pattern1
-pattern2
-...
+f|(a|b).{0,5}(e(?&!ef)|g)	pattern0
+abc	pattern1
+efg	pattern2
 ```
 
-### example.py
+### **Python样例**: example.py
 
 ```python
 #!/usr/bin/env python
@@ -139,9 +169,14 @@ pattern2
 
 from actrie import *
 
-pattern = r"f|(a|b).{0,5}(e(?&!ef)|g)
+# with open("vocab.txt") as rf:
+#     pattern = rf.read()
+
+pattern = """
+f|(a|b).{0,5}(e(?&!ef)|g)
 abc
-efg"
+efg
+"""
 
 content = "abcdefg"
 
@@ -150,7 +185,7 @@ def test():
     global pattern, content
 
     # 从文件创建匹配器
-    #matcher = Matcher.create_by_file("vocab.txt")
+    # matcher = Matcher.create_by_file("vocab.txt")
 
     # 从字符串创建匹配器
     matcher = Matcher.create_by_string(pattern)
@@ -166,5 +201,31 @@ def test():
 
 if __name__ == "__main__":
     test()
+```
 
+### **Java样例**: Example.java
+
+```java
+package psn.ifplusor.actrie;
+
+public class Example {
+
+    public static void main(String[] args) {
+        String pattern = "f|(a|b).{0,5}(e(?&!ef)|g)\nabc\nefg";
+        String content = "abcdefg";
+
+        // 从字符串创建匹配器
+        try (Matcher matcher = Matcher.createByString(pattern)) {
+            try (Context context = matcher.match(content)) {
+                // 通过迭代器获取匹配结果
+                for (Word word : context) {
+                    System.out.println(word);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+}
 ```
