@@ -6,8 +6,9 @@ import platform
 import re
 from setuptools import setup, Extension
 
-PYTHON_VERSION = platform.python_version()
-print("build for python" + PYTHON_VERSION)
+python_version = platform.python_version()
+system_name = platform.system()
+print("build for python{} on {}".format(python_version, system_name))
 
 # Arguments
 actrie_dir = ""
@@ -36,22 +37,28 @@ warp_sources = [
     os.path.join(actrie_dir, 'actrie', 'src', 'wrap.c')
 ]
 
+compile_args = []
+if system_name == "Windows":
+    compile_args.append("/utf-8")
+else:
+    compile_args.append("-fno-strict-aliasing")
+
 library_dirs = [
-    os.path.join(alib_dir, 'lib'),
+    # os.path.join(alib_dir, 'lib'),
     os.path.join(actrie_dir, 'lib')
 ]
 
 libraries = ['actrie', 'alib']
 
-include_dir = [
+include_dirs = [
     os.path.join(alib_dir, 'include'),
     os.path.join(actrie_dir, 'include')
 ]
 
 actrie = Extension('actrie._actrie',
                    sources=warp_sources,
-                   # extra_compile_args=["/utf-8"],
-                   include_dirs=include_dir,
+                   extra_compile_args=compile_args,
+                   include_dirs=include_dirs,
                    library_dirs=library_dirs,
                    libraries=libraries)
 
@@ -67,7 +74,7 @@ setup(name="actrie",
       author_email="ywhjames@hotmail.com",
       url="https://github.com/ifplusor/actrie",
       license="BSD",
-      packages=['actrie', 'actrie.tests'],
+      packages=['actrie', 'actrie.example'],
       ext_modules=[actrie],
       classifiers=[
           "Programming Language :: C",

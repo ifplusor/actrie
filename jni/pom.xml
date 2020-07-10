@@ -72,6 +72,35 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>msvc-16_0</id>
+            <properties>
+                <nar.windows.msvc.version>16.0</nar.windows.msvc.version>
+                <nar.windows.msvc.dir>C:\Program Files (x86)\Microsoft Visual Studio\2019\Community</nar.windows.msvc.dir>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.maven-nar</groupId>
+                        <artifactId>nar-maven-plugin</artifactId>
+                        <configuration>
+                            <cpp>
+                                <options>
+                                    <option>/std:c++latest</option>
+                                    <option>/utf-8</option>
+                                </options>
+                            </cpp>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
+
     <distributionManagement>
         <repository>
             <id>github</id>

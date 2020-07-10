@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 
+if(MSVC)
+  add_compile_options(/utf-8)
+else()
+  add_compile_options(-Wall -fPIC -fno-strict-aliasing)
+endif()
+
 link_libraries(actrie)
 
 add_executable(test_trie test_trie.c)

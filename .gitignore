@@ -20,6 +20,7 @@
 .vscode/
 .VSCodeCounter/
 CMakeSettings.json
+out/
 
 # Python
 dist/

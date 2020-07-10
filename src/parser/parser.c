@@ -99,7 +99,7 @@ void reduce_dist(dynapool_t sign_pool, deque_node_t sign_stack, lr_sign_t* node)
 
   // construct dist-pattern
   ptrn_t dist_ptrn;
-  int charset = pint_get(char_set->data);
+  int charset = (int)pint_get(char_set->data);
   if (charset == TOKEN_NUM) {
     dist_ptrn = _alloc(ptrn, dist, head->data, tail->data, ptrn_dist_type_num, min, max);
   } else {

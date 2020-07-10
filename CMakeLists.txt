@@ -1,25 +1,15 @@
 cmake_minimum_required(VERSION 2.8)
 project(actrie)
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-message("buile type: " ${CMAKE_BUILD_TYPE})
-
-if(UNIX)
-  message("compile for unix-like OS, include OS X and Cygwin")
-  add_compile_options(-Wall -fPIC -fno-strict-aliasing)
-  if(NOT CMAKE_BUILD_TYPE)
-    message("not defined CMAKE_BUILD_TYPE, use -O2")
-    add_compile_options(-O2)
-  endif()
-elseif(MSVC)
-  message("compile with MSVC")
-  add_compile_options(/utf-8 /NODEFAULTLIB:library)
-else()
-  add_compile_options(-Wall -fPIC -fno-strict-aliasing)
+if(MSVC)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/lib)
 endif()
+
+message("Generated with config types: ${CMAKE_CONFIGURATION_TYPES}")
+message("Buile type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_C_STANDARD 11)
 
@@ -33,16 +23,8 @@ if(ENABLE_PROFILE)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
 
-option(IMPORT_ALIB "Enable import alib library." ON)
-if(NOT (DEFINED alib_DIR))
-  set(alib_DIR "${PROJECT_SOURCE_DIR}/deps/alib")
-endif()
-if(IMPORT_ALIB)
-  add_subdirectory(${alib_DIR} alib)
-else()
-  include_directories(${alib_DIR}/include)
-  link_directories(${alib_DIR}/lib)
-endif()
+# alib
+add_subdirectory(${PROJECT_SOURCE_DIR}/deps/alib alib)
 
 option(GENERATE_LRTABLE "Generate LR table from productions." OFF)
 if(GENERATE_LRTABLE)
@@ -100,10 +82,10 @@ add_library(actrie STATIC ${actrie_HEADER_FILES} ${actrie_SOURCE_FILES})
 target_include_directories(actrie PUBLIC include)
 target_link_libraries(actrie PUBLIC alib)
 
-# python interface
-option(ENABLE_PYTHON "Enable compile python interface." OFF)
-if(ENABLE_PYTHON)
-  add_subdirectory(actrie)
+if(MSVC)
+  target_compile_options(actrie PRIVATE /utf-8)
+else()
+  target_compile_options(actrie PRIVATE -Wall -fPIC -fno-strict-aliasing)
 endif()
 
 add_subdirectory(tests)
