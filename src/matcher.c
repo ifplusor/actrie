@@ -201,12 +201,12 @@ static word_t matcher_next0(context_t context, dat_next_on_node_f dat_next_on_no
   pos_cache_t matched = prique_pop(context->reg_ctx->output_queue);
   if (matched == NULL) {
     while (dat_next_on_node_func(context->dat_ctx)) {
-      list_t expr_list = context->dat_ctx->_value;
+      list_t expr_list = context->dat_ctx->_matched->value;
       while (expr_list != NULL) {
         expr_t expr = _(list, expr_list, car);
         pos_cache_t pos_cache = dynapool_alloc_node(context->reg_ctx->pos_cache_pool);
         // datrie only output end offset, and set start offset in expr_text
-        pos_cache->pos.eo = context->dat_ctx->_e;
+        pos_cache->pos.eo = context->dat_ctx->_read;
         expr_feed_text(expr, pos_cache, context->reg_ctx);
         expr_list = _(list, expr_list, cdr);
       }

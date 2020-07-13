@@ -33,10 +33,9 @@ typedef struct _datrie_context_ {
   dat_t trie;
 
   dat_node_t _matched;
-  aobj _value;
-  size_t _iCursor;
-  size_t _i;
-  size_t _e;
+  size_t _cursor;
+  size_t _begin;
+  size_t _read;
 } dat_ctx_s, *dat_ctx_t;
 
 typedef void (*dat_node_free_f)(dat_t dat, void* node);

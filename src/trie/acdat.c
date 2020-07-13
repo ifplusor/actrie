@@ -243,54 +243,51 @@ bool dat_free_context(dat_ctx_t context) {
 void dat_reset_context(dat_ctx_t context, char content[], size_t len) {
   context->content = (strlen_s){.ptr = content, .len = len};
 
-  context->_e = 0;
-  context->_i = 0;
-  context->_iCursor = DAT_ROOT_IDX;
+  context->_read = 0;
+  context->_begin = 0;
+  context->_cursor = DAT_ROOT_IDX;
   context->_matched = context->trie->root;
-  context->_value = NULL;
 }
 
 bool dat_match_end(dat_ctx_t ctx) {
-  return ctx->_e >= ctx->content.len;
+  return ctx->_read >= ctx->content.len;
 }
 
 static inline size_t dat_forward(dat_node_t cur, dat_ctx_t ctx) {
-  return cur->base + ((unsigned char*)ctx->content.ptr)[ctx->_e];
+  return cur->base + ((unsigned char*)ctx->content.ptr)[ctx->_read];
 }
 
 bool dat_next_on_node(dat_ctx_t ctx) {
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->_e < ctx->content.len; ctx->_e++) {
+  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  for (; ctx->_read < ctx->content.len; ctx->_read++) {
     size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    if (pNext->check != ctx->_iCursor) {
+    if (pNext->check != ctx->_cursor) {
       break;
     }
-    ctx->_iCursor = iNext;
+    ctx->_cursor = iNext;
     pCursor = pNext;
     if (pNext->value != NULL) {
       ctx->_matched = pNext;
-      ctx->_value = ctx->_matched->value;
-      ctx->_e++;
+      ctx->_read++;
       return true;
     }
   }
 
-  for (ctx->_i++; ctx->_i < ctx->content.len; ctx->_i++) {
-    ctx->_iCursor = DAT_ROOT_IDX;
+  for (ctx->_begin++; ctx->_begin < ctx->content.len; ctx->_begin++) {
+    ctx->_cursor = DAT_ROOT_IDX;
     pCursor = ctx->trie->root;
-    for (ctx->_e = ctx->_i; ctx->_e < ctx->content.len; ctx->_e++) {
+    for (ctx->_read = ctx->_begin; ctx->_read < ctx->content.len; ctx->_read++) {
       size_t iNext = dat_forward(pCursor, ctx);
       dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-      if (pNext->check != ctx->_iCursor) {
+      if (pNext->check != ctx->_cursor) {
         break;
       }
-      ctx->_iCursor = iNext;
+      ctx->_cursor = iNext;
       pCursor = pNext;
       if (pNext->value != NULL) {
         ctx->_matched = pNext;
-        ctx->_value = ctx->_matched->value;
-        ctx->_e++;
+        ctx->_read++;
         return true;
       }
     }
@@ -303,30 +300,28 @@ bool dat_ac_next_on_node(dat_ctx_t ctx) {
   while (ctx->_matched != ctx->trie->root) {
     ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->failed);
     if (ctx->_matched->value != NULL) {
-      ctx->_value = ctx->_matched->value;
       return true;
     }
   }
 
   /* 执行匹配 */
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->_e < ctx->content.len; ctx->_e++) {
+  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  for (; ctx->_read < ctx->content.len; ctx->_read++) {
     size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    while (pCursor != ctx->trie->root && pNext->check != ctx->_iCursor) {
-      ctx->_iCursor = pCursor->failed;
-      pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
+    while (pCursor != ctx->trie->root && pNext->check != ctx->_cursor) {
+      ctx->_cursor = pCursor->failed;
+      pCursor = dat_access_node(ctx->trie, ctx->_cursor);
       iNext = dat_forward(pCursor, ctx);
       pNext = dat_access_node(ctx->trie, iNext);
     }
-    if (pNext->check == ctx->_iCursor) {
-      ctx->_iCursor = iNext;
+    if (pNext->check == ctx->_cursor) {
+      ctx->_cursor = iNext;
       pCursor = pNext;
       while (pNext != ctx->trie->root) {
         if (pNext->value != NULL) {
           ctx->_matched = pNext;
-          ctx->_value = ctx->_matched->value;
-          ctx->_e++;
+          ctx->_read++;
           return true;
         }
         pNext = dat_access_node(ctx->trie, pNext->failed);
@@ -338,19 +333,18 @@ bool dat_ac_next_on_node(dat_ctx_t ctx) {
 
 bool dat_prefix_next_on_node(dat_ctx_t ctx) {
   /* 执行匹配 */
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_iCursor);
-  for (; ctx->_e < ctx->content.len; ctx->_e++) {
+  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  for (; ctx->_read < ctx->content.len; ctx->_read++) {
     size_t iNext = dat_forward(pCursor, ctx);
     dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    if (pNext->check != ctx->_iCursor) {
+    if (pNext->check != ctx->_cursor) {
       return false;
     }
-    ctx->_iCursor = iNext;
+    ctx->_cursor = iNext;
     pCursor = pNext;
     if (pNext->value != NULL) {
       ctx->_matched = pNext;
-      ctx->_value = ctx->_matched->value;
-      ctx->_e++;
+      ctx->_read++;
       return true;
     }
   }
