@@ -87,6 +87,7 @@ void* trie_add_keyword(trie_t self, const char* keyword, size_t len, void* value
     }
   }
 
+  // replace
   void* old = pNode->value;
   pNode->value = value;
 

@@ -148,11 +148,10 @@ static expr_t reglet_build_expr_for_pure(reglet_t self, ptrn_t pattern, expr_t t
   dstr_t text = pattern->desc;
   expr_text_t expr_text = dynapool_alloc_node(self->expr_pool);
   expr_init_text(expr_text, target, feed, text->len);
-  // TODO: replace list_t
-  list_t expr_list = trie_search(self->trie, text->str, text->len);
-  expr_list = _(list, &expr_text->header, cons, expr_list);
-  expr_list = trie_add_keyword(self->trie, text->str, text->len, expr_list);
-  _release(expr_list);
+  // prepend expr_list
+  list_t expr_list = _(list, &expr_text->header, cons, NULL);
+  list_t old_list = trie_add_keyword(self->trie, text->str, text->len, expr_list);
+  expr_list->cdr = old_list;  // replace NULL
   return &expr_text->header;
 }
 
