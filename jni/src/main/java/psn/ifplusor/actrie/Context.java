@@ -80,6 +80,12 @@ public class Context implements Iterable<Word>, AutoCloseable {
         this.nativeContext = 0;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        this.close();
+    }
+
+    // use in JNI
     public static Word buildWord(String keyword, long so, long eo, String extra) {
         return new Word(keyword, so, eo, extra);
     }

@@ -89,6 +89,11 @@ public class Matcher implements AutoCloseable {
         this.nativeMatcher = 0;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        this.close();
+    }
+
     private static native long ConstructByFile(String filepath, boolean allAsPlain, boolean ignoreBadPattern,
             boolean badAsPlain, boolean deduplicateExtra);
 
