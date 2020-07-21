@@ -37,21 +37,26 @@ class Context(Iterator):
         if self._uninitialized:
             raise MatcherError("Reset context failed!")
 
+    def _next(self):
+        if self._uninitialized:
+            return None
+        return _actrie.Next(self._context)
+
     def __next__(self):
-        matched = self.next()
+        # python3
+        matched = self._next()
         if matched is None:
             raise StopIteration()
         return matched
 
     def next(self):
-        if self._uninitialized:
-            return None
-        return _actrie.Next(self._context)
+        # python2
+        return self.__next__()
 
 
 class PrefixContext(Context):
 
-    def next(self):
+    def _next(self):
         if self._uninitialized:
             raise None
         return _actrie.NextPrefix(self._context)
