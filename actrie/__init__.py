@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# coding=utf-8
+# encoding=utf-8
 
 from .matcher import Matcher, Context, PrefixMatcher
 
-__all__ = ['Matcher', 'Context', 'PrefixMatcher']
+__all__ = ["Matcher", "Context", "PrefixMatcher"]
 
-__version__ = '3.0.9'
+__version__ = "3.1.0"

@@ -15,7 +15,6 @@ number_char = [convert2unicode(str(x)) for x in range(10)]
 
 
 class Tokenizer:
-
     def __init__(self, text):
         self.text = text
         self.cur = 0
@@ -73,7 +72,7 @@ class Tokenizer:
 
     def expect(self, s, move=True):
         wlen = len(s)
-        if len(self.text) - self.cur >= wlen and self.text[self.cur:(self.cur + wlen)] == s:
+        if len(self.text) - self.cur >= wlen and self.text[self.cur : (self.cur + wlen)] == s:
             if move:
                 self.cur += wlen
             return True

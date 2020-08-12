@@ -1,4 +1,4 @@
-# coding=utf-8
+# encoding=utf-8
 
 from collections import Iterator
 
@@ -8,7 +8,6 @@ from .util import convert2pass
 
 
 class Context(Iterator):
-
     def __init__(self, matcher, content=None, return_byte_pos=False):
         if matcher is None:
             raise MatcherError("Matcher is None")
@@ -32,8 +31,7 @@ class Context(Iterator):
             self._content = convert2pass(content)
         if return_byte_pos is not None:
             self._return_byte_pos = return_byte_pos
-        self._uninitialized = not _actrie.ResetContext(
-            self._context, self._content, self._return_byte_pos)
+        self._uninitialized = not _actrie.ResetContext(self._context, self._content, self._return_byte_pos)
         if self._uninitialized:
             raise MatcherError("Reset context failed!")
 
@@ -55,7 +53,6 @@ class Context(Iterator):
 
 
 class PrefixContext(Context):
-
     def _next(self):
         if self._uninitialized:
             raise None
