@@ -5,6 +5,7 @@
  */
 #include "acdat.h"
 
+#include <alib/collections/list/segarray.h>
 #include <alib/object/list.h>
 
 /* Trie 内部接口，仅限 Double-Array Trie 使用 */
@@ -52,73 +53,122 @@ static dat_node_t dat_access_node_with_alloc(dat_t self, size_t index) {
   return node;
 }
 
-static void dat_construct_by_dfs(dat_t self, trie_t origin, trie_node_t pNode, size_t datindex) {
-  unsigned char child[256];
-  int len = 0;
-  trie_node_t pChild;
-  size_t pos;
+typedef struct dat_ctor_dfs_ctx {
+  trie_node_t pNode, pChild;
+} dat_ctor_dfs_ctx_s, *dat_ctor_dfs_ctx_t;
 
-  dat_node_t pDatNode = dat_access_node(self, datindex);
-  pDatNode->value = pNode->value;
+static void dat_construct_by_trie0(dat_t self, trie_t origin) {
+  // set dat index of root
+  origin->root->trie_datidx = DAT_ROOT_IDX;
 
-  if (pNode->trie_child == 0) {
-    return;
+  segarray_t stack = segarray_construct_with_type(dat_ctor_dfs_ctx_s);
+  if (segarray_extend(stack, 2) != 2) {
+    fprintf(stderr, "dat: alloc ctor_dfs_ctx failed.\nexit.\n");
+    exit(-1);
   }
+  dat_ctor_dfs_ctx_t ctx = (dat_ctor_dfs_ctx_t)segarray_access(stack, 1);
+  ctx->pNode = origin->root;
+  ctx->pChild = NULL;
 
-  pChild = trie_access_node(origin, pNode->trie_child);
-  while (pChild != origin->root) {
-    child[len++] = pChild->key;
-    pChild = trie_access_node(origin, pChild->trie_brother);
-  }
+  size_t stack_top = 1;
+  while (stack_top > 0) {  // dfs
+    ctx = (dat_ctor_dfs_ctx_t)segarray_access(stack, stack_top);
 
-  pos = self->_sentinel->dat_free_next;
-  while (1) {
-    int i;
-    size_t base;
+    // first visit
+    if (ctx->pChild == NULL) {
+      trie_node_t pNode = ctx->pNode;
+      dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
+      pDatNode->value = pNode->value;
 
-    if (pos == 0) {
-      /* 扩容 */
-      pos = self->_sentinel->dat_free_last;
-      if (segarray_extend(self->node_array, 256) != 256) {
-        fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
-        exit(-1);
+      // leaf node
+      if (pNode->trie_child <= 0) {
+        // pop stack
+        stack_top--;
+        continue;
       }
-      pos = dat_access_node(self, pos)->dat_free_next;
+
+      unsigned char child[256];
+      size_t len = 0;
+
+      // fill key of children
+      trie_node_t pChild = trie_access_node(origin, pNode->trie_child);
+      while (pChild != origin->root) {
+        child[len++] = pChild->key;
+        pChild = trie_access_node(origin, pChild->trie_brother);
+      }
+
+      size_t pos = self->_sentinel->dat_free_next;
+      while (1) {
+        size_t base, i;
+
+        /* 扩容 */
+        if (pos == 0) {
+          pos = self->_sentinel->dat_free_last;
+          if (segarray_extend(self->node_array, 256) != 256) {
+            fprintf(stderr, "alloc datnodepool failed: region full.\nexit.\n");
+            exit(-1);
+          }
+          pos = dat_access_node(self, pos)->dat_free_next;
+        }
+
+        /* 检查: pos容纳第一个子节点 */
+        base = pos - child[0];
+        for (i = 1; i < len; ++i) {
+          if (dat_access_node_with_alloc(self, base + child[i])->check != 0) {
+            break;
+          }
+        }
+
+        /* base 分配成功 */
+        if (i >= len) {
+          pDatNode->base = base;
+          for (i = 0, pChild = trie_access_node(origin, pNode->trie_child); i < len;
+               ++i, pChild = trie_access_node(origin, pChild->trie_brother)) {
+            pChild->trie_datidx = base + child[i];
+            /* 分配子节点 */
+            dat_node_t pDatChild = dat_access_node(self, pChild->trie_datidx);
+            pDatChild->check = pNode->trie_datidx;
+            pDatChild->value = NULL;
+            /* remove the node from free list */
+            dat_access_node(self, pDatChild->dat_free_next)->dat_free_last = pDatChild->dat_free_last;
+            dat_access_node(self, pDatChild->dat_free_last)->dat_free_next = pDatChild->dat_free_next;
+          }
+          break;
+        }
+
+        pos = dat_access_node(self, pos)->dat_free_next;
+      }
+
+      /* 构建子树 */
+      ctx->pChild = trie_access_node(origin, pNode->trie_child);
+      if (ctx->pChild != origin->root) {
+        if (segarray_extend(stack, 1) != 1) {
+          fprintf(stderr, "dat: alloc ctor_dfs_ctx failed.\nexit.\n");
+          exit(-1);
+        }
+        // push stack
+        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, ++stack_top);
+        ctx2->pNode = ctx->pChild;
+        ctx2->pChild = NULL;
+        continue;
+      }
+    } else {
+      /* 构建子树 */
+      ctx->pChild = trie_access_node(origin, ctx->pChild->trie_brother);
+      if (ctx->pChild != origin->root) {
+        // push stack
+        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, ++stack_top);
+        ctx2->pNode = ctx->pChild;
+        ctx2->pChild = NULL;
+        continue;
+      }
     }
 
-    /* 检查: pos容纳第一个子节点 */
-    base = pos - child[0];
-    for (i = 1; i < len; ++i) {
-      if (dat_access_node_with_alloc(self, base + child[i])->check != 0) {
-        break;
-      }
-    }
-
-    /* base 分配成功 */
-    if (i == len) {
-      pDatNode->base = base;
-      for (i = 0; i < len; ++i) {
-        /* 分配子节点 */
-        dat_node_t pDatChild = dat_access_node(self, base + child[i]);
-        pDatChild->check = datindex;
-        pDatChild->value = NULL;
-        /* remove the node from free list */
-        dat_access_node(self, pDatChild->dat_free_next)->dat_free_last = pDatChild->dat_free_last;
-        dat_access_node(self, pDatChild->dat_free_last)->dat_free_next = pDatChild->dat_free_next;
-      }
-      break;
-    }
-
-    pos = dat_access_node(self, pos)->dat_free_next;
+    // pop stack
+    stack_top--;
   }
 
-  /* 构建子树 */
-  pChild = trie_access_node(origin, pNode->trie_child);
-  while (pChild != origin->root) {
-    pChild->trie_datidx = pDatNode->base + pChild->key;
-    dat_construct_by_dfs(self, origin, pChild, pChild->trie_datidx);
-    pChild = trie_access_node(origin, pChild->trie_brother);
-  }
+  segarray_destruct(stack);
 }
 
 static void dat_post_construct(dat_t self) {
@@ -210,7 +260,7 @@ dat_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
     return NULL;
   }
 
-  dat_construct_by_dfs(dat, origin, origin->root, DAT_ROOT_IDX);
+  dat_construct_by_trie0(dat, origin);
   dat_post_construct(dat);
   if (enable_automation) {
     dat_construct_automation(dat, origin); /* 建立 AC 自动机 */
