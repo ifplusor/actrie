@@ -65,7 +65,7 @@ int main() {
   while (vocab_next_word(vocab, &keyword, &extra)) {
     trie_add_keyword(prime_trie, keyword.ptr, keyword.len, 1);
   }
-  trie_sort_to_line(prime_trie);
+  trie_sort_to_bfs(prime_trie);
   if (enable_automation) {
     trie_build_automation(prime_trie);
   }

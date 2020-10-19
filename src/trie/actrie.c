@@ -270,7 +270,7 @@ trie_t trie_alloc() {
   return NULL;
 }
 
-void trie_sort_to_line(trie_t self) {
+void trie_sort_to_bfs(trie_t self) {
   size_t i, iTarget = 1;
   for (i = 0; i < iTarget; i++) { /* 隐式bfs队列 */
     trie_node_t pNode = trie_access_node(self, i);

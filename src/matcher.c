@@ -89,7 +89,7 @@ static matcher_t matcher_construct(vocab_t vocab,
   }
 
   // build datrie by reglet->trie
-  trie_sort_to_line(matcher->reglet->trie);
+  trie_sort_to_bfs(matcher->reglet->trie);
   matcher->datrie = dat_construct_by_trie(matcher->reglet->trie, true);
   // then, free reglet->trie
   trie_free(matcher->reglet->trie, NULL);
