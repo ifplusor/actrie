@@ -2,7 +2,11 @@
 
 set -e
 
-PLAT=manylinux2010_x86_64
+# docker run --rm -it quay.io/pypa/manylinux2014_x86_64 bash
+
+
+# PLAT=manylinux2010_x86_64
+PLAT=manylinux2014_x86_64
 
 PROJECT_NAME=actrie
 PROJECT_DIR=~/${PROJECT_NAME}/
