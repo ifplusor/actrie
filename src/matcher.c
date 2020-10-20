@@ -201,7 +201,7 @@ static word_t matcher_next0(context_t context, dat_next_on_node_f dat_next_on_no
   pos_cache_t matched = prique_pop(context->reg_ctx->output_queue);
   if (matched == NULL) {
     while (dat_next_on_node_func(context->dat_ctx)) {
-      list_t expr_list = context->dat_ctx->_matched->value;
+      list_t expr_list = dat_matched_value(context->dat_ctx);
       while (expr_list != NULL) {
         expr_t expr = _(list, expr_list, car);
         pos_cache_t pos_cache = dynapool_alloc_node(context->reg_ctx->pos_cache_pool);
@@ -241,5 +241,5 @@ word_t matcher_next(context_t context) {
 }
 
 word_t matcher_next_prefix(context_t context) {
-  return matcher_next0(context, dat_prefix_next_on_node);
+  return matcher_next0(context, dat_ac_prefix_next_on_node);
 }

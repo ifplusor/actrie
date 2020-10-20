@@ -86,7 +86,7 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
     if (ctx->pChild == NULL) {
       trie_node_t pNode = ctx->pNode;
       dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
-      pDatNode->value = pNode->value;
+      pDatNode->value.raw = pNode->value;
 
       // leaf node
       if (pNode->trie_child <= 0) {
@@ -141,7 +141,7 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
             dat_access_node(self, pDatChild->dat_free_last)->dat_free_next = pDatChild->dat_free_next;
             // set fields
             pDatChild->check.idx = pNode->trie_datidx;
-            pDatChild->value = NULL;
+            pDatChild->value.raw = NULL;
           }
           break;
         }
@@ -189,12 +189,33 @@ static void dat_post_construct(dat_t self, trie_t origin) {
 
   // convert index to pointer
   size_t len = trie_size(origin);
-  for (size_t index = 0; index < len; index++) {  // bfs
+  for (size_t index = 0; index < len; index++) {
     trie_node_t pNode = trie_access_node(origin, index);
     dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
     pDatNode->check.ptr = dat_access_node(self, pDatNode->check.idx);
     pDatNode->base.ptr = dat_access_node(self, pDatNode->base.idx);
     pDatNode->failed.ptr = dat_access_node(self, pDatNode->failed.idx);
+  }
+
+  if (self->enable_automation) {
+    // 回溯优化
+    self->value_array = segarray_construct(sizeof(dat_value_s), NULL, NULL);
+    for (size_t index = 0; index < len; index++) {  // bfs
+      trie_node_t pNode = trie_access_node(origin, index);
+      dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
+      if (pDatNode->value.raw != NULL) {
+        if (segarray_extend(self->value_array, 1) != 1) {
+          fprintf(stderr, "dat: alloc dat_value_s failed.\nexit.\n");
+          exit(-1);
+        }
+        dat_value_t value = (dat_value_t)segarray_access(self->value_array, segarray_size(self->value_array) - 1);
+        value->value = pDatNode->value.raw;
+        value->next = pDatNode->failed.ptr->value.linked;
+        pDatNode->value.linked = value;
+      } else {
+        pDatNode->value.linked = pDatNode->failed.ptr->value.linked;
+      }
+    }
   }
 }
 
@@ -205,6 +226,9 @@ dat_t dat_alloc() {
   }
 
   /* 节点初始化 */
+  datrie->enable_automation = false;
+  datrie->value_array = NULL;
+
   dat_node_s dummy_node = {0};
   datrie->_sentinel = &dummy_node;
   datrie->node_array = segarray_construct(sizeof(dat_node_s), dat_init_segment, datrie);
@@ -214,7 +238,7 @@ dat_t dat_alloc() {
   // set root node
   datrie->root = dat_access_node(datrie, DAT_ROOT_IDX);
   datrie->root->check.idx = DAT_ROOT_IDX;
-  datrie->root->value = NULL;
+  datrie->root->value.raw = NULL;
 
   // init free list
   dat_access_node(datrie, dummy_node.dat_free_last)->dat_free_next = 0;
@@ -269,14 +293,22 @@ void dat_build_automation(dat_t self, trie_t origin) {
 void dat_destruct(dat_t dat, dat_node_free_f node_free_func) {
   if (dat != NULL) {
     if (node_free_func != NULL) {
-      for (size_t i = 0; i < segarray_size(dat->node_array); i++) {
-        dat_node_t node = dat_access_node(dat, i);
-        if (node->check.ptr != NULL && node->value != NULL) {
-          node_free_func(dat, node->value);
+      if (dat->enable_automation) {
+        for (size_t i = 0; i < segarray_size(dat->value_array); i++) {
+          dat_value_t value = (dat_value_t)segarray_access(dat->value_array, i);
+          node_free_func(dat, value->value);
+        }
+      } else {
+        for (size_t i = 0; i < segarray_size(dat->node_array); i++) {
+          dat_node_t node = dat_access_node(dat, i);
+          if (node->check.ptr != NULL && node->value.raw != NULL) {
+            node_free_func(dat, node->value.raw);
+          }
         }
       }
     }
     segarray_destruct(dat->node_array);
+    segarray_destruct(dat->value_array);
     afree(dat);
   }
 }
@@ -289,6 +321,7 @@ dat_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
 
   dat_construct_by_trie0(dat, origin);
   if (enable_automation) {
+    dat->enable_automation = true;
     dat_build_automation(dat, origin); /* 建立 AC 自动机 */
   }
   dat_post_construct(dat, origin);
@@ -322,7 +355,12 @@ void dat_reset_context(dat_ctx_t context, char content[], size_t len) {
 
   context->_read = 0;
   context->_begin = 0;
-  context->_cursor = context->_matched = context->trie->root;
+  context->_cursor = context->trie->root;
+  if (context->trie->enable_automation) {
+    context->_matched.value = NULL;
+  } else {
+    context->_matched.node = context->trie->root;
+  }
 }
 
 bool dat_match_end(dat_ctx_t ctx) {
@@ -341,9 +379,9 @@ bool dat_next_on_node(dat_ctx_t ctx) {
       break;
     }
     pCursor = pNext;
-    if (pNext->value != NULL) {
+    if (pNext->value.raw != NULL) {
       ctx->_cursor = pCursor;
-      ctx->_matched = pNext;
+      ctx->_matched.node = pNext;
       ctx->_read++;
       return true;
     }
@@ -357,9 +395,9 @@ bool dat_next_on_node(dat_ctx_t ctx) {
         break;
       }
       pCursor = pNext;
-      if (pNext->value != NULL) {
+      if (pNext->value.raw != NULL) {
         ctx->_cursor = pCursor;
-        ctx->_matched = pNext;
+        ctx->_matched.node = pNext;
         ctx->_read++;
         return true;
       }
@@ -369,11 +407,31 @@ bool dat_next_on_node(dat_ctx_t ctx) {
   return false;
 }
 
+bool dat_prefix_next_on_node(dat_ctx_t ctx) {
+  /* 执行匹配 */
+  dat_node_t pCursor = ctx->_cursor;
+  for (; ctx->_read < ctx->content.len; ctx->_read++) {
+    dat_node_t pNext = dat_forward(pCursor, ctx);
+    if (pNext->check.ptr != pCursor) {
+      return false;
+    }
+    pCursor = pNext;
+    if (pNext->value.raw != NULL) {
+      ctx->_cursor = pCursor;
+      ctx->_matched.node = pNext;
+      ctx->_read++;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool dat_ac_next_on_node(dat_ctx_t ctx) {
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
-  while (ctx->_matched != ctx->trie->root) {
-    ctx->_matched = ctx->_matched->failed.ptr;
-    if (ctx->_matched->value != NULL) {
+  while (ctx->_matched.value != NULL) {
+    ctx->_matched.value = ctx->_matched.value->next;
+    if (ctx->_matched.value != NULL) {
       return true;
     }
   }
@@ -388,14 +446,11 @@ bool dat_ac_next_on_node(dat_ctx_t ctx) {
     }
     if (pNext->check.ptr == pCursor) {
       pCursor = pNext;
-      while (pNext != ctx->trie->root) {
-        if (pNext->value != NULL) {
-          ctx->_cursor = pCursor;
-          ctx->_matched = pNext;
-          ctx->_read++;
-          return true;
-        }
-        pNext = pNext->failed.ptr;
+      if (pNext->value.linked != NULL) {
+        ctx->_cursor = pCursor;
+        ctx->_matched.value = pNext->value.linked;
+        ctx->_read++;
+        return true;
       }
     }
     // else { pCursor == ctx->trie->root; }
@@ -406,7 +461,7 @@ bool dat_ac_next_on_node(dat_ctx_t ctx) {
   return false;
 }
 
-bool dat_prefix_next_on_node(dat_ctx_t ctx) {
+bool dat_ac_prefix_next_on_node(dat_ctx_t ctx) {
   /* 执行匹配 */
   dat_node_t pCursor = ctx->_cursor;
   for (; ctx->_read < ctx->content.len; ctx->_read++) {
@@ -415,9 +470,9 @@ bool dat_prefix_next_on_node(dat_ctx_t ctx) {
       return false;
     }
     pCursor = pNext;
-    if (pNext->value != NULL) {
+    if (pNext->value.linked != NULL) {
       ctx->_cursor = pCursor;
-      ctx->_matched = pNext;
+      ctx->_matched.value = pNext->value.linked;
       ctx->_read++;
       return true;
     }

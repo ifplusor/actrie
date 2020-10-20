@@ -21,11 +21,23 @@ typedef union _datrie_index_or_ptr_ {
   dat_node_t ptr;
 } dat_idxptr_t;
 
+struct _datrie_value_;
+typedef struct _datrie_value_ dat_value_s;
+typedef dat_value_s* dat_value_t;
+
+struct _datrie_value_ {
+  void* value;
+  dat_value_t next;
+};
+
 struct _datrie_node_ {
   dat_idxptr_t check;
   dat_idxptr_t base;
   dat_idxptr_t failed;
-  void* value;
+  union {
+    void* raw;
+    void* linked;
+  } value;
 #define dat_free_next base.idx   /* next free node */
 #define dat_free_last failed.idx /* last free node */
 };
@@ -34,6 +46,8 @@ typedef struct _datrie_ {
   segarray_t node_array;
   dat_node_t _sentinel; /* maintain free list */
   dat_node_t root;
+  segarray_t value_array;
+  bool enable_automation;
 } dat_s, *dat_t;
 
 typedef struct _datrie_context_ {
@@ -41,7 +55,10 @@ typedef struct _datrie_context_ {
 
   dat_t trie;
 
-  dat_node_t _matched;
+  union {
+    dat_node_t node;
+    dat_value_t value;
+  } _matched;
   dat_node_t _cursor;
   size_t _begin;
   size_t _read;
@@ -58,9 +75,19 @@ void dat_reset_context(dat_ctx_t context, char content[], size_t len);
 
 bool dat_match_end(dat_ctx_t ctx);
 
+inline void* dat_matched_value(dat_ctx_t ctx) {
+  if (ctx->trie->enable_automation) {
+    return ctx->_matched.value->value;
+  } else {
+    return ctx->_matched.node->value.raw;
+  }
+}
+
 bool dat_next_on_node(dat_ctx_t ctx);
-bool dat_ac_next_on_node(dat_ctx_t ctx);
 bool dat_prefix_next_on_node(dat_ctx_t ctx);
+
+bool dat_ac_next_on_node(dat_ctx_t ctx);
+bool dat_ac_prefix_next_on_node(dat_ctx_t ctx);
 
 #ifdef __cplusplus
 }
