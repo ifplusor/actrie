@@ -11,7 +11,7 @@ except Exception:
 
 
 from .tokenizer import Tokenizer
-from .util import convert2unicode, is_py3k
+from .util import convert2unicode, is_py2k
 
 meta_char = {u"(", u")", u"|", u"."}
 
@@ -167,7 +167,7 @@ class PurePattern(Pattern):
         return self.text
 
     def __str__(self):
-        return self.ustr() if is_py3k else self.ustr().encode("utf-8")
+        return self.ustr() if not is_py2k else self.ustr().encode("utf-8")
 
 
 class AlternationPattern(Pattern):
@@ -183,7 +183,7 @@ class AlternationPattern(Pattern):
             return u"(" + u"|".join([p.ustr() for p in self.alters]) + u")"
 
     def __str__(self):
-        return self.ustr() if is_py3k else self.ustr().encode("utf-8")
+        return self.ustr() if not is_py2k else self.ustr().encode("utf-8")
 
 
 class AntiAmbiguousPattern(Pattern):
@@ -197,7 +197,7 @@ class AntiAmbiguousPattern(Pattern):
         return self.origin.ustr() + u"(?&!" + u"|".join([p.ustr() for p in self.ambis]) + u")"
 
     def __str__(self):
-        return self.ustr() if is_py3k else self.ustr().encode("utf-8")
+        return self.ustr() if not is_py2k else self.ustr().encode("utf-8")
 
 
 class DistancePattern(Pattern):
@@ -212,5 +212,5 @@ class DistancePattern(Pattern):
         return self.head.ustr() + u".{0," + convert2unicode(str(self.dist)) + u"}" + self.tail.ustr()
 
     def __str__(self):
-        return self.ustr() if is_py3k else self.ustr().encode("utf-8")
+        return self.ustr() if not is_py2k else self.ustr().encode("utf-8")
 
