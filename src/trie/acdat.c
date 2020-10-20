@@ -28,16 +28,24 @@ static void dat_init_segment(segarray_t segarray, void* segment, size_t seg_size
   /* 节点初始化 */
   memset(segment, 0, segarray->node_size * seg_size);
 
-  for (size_t i = 0; i < seg_size; ++i) {
-    dat_node_t node = segarray_access(segarray, start_index + i);
-    node->dat_free_next = start_index + i + 1;
-    node->dat_free_last = start_index + i - 1;
+  for (size_t i = start_index + 255; i < start_index + seg_size - 255; ++i) {
+    dat_node_t node = segarray_access(segarray, i);
+    node->dat_free_next = i + 1;
+    node->dat_free_last = i - 1;
   }
-  ((dat_node_t)segarray_access(segarray, start_index + seg_size - 1))->dat_free_next = 0;
 
-  ((dat_node_t)segarray_access(segarray, start_index))->dat_free_last = datrie->_sentinel->dat_free_last;
-  ((dat_node_t)segarray_access(segarray, datrie->_sentinel->dat_free_last))->dat_free_next = start_index;
-  datrie->_sentinel->dat_free_last = start_index + seg_size - 1;
+  // segarray 是分段的，为索引转指针后不溢出，需要保留pad空间（掐头去尾）
+  for (size_t i = 0; i < 255; ++i) {
+    dat_node_t node = segarray_access(segarray, start_index + i);
+    node->check.idx = 1;
+    node = segarray_access(segarray, start_index + seg_size - 255 + i);
+    node->check.idx = 1;
+  }
+
+  ((dat_node_t)segarray_access(segarray, start_index + 255))->dat_free_last = datrie->_sentinel->dat_free_last;
+  ((dat_node_t)segarray_access(segarray, datrie->_sentinel->dat_free_last))->dat_free_next = start_index + 255;
+  ((dat_node_t)segarray_access(segarray, start_index + seg_size - 256))->dat_free_next = 0;
+  datrie->_sentinel->dat_free_last = start_index + seg_size - 256;
 }
 
 static dat_node_t dat_access_node_with_alloc(dat_t self, size_t index) {
@@ -48,7 +56,7 @@ static dat_node_t dat_access_node_with_alloc(dat_t self, size_t index) {
       fprintf(stderr, "dat: alloc nodepool failed.\nexit.\n");
       exit(-1);
     }
-    node = segarray_access_s(self->node_array, index);
+    node = segarray_access(self->node_array, index);
   }
   return node;
 }
@@ -82,12 +90,13 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
 
       // leaf node
       if (pNode->trie_child <= 0) {
+        pDatNode->base.idx = 0;
         // pop stack
         stack_top--;
         continue;
       }
 
-      unsigned char child[256];
+      uint8_t child[256];
       size_t len = 0;
 
       // fill key of children
@@ -113,25 +122,26 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
 
         /* 检查: pos容纳第一个子节点 */
         base = pos - child[0];
-        for (i = 1; i < len; ++i) {
-          if (dat_access_node_with_alloc(self, base + child[i])->check != 0) {
+        for (i = 0; i < len; ++i) {
+          if (dat_access_node_with_alloc(self, base + child[i])->check.idx != 0) {
             break;
           }
         }
 
         /* base 分配成功 */
         if (i >= len) {
-          pDatNode->base = base;
+          pDatNode->base.idx = base;
           for (i = 0, pChild = trie_access_node(origin, pNode->trie_child); i < len;
                ++i, pChild = trie_access_node(origin, pChild->trie_brother)) {
             pChild->trie_datidx = base + child[i];
             /* 分配子节点 */
             dat_node_t pDatChild = dat_access_node(self, pChild->trie_datidx);
-            pDatChild->check = pNode->trie_datidx;
-            pDatChild->value = NULL;
             /* remove the node from free list */
             dat_access_node(self, pDatChild->dat_free_next)->dat_free_last = pDatChild->dat_free_last;
             dat_access_node(self, pDatChild->dat_free_last)->dat_free_next = pDatChild->dat_free_next;
+            // set fields
+            pDatChild->check.idx = pNode->trie_datidx;
+            pDatChild->value = NULL;
           }
           break;
         }
@@ -173,9 +183,19 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
   segarray_destruct(stack);
 }
 
-static void dat_post_construct(dat_t self) {
+static void dat_post_construct(dat_t self, trie_t origin) {
   /* 添加占位内存，防止匹配时出现非法访问 */
-  segarray_extend(self->node_array, 256);
+  // segarray_extend(self->node_array, 256);
+
+  // convert index to pointer
+  size_t len = trie_size(origin);
+  for (size_t index = 0; index < len; index++) {  // bfs
+    trie_node_t pNode = trie_access_node(origin, index);
+    dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
+    pDatNode->check.ptr = dat_access_node(self, pDatNode->check.idx);
+    pDatNode->base.ptr = dat_access_node(self, pDatNode->base.idx);
+    pDatNode->failed.ptr = dat_access_node(self, pDatNode->failed.idx);
+  }
 }
 
 dat_t dat_alloc() {
@@ -190,35 +210,38 @@ dat_t dat_alloc() {
   datrie->node_array = segarray_construct(sizeof(dat_node_s), dat_init_segment, datrie);
   segarray_extend(datrie->node_array, DAT_ROOT_IDX + 2);
   datrie->_sentinel = dat_access_node(datrie, 0);
-  datrie->root = dat_access_node(datrie, DAT_ROOT_IDX);
 
+  // set root node
+  datrie->root = dat_access_node(datrie, DAT_ROOT_IDX);
+  datrie->root->check.idx = DAT_ROOT_IDX;
+  datrie->root->value = NULL;
+
+  // init free list
   dat_access_node(datrie, dummy_node.dat_free_last)->dat_free_next = 0;
   dat_access_node(datrie, DAT_ROOT_IDX + 1)->dat_free_last = 0;
-
-  /*
-   * because type of base is 'size_t', we set free list start from index 256.
-   * this can avoid negative number.
-   */
   datrie->_sentinel->dat_free_next = DAT_ROOT_IDX + 1;
   datrie->_sentinel->dat_free_last = dummy_node.dat_free_last;
 
   return datrie;
 }
 
-void dat_construct_automation(dat_t self, trie_t origin) {
+void dat_build_automation(dat_t self, trie_t origin) {
   size_t index;
   trie_node_t pNode = origin->root;
   size_t iChild = pNode->trie_child;
   while (iChild != 0) {
     trie_node_t pChild = trie_access_node(origin, iChild);
 
-    /* 设置 failed 域 */
+    // must before set trie_failed
     iChild = pChild->trie_brother;
+
+    /* 设置 failed 域 */
     pChild->trie_failed = 0;
-    dat_access_node(self, pChild->trie_datidx)->failed = DAT_ROOT_IDX;
+    dat_access_node(self, pChild->trie_datidx)->failed.idx = DAT_ROOT_IDX;
   }
 
-  for (index = 1; index < trie_size(origin); index++) {  // bfs
+  size_t len = trie_size(origin);
+  for (index = 1; index < len; index++) {  // bfs
     pNode = trie_access_node(origin, index);
     iChild = pNode->trie_child;
     while (iChild != 0) {
@@ -231,11 +254,13 @@ void dat_construct_automation(dat_t self, trie_t origin) {
         iFailed = trie_access_node(origin, iFailed)->trie_failed;
         match = trie_next_state_by_binary(origin, iFailed, key);
       }
-      iChild = pChild->trie_brother;
-      pChild->trie_failed = match;
 
-      /* 设置 DAT 的 failed 域 */
-      dat_access_node(self, pChild->trie_datidx)->failed =
+      // must before set trie_failed
+      iChild = pChild->trie_brother;
+
+      /* 设置 failed 域 */
+      pChild->trie_failed = match;
+      dat_access_node(self, pChild->trie_datidx)->failed.idx =
           match == 0 ? DAT_ROOT_IDX : trie_access_node(origin, match)->trie_datidx;
     }
   }
@@ -246,7 +271,7 @@ void dat_destruct(dat_t dat, dat_node_free_f node_free_func) {
     if (node_free_func != NULL) {
       for (size_t i = 0; i < segarray_size(dat->node_array); i++) {
         dat_node_t node = dat_access_node(dat, i);
-        if (node->check != 0 && node->value != NULL) {
+        if (node->check.ptr != NULL && node->value != NULL) {
           node_free_func(dat, node->value);
         }
       }
@@ -263,10 +288,10 @@ dat_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
   }
 
   dat_construct_by_trie0(dat, origin);
-  dat_post_construct(dat);
   if (enable_automation) {
-    dat_construct_automation(dat, origin); /* 建立 AC 自动机 */
+    dat_build_automation(dat, origin); /* 建立 AC 自动机 */
   }
+  dat_post_construct(dat, origin);
 
   return dat;
 }
@@ -297,29 +322,27 @@ void dat_reset_context(dat_ctx_t context, char content[], size_t len) {
 
   context->_read = 0;
   context->_begin = 0;
-  context->_cursor = DAT_ROOT_IDX;
-  context->_matched = context->trie->root;
+  context->_cursor = context->_matched = context->trie->root;
 }
 
 bool dat_match_end(dat_ctx_t ctx) {
   return ctx->_read >= ctx->content.len;
 }
 
-static inline size_t dat_forward(dat_node_t cur, dat_ctx_t ctx) {
-  return cur->base + ((unsigned char*)ctx->content.ptr)[ctx->_read];
+static inline dat_node_t dat_forward(dat_node_t cur, dat_ctx_t ctx) {
+  return cur->base.ptr + ((uint8_t*)ctx->content.ptr)[ctx->_read];
 }
 
 bool dat_next_on_node(dat_ctx_t ctx) {
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  dat_node_t pCursor = ctx->_cursor;
   for (; ctx->_read < ctx->content.len; ctx->_read++) {
-    size_t iNext = dat_forward(pCursor, ctx);
-    dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    if (pNext->check != ctx->_cursor) {
+    dat_node_t pNext = dat_forward(pCursor, ctx);
+    if (pNext->check.ptr != pCursor) {
       break;
     }
-    ctx->_cursor = iNext;
     pCursor = pNext;
     if (pNext->value != NULL) {
+      ctx->_cursor = pCursor;
       ctx->_matched = pNext;
       ctx->_read++;
       return true;
@@ -327,74 +350,73 @@ bool dat_next_on_node(dat_ctx_t ctx) {
   }
 
   for (ctx->_begin++; ctx->_begin < ctx->content.len; ctx->_begin++) {
-    ctx->_cursor = DAT_ROOT_IDX;
     pCursor = ctx->trie->root;
     for (ctx->_read = ctx->_begin; ctx->_read < ctx->content.len; ctx->_read++) {
-      size_t iNext = dat_forward(pCursor, ctx);
-      dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-      if (pNext->check != ctx->_cursor) {
+      dat_node_t pNext = dat_forward(pCursor, ctx);
+      if (pNext->check.ptr != pCursor) {
         break;
       }
-      ctx->_cursor = iNext;
       pCursor = pNext;
       if (pNext->value != NULL) {
+        ctx->_cursor = pCursor;
         ctx->_matched = pNext;
         ctx->_read++;
         return true;
       }
     }
   }
+
   return false;
 }
 
 bool dat_ac_next_on_node(dat_ctx_t ctx) {
   /* 检查当前匹配点向树根的路径上是否还有匹配的词 */
   while (ctx->_matched != ctx->trie->root) {
-    ctx->_matched = dat_access_node(ctx->trie, ctx->_matched->failed);
+    ctx->_matched = ctx->_matched->failed.ptr;
     if (ctx->_matched->value != NULL) {
       return true;
     }
   }
 
   /* 执行匹配 */
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  dat_node_t pCursor = ctx->_cursor;
   for (; ctx->_read < ctx->content.len; ctx->_read++) {
-    size_t iNext = dat_forward(pCursor, ctx);
-    dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    while (pCursor != ctx->trie->root && pNext->check != ctx->_cursor) {
-      ctx->_cursor = pCursor->failed;
-      pCursor = dat_access_node(ctx->trie, ctx->_cursor);
-      iNext = dat_forward(pCursor, ctx);
-      pNext = dat_access_node(ctx->trie, iNext);
+    dat_node_t pNext = dat_forward(pCursor, ctx);
+    while (pCursor != ctx->trie->root && pNext->check.ptr != pCursor) {
+      pCursor = pCursor->failed.ptr;
+      pNext = dat_forward(pCursor, ctx);
     }
-    if (pNext->check == ctx->_cursor) {
-      ctx->_cursor = iNext;
+    if (pNext->check.ptr == pCursor) {
       pCursor = pNext;
       while (pNext != ctx->trie->root) {
         if (pNext->value != NULL) {
+          ctx->_cursor = pCursor;
           ctx->_matched = pNext;
           ctx->_read++;
           return true;
         }
-        pNext = dat_access_node(ctx->trie, pNext->failed);
+        pNext = pNext->failed.ptr;
       }
     }
+    // else { pCursor == ctx->trie->root; }
   }
+
+  ctx->_cursor = pCursor;
+  // ctx->_matched = ctx->trie->root;
   return false;
 }
 
 bool dat_prefix_next_on_node(dat_ctx_t ctx) {
   /* 执行匹配 */
-  dat_node_t pCursor = dat_access_node(ctx->trie, ctx->_cursor);
+  dat_node_t pCursor = ctx->_cursor;
   for (; ctx->_read < ctx->content.len; ctx->_read++) {
-    size_t iNext = dat_forward(pCursor, ctx);
-    dat_node_t pNext = dat_access_node(ctx->trie, iNext);
-    if (pNext->check != ctx->_cursor) {
+    dat_node_t pNext = dat_forward(pCursor, ctx);
+    if (pNext->check.ptr != pCursor) {
       return false;
     }
-    ctx->_cursor = iNext;
     pCursor = pNext;
     if (pNext->value != NULL) {
+      ctx->_cursor = pCursor;
       ctx->_matched = pNext;
       ctx->_read++;
       return true;

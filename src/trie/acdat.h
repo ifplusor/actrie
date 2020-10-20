@@ -12,14 +12,23 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct _datrie_node_ {
-  size_t check;
-  size_t base;
-  size_t failed;
+struct _datrie_node_;
+typedef struct _datrie_node_ dat_node_s;
+typedef dat_node_s* dat_node_t;
+
+typedef union _datrie_index_or_ptr_ {
+  size_t idx;
+  dat_node_t ptr;
+} dat_idxptr_t;
+
+struct _datrie_node_ {
+  dat_idxptr_t check;
+  dat_idxptr_t base;
+  dat_idxptr_t failed;
   void* value;
-#define dat_free_next base   /* next free node */
-#define dat_free_last failed /* last free node */
-} dat_node_s, *dat_node_t;
+#define dat_free_next base.idx   /* next free node */
+#define dat_free_last failed.idx /* last free node */
+};
 
 typedef struct _datrie_ {
   segarray_t node_array;
@@ -33,7 +42,7 @@ typedef struct _datrie_context_ {
   dat_t trie;
 
   dat_node_t _matched;
-  size_t _cursor;
+  dat_node_t _cursor;
   size_t _begin;
   size_t _read;
 } dat_ctx_s, *dat_ctx_t;
