@@ -142,12 +142,13 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
       /* 构建子树 */
       ctx->pChild = trie_access_node(origin, pNode->trie_child);
       if (ctx->pChild != origin->root) {
-        if (segarray_extend(stack, 1) != 1) {
+        // push stack
+        stack_top++;
+        if (segarray_size(stack) <= stack_top && segarray_extend(stack, 1) != 1) {
           fprintf(stderr, "dat: alloc ctor_dfs_ctx failed.\nexit.\n");
           exit(-1);
         }
-        // push stack
-        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, ++stack_top);
+        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, stack_top);
         ctx2->pNode = ctx->pChild;
         ctx2->pChild = NULL;
         continue;
@@ -157,7 +158,8 @@ static void dat_construct_by_trie0(dat_t self, trie_t origin) {
       ctx->pChild = trie_access_node(origin, ctx->pChild->trie_brother);
       if (ctx->pChild != origin->root) {
         // push stack
-        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, ++stack_top);
+        stack_top++;
+        dat_ctor_dfs_ctx_t ctx2 = (dat_ctor_dfs_ctx_t)segarray_access(stack, stack_top);
         ctx2->pNode = ctx->pChild;
         ctx2->pChild = NULL;
         continue;
