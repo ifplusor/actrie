@@ -59,6 +59,9 @@ mkdir build && pushd build
 # configure cmake project
 cmake -DCMAKE_BUILD_TYPE=Release ..
 
+# configure cmake project if no stdatomic.h in gcc
+#cmake -DCMAKE_BUILD_TYPE=Release -D__GCC_ATOMICS__=ON ..
+
 # build alib and actrie libraries
 make actrie
 
