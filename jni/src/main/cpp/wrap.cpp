@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 #include <psn_ifplusor_actrie_Context.h>
@@ -23,6 +24,7 @@ JNIEXPORT jlong JNICALL Java_psn_ifplusor_actrie_Matcher_ConstructByFile(JNIEnv*
   }
 
   const char* utf = env->GetStringUTFChars(filepath, JNI_FALSE);
+  if (utf == NULL) return 0;
   // jsize len = env->GetStringUTFLength(filepath);
 
   matcher_t matcher = matcher_construct_by_file(utf, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
@@ -49,6 +51,7 @@ JNIEXPORT jlong JNICALL Java_psn_ifplusor_actrie_Matcher_ConstructByString(JNIEn
   }
 
   const char* utf = env->GetStringUTFChars(keywords, JNI_FALSE);
+  if (utf == NULL) return 0;
   jsize len = env->GetStringUTFLength(keywords);
 
   strlen_s vocab = {.ptr = (char*)utf, .len = (size_t)len};
@@ -108,6 +111,7 @@ JNIEXPORT jboolean JNICALL Java_psn_ifplusor_actrie_Context_ResetContext(JNIEnv*
   }
 
   const char* utf = env->GetStringUTFChars(content, JNI_FALSE);
+  if (utf == NULL) return JNI_FALSE;
   jsize len = env->GetStringUTFLength(content);
 
   jboolean code = utf8ctx_reset_context((utf8ctx_t)context, (char*)utf, len, return_byte_pos) ? JNI_TRUE : JNI_FALSE;
@@ -118,14 +122,32 @@ JNIEXPORT jboolean JNICALL Java_psn_ifplusor_actrie_Context_ResetContext(JNIEnv*
 }
 
 #define BUILDWORD_METHOD_SIG "(Ljava/lang/String;JJLjava/lang/String;)Lpsn/ifplusor/actrie/Word;"
+#define OUTOFMEMORYERROR_CLASS_PATH "java/lang/OutOfMemoryError"
 
-static inline jobject build_matched_output(JNIEnv* env, jclass clazz, utf8ctx_t utf8ctx, word_t matched_word) {
-  jmethodID buildWord = env->GetStaticMethodID(clazz, "buildWord", BUILDWORD_METHOD_SIG);
+static inline jstring get_matched_keyword(JNIEnv* env, word_t matched_word) {
   char* s = (char*)malloc(matched_word->keyword.len + 1);
+  if (s == NULL) {
+    jclass OutOfMemoryError = env->FindClass(OUTOFMEMORYERROR_CLASS_PATH);
+    if (OutOfMemoryError == NULL) {
+      abort();
+    }
+    env->ThrowNew(OutOfMemoryError, "actrie: can not alloc memory for keyword");
+    return NULL;
+  }
   strncpy(s, matched_word->keyword.ptr, matched_word->keyword.len);
   s[matched_word->keyword.len] = '\0';
   jstring keyword = env->NewStringUTF(s);
+  free(s);
+  return keyword;
+}
+
+static inline jobject build_matched_output(JNIEnv* env, jclass clazz, utf8ctx_t utf8ctx, word_t matched_word) {
+  jmethodID buildWord = env->GetStaticMethodID(clazz, "buildWord", BUILDWORD_METHOD_SIG);
+  if (buildWord == NULL) return NULL;
+  jstring keyword = get_matched_keyword(env, matched_word);
+  if (keyword == NULL) return NULL;
   jstring extra = env->NewStringUTF(matched_word->extra.ptr);
+  if (extra == NULL) return NULL;
   jobject word = env->CallStaticObjectMethod(clazz, buildWord, keyword, (jlong)matched_word->pos.so,
                                              (jlong)matched_word->pos.eo, extra);
   return word;
