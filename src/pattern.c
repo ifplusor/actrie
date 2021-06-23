@@ -77,35 +77,36 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
       con = con->cdr;  // walk to tail
     }
     if (after->type == ptrn_type_alter) {
+      // concat
       _retain(after->desc);
       con->cdr = after->desc;
       _release(after);
     } else {
+      // append
       con->cdr = _alloc(list, cons, after, NULL);
       _release(after);
     }
     return before;
+  } else if (after->type == ptrn_type_alter) {
+    // reuse after
+    list_t con = after->desc;
+    // prepend
+    after->desc = _alloc(list, cons, before, con);
+    _release(con);
+    _release(before);
+    return after;
   } else {
-    if (after->type == ptrn_type_alter) {
-      // reuse after
-      ptrn_t ptrn = after->desc;
-      after->desc = _alloc(list, cons, before, ptrn);
-      _release(ptrn);
+    // alloc new ptrn
+    ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
+    if (ptrn != NULL) {
+      ptrn->type = ptrn_type_alter;
+      list_t con = _alloc(list, cons, after, NULL);
+      ptrn->desc = _alloc(list, cons, before, con);
+      _release(con);
       _release(before);
-      return after;
-    } else {
-      // alloc new ptrn
-      ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
-      if (ptrn != NULL) {
-        ptrn->type = ptrn_type_alter;
-        list_t con = _alloc(list, cons, after, NULL);
-        ptrn->desc = _alloc(list, cons, before, con);
-        _release(con);
-        _release(before);
-        _release(after);
-      }
-      return ptrn;
+      _release(after);
     }
+    return ptrn;
   }
 }
 
