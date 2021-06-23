@@ -75,7 +75,7 @@ void dat_reset_context(dat_ctx_t context, char content[], size_t len);
 
 bool dat_match_end(dat_ctx_t ctx);
 
-inline void* dat_matched_value(dat_ctx_t ctx) {
+static inline void* dat_matched_value(dat_ctx_t ctx) {
   if (ctx->trie->enable_automation) {
     return ctx->_matched.value->value;
   } else {
