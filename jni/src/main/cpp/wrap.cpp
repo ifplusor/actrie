@@ -23,7 +23,7 @@ JNIEXPORT jlong JNICALL Java_psn_ifplusor_actrie_Matcher_ConstructByFile(JNIEnv*
     return 0;
   }
 
-  const char* utf = env->GetStringUTFChars(filepath, JNI_FALSE);
+  const char* utf = env->GetStringUTFChars(filepath, NULL);
   if (utf == NULL) return 0;
   // jsize len = env->GetStringUTFLength(filepath);
 
@@ -50,7 +50,7 @@ JNIEXPORT jlong JNICALL Java_psn_ifplusor_actrie_Matcher_ConstructByString(JNIEn
     return 0;
   }
 
-  const char* utf = env->GetStringUTFChars(keywords, JNI_FALSE);
+  const char* utf = env->GetStringUTFChars(keywords, NULL);
   if (utf == NULL) return 0;
   jsize len = env->GetStringUTFLength(keywords);
 
@@ -110,7 +110,7 @@ JNIEXPORT jboolean JNICALL Java_psn_ifplusor_actrie_Context_ResetContext(JNIEnv*
     return JNI_FALSE;
   }
 
-  const char* utf = env->GetStringUTFChars(content, JNI_FALSE);
+  const char* utf = env->GetStringUTFChars(content, NULL);
   if (utf == NULL) return JNI_FALSE;
   jsize len = env->GetStringUTFLength(content);
 
