@@ -85,15 +85,17 @@ static matcher_t matcher_construct(vocab_t vocab,
     trie_free(matcher->reglet->trie, (trie_node_free_f)expr_list_free);
     matcher->reglet->trie = NULL;
     matcher_destruct(matcher);
-    return NULL;
+    matcher = NULL;
   }
 
-  // build datrie by reglet->trie
-  trie_sort_to_bfs(matcher->reglet->trie);
-  matcher->datrie = dat_construct_by_trie(matcher->reglet->trie, true);
-  // then, free reglet->trie
-  trie_free(matcher->reglet->trie, NULL);
-  matcher->reglet->trie = NULL;
+  if (matcher != NULL) {
+    // build datrie by reglet->trie
+    trie_sort_to_bfs(matcher->reglet->trie);
+    matcher->datrie = dat_construct_by_trie(matcher->reglet->trie, true);
+    // then, free reglet->trie
+    trie_free(matcher->reglet->trie, NULL);
+    matcher->reglet->trie = NULL;
+  }
 
   // free extra_trie
   if (extra_trie) {
