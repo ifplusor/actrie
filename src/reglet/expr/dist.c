@@ -7,7 +7,7 @@
 
 #include <alib/collections/map/avl.h>
 
-const bool dec_number_bitmap[256];
+extern const bool dec_number_bitmap[256];
 
 typedef struct _expression_distance_context_ {
   expr_ctx_s header;
