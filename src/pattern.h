@@ -29,6 +29,7 @@ typedef enum _ptrn_dist_type_ { ptrn_dist_type_any = 0, ptrn_dist_type_num } ptr
 aclass(ptrn,
   ptrn_type_e type;
   void* desc;
+  dstr_t notation;
 );
 // clang-format on
 

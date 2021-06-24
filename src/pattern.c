@@ -19,6 +19,7 @@ aobj ptrn_init(void* ptr, void* data) {
   if (id) {
     id->type = ptrn_type_empty;
     id->desc = NULL;
+    id->notation = NULL;
   }
   return id;
 }
@@ -26,6 +27,7 @@ aobj ptrn_init(void* ptr, void* data) {
 void ptrn_clean(aobj id) {
   if (TAGGED_AOBJECT(id)) {
     ptrn_t ptrn = id;
+    _release(ptrn->notation);
     switch (ptrn->type) {
       case ptrn_type_dist: {
         pdd_t pdd = ptrn->desc;
@@ -52,6 +54,8 @@ afunc_defn(ptrn, pure, aobj, dstr_t text) {
     ptrn->type = ptrn_type_pure;
     _retain(text);
     ptrn->desc = text;
+    _retain(text);
+    ptrn->notation = text;
   }
   return ptrn;
 }
@@ -70,6 +74,9 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
     return NULL;
   }
 
+  // TODO: sort, and unique
+
+  ptrn_t ptrn = NULL;
   if (before->type == ptrn_type_alter) {
     // reuse before
     list_t con = before->desc;
@@ -86,7 +93,7 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
       con->cdr = _alloc(list, cons, after, NULL);
       _release(after);
     }
-    return before;
+    ptrn = before;
   } else if (after->type == ptrn_type_alter) {
     // reuse after
     list_t con = after->desc;
@@ -94,10 +101,10 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
     after->desc = _alloc(list, cons, before, con);
     _release(con);
     _release(before);
-    return after;
+    ptrn = after;
   } else {
     // alloc new ptrn
-    ptrn_t ptrn = aobj_alloc(ptrn_s, ptrn_init);
+    ptrn = aobj_alloc(ptrn_s, ptrn_init);
     if (ptrn != NULL) {
       ptrn->type = ptrn_type_alter;
       list_t con = _alloc(list, cons, after, NULL);
@@ -106,8 +113,9 @@ afunc_defn(ptrn, cat, aobj, ptrn_t before, ptrn_t after) {
       _release(before);
       _release(after);
     }
-    return ptrn;
   }
+  // TODO: set notation
+  return ptrn;
 }
 
 // ambiguity pattern
@@ -126,6 +134,7 @@ afunc_defn(ptrn, ambi, aobj, ptrn_t center, ptrn_t ambi) {
     ptrn->desc = _alloc(list, cons, center, ambi);
     _release(center);
     _release(ambi);
+    // TODO: set notation
   }
   return ptrn;
 }
@@ -146,6 +155,7 @@ afunc_defn(ptrn, anto, aobj, ptrn_t center, ptrn_t anto) {
     ptrn->desc = _alloc(list, cons, center, anto);
     _release(center);
     _release(anto);
+    // TODO: set notation
   }
   return ptrn;
 }
@@ -170,6 +180,7 @@ afunc_defn(ptrn, dist, aobj, ptrn_t head, ptrn_t tail, ptrn_dist_type_e type, in
     pdd->min = min;
     pdd->max = max;
     ptrn->desc = pdd;
+    // TODO: set notation
   }
   return ptrn;
 }
