@@ -7,6 +7,9 @@
 # macOS
 .DS_Store
 
+# clangd
+.cache/
+
 # Eclipse
 .settings/
 .classpath

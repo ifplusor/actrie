@@ -1,6 +1,6 @@
 # encoding=utf-8
 
-from collections import Iterator
+from collections.abc import Iterator
 
 from . import _actrie
 from .error import MatcherError
@@ -55,5 +55,5 @@ class Context(Iterator):
 class PrefixContext(Context):
     def _next(self):
         if self._uninitialized:
-            raise None
+            return None
         return _actrie.NextPrefix(self._context)

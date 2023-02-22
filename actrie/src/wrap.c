@@ -17,6 +17,7 @@
  *     In python3, Convert a C string and its length to a Python str object using 'utf-8' encoding.
  *     But in python2, Convert a C string and its length to a Python object.
  */
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
 #include "utf8ctx.h"
@@ -43,7 +44,7 @@ PyObject* wrap_construct_by_file(PyObject* dummy, PyObject* args) {
 
 PyObject* wrap_construct_by_string(PyObject* dummy, PyObject* args) {
   const char* string;
-  int length;
+  Py_ssize_t length;
   PyObject* all_as_plain;
   PyObject* ignore_bad_pattern;
   PyObject* bad_as_plain;
@@ -107,7 +108,7 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
   unsigned long long temp;
   utf8ctx_t utf8ctx;
   char* content;
-  int length;
+  Py_ssize_t length;
   PyObject* return_byte_pos;
 
   if (!PyArg_ParseTuple(args, "Ks#O", &temp, &content, &length, &return_byte_pos)) {
@@ -124,8 +125,9 @@ PyObject* wrap_reset_context(PyObject* dummy, PyObject* args) {
 }
 
 static inline PyObject* build_matched_output(utf8ctx_t utf8ctx, word_t matched_word) {
-  return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, matched_word->keyword.len, matched_word->pos.so,
-                       matched_word->pos.eo, matched_word->extra.ptr, matched_word->extra.len);
+  return Py_BuildValue("(s#,i,i,s#)", matched_word->keyword.ptr, (Py_ssize_t)matched_word->keyword.len,
+                       matched_word->pos.so, matched_word->pos.eo, matched_word->extra.ptr,
+                       (Py_ssize_t)matched_word->extra.len);
 }
 
 typedef word_t (*utf8ctx_next_f)(utf8ctx_t utf8ctx);
@@ -152,7 +154,7 @@ PyObject* wrap_find_all0(PyObject* dummy, PyObject* args, utf8ctx_next_f utf8ctx
   unsigned long long temp;
   matcher_t matcher;
   char* content;
-  int length;
+  Py_ssize_t length;
   PyObject* return_byte_pos;
 
   if (!PyArg_ParseTuple(args, "Ks#O", &temp, &content, &length, &return_byte_pos)) {
