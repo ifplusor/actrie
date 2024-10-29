@@ -5,8 +5,6 @@
  */
 #include "actrie/config.h"
 
-#include <stdio.h>
-
 segarray_config_s hint_segarray(size_t len) {
   segarray_config_s config = {.seg_blen = 0};
 
@@ -23,8 +21,6 @@ segarray_config_s hint_segarray(size_t len) {
   if (config.region_size < 8) {
     config.region_size = 8;
   }
-
-  fprintf(stderr, "seg_blen: %zu, region_size: %zu\n", config.seg_blen, config.region_size);
 
   return config;
 }
