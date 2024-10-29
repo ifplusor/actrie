@@ -20,7 +20,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
-#include "utf8ctx.h"
+#include <actrie/utf8ctx.h>
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -32,11 +32,20 @@ PyObject* wrap_construct_by_file(PyObject* dummy, PyObject* args) {
   PyObject* ignore_bad_pattern;
   PyObject* bad_as_plain;
   PyObject* deduplicate_extra;
+  PyObject* extra_hint;
   matcher_t matcher = NULL;
 
-  if (PyArg_ParseTuple(args, "sOOOO", &path, &all_as_plain, &ignore_bad_pattern, &bad_as_plain, &deduplicate_extra)) {
-    matcher = matcher_construct_by_file(path, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
-                                        PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
+  if (PyArg_ParseTuple(args, "sOOOOO", &path, &all_as_plain, &ignore_bad_pattern, &bad_as_plain, &deduplicate_extra,
+                       &extra_hint)) {
+    if (extra_hint != Py_None) {
+      segarray_config_s extra_store_config = hint_segarray(PyLong_AsSize_t(extra_hint));
+      matcher = matcher_construct_by_file_ext(path, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
+                                              PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra),
+                                              &extra_store_config);
+    } else {
+      matcher = matcher_construct_by_file(path, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
+                                          PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
+    }
   }
 
   return Py_BuildValue("K", matcher);
@@ -49,13 +58,21 @@ PyObject* wrap_construct_by_string(PyObject* dummy, PyObject* args) {
   PyObject* ignore_bad_pattern;
   PyObject* bad_as_plain;
   PyObject* deduplicate_extra;
+  PyObject* extra_hint;
   matcher_t matcher = NULL;
 
-  if (PyArg_ParseTuple(args, "s#OOOO", &string, &length, &all_as_plain, &ignore_bad_pattern, &bad_as_plain,
-                       &deduplicate_extra)) {
+  if (PyArg_ParseTuple(args, "s#OOOOO", &string, &length, &all_as_plain, &ignore_bad_pattern, &bad_as_plain,
+                       &deduplicate_extra, &extra_hint)) {
     strlen_s vocab = {.ptr = (char*)string, .len = (size_t)length};
-    matcher = matcher_construct_by_string(&vocab, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
-                                          PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
+    if (extra_hint != Py_None) {
+      segarray_config_s extra_store_config = hint_segarray(PyLong_AsSize_t(extra_hint));
+      matcher = matcher_construct_by_string_ext(&vocab, PyObject_IsTrue(all_as_plain),
+                                                PyObject_IsTrue(ignore_bad_pattern), PyObject_IsTrue(bad_as_plain),
+                                                PyObject_IsTrue(deduplicate_extra), &extra_store_config);
+    } else {
+      matcher = matcher_construct_by_string(&vocab, PyObject_IsTrue(all_as_plain), PyObject_IsTrue(ignore_bad_pattern),
+                                            PyObject_IsTrue(bad_as_plain), PyObject_IsTrue(deduplicate_extra));
+    }
   }
 
   return Py_BuildValue("K", matcher);

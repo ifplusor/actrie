@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_AMBI__
-#define __ACTRIE_EXPR_AMBI__
+#ifndef __ACTRIE_EXPR_AMBI_H__
+#define __ACTRIE_EXPR_AMBI_H__
 
 #include "expr0.h"
 
@@ -25,4 +25,4 @@ void expr_feed_ambi_center(expr_t self, pos_cache_t center, reg_ctx_t context);
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_AMBI__
+#endif  // __ACTRIE_EXPR_AMBI_H__

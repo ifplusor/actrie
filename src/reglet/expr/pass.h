@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_PASS__
-#define __ACTRIE_EXPR_PASS__
+#ifndef __ACTRIE_EXPR_PASS_H__
+#define __ACTRIE_EXPR_PASS_H__
 
 #include "expr0.h"
 
@@ -24,4 +24,4 @@ void expr_feed_pass(expr_t self, pos_cache_t keyword, reg_ctx_t context);
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_PASS__
+#endif  // __ACTRIE_EXPR_PASS_H__

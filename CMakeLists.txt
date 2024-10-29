@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 project(actrie)
 
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
@@ -40,9 +40,10 @@ if(GENERATE_LRTABLE)
 endif()
 
 set(actrie_HEADER_FILES
-    include/matcher.h
-    include/utf8ctx.h
-    include/utf8helper.h
+    include/actrie/config.h
+    include/actrie/matcher.h
+    include/actrie/utf8ctx.h
+    include/actrie/utf8helper.h
     src/vocab.h
     src/pattern.h
     src/parser/lr_reduce.h
@@ -74,6 +75,7 @@ set(actrie_SOURCE_FILES
     src/reglet/expr/dist.c
     src/trie/actrie.c
     src/trie/acdat.c
+    src/config.c
     src/matcher.c
     src/utf8ctx.c
     src/utf8helper.c)

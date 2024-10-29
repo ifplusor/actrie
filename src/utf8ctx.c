@@ -3,7 +3,7 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#include "utf8ctx.h"
+#include "actrie/utf8ctx.h"
 
 utf8ctx_t utf8ctx_alloc_context(matcher_t matcher) {
   context_t context;

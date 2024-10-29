@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_DIST__
-#define __ACTRIE_EXPR_DIST__
+#ifndef __ACTRIE_EXPR_DIST_H__
+#define __ACTRIE_EXPR_DIST_H__
 
 #include "expr0.h"
 
@@ -29,4 +29,4 @@ void expr_feed_ddist_suffix(expr_t self, pos_cache_t suffix, reg_ctx_t context);
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_DIST__
+#endif  // __ACTRIE_EXPR_DIST_H__

@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_ANTO__
-#define __ACTRIE_EXPR_ANTO__
+#ifndef __ACTRIE_EXPR_ANTO_H__
+#define __ACTRIE_EXPR_ANTO_H__
 
 #include "expr0.h"
 
@@ -25,4 +25,4 @@ void expr_feed_anto_center(expr_t self, pos_cache_t center, reg_ctx_t context);
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_ANTO__
+#endif  // __ACTRIE_EXPR_ANTO_H__

@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_TEXT__
-#define __ACTRIE_EXPR_TEXT__
+#ifndef __ACTRIE_EXPR_TEXT_H__
+#define __ACTRIE_EXPR_TEXT_H__
 
 #include "expr0.h"
 
@@ -25,4 +25,4 @@ void expr_feed_text(expr_t self, pos_cache_t keyword, void* context);
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_TEXT__
+#endif  // __ACTRIE_EXPR_TEXT_H__

@@ -8,6 +8,8 @@
 
 #include <alib/string/astr.h>
 
+#include <actrie/config.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -26,11 +28,23 @@ matcher_t matcher_construct_by_file(const char* path,
                                     bool ignore_bad_pattern,
                                     bool bad_as_plain,
                                     bool deduplicate_extra);
+matcher_t matcher_construct_by_file_ext(const char* path,
+                                        bool all_as_plain,
+                                        bool ignore_bad_pattern,
+                                        bool bad_as_plain,
+                                        bool deduplicate_extra,
+                                        segarray_config_t extra_store_config);
 matcher_t matcher_construct_by_string(strlen_t string,
                                       bool all_as_plain,
                                       bool ignore_bad_pattern,
                                       bool bad_as_plain,
                                       bool deduplicate_extra);
+matcher_t matcher_construct_by_string_ext(strlen_t string,
+                                          bool all_as_plain,
+                                          bool ignore_bad_pattern,
+                                          bool bad_as_plain,
+                                          bool deduplicate_extra,
+                                          segarray_config_t extra_store_config);
 void matcher_destruct(matcher_t matcher);
 
 context_t matcher_alloc_context(matcher_t matcher);

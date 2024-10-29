@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#include <matcher.h>
-#include <utf8helper.h>
+#include <actrie/matcher.h>
+#include <actrie/utf8helper.h>
 
 int main() {
   char* str = "不(好|会)好";

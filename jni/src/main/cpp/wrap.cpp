@@ -4,8 +4,8 @@
 #include <psn_ifplusor_actrie_Context.h>
 #include <psn_ifplusor_actrie_Matcher.h>
 
-#include <matcher.h>
-#include <utf8ctx.h>
+#include <actrie/matcher.h>
+#include <actrie/utf8ctx.h>
 
 /*
  * Class:     psn_ifplusor_actrie_Matcher

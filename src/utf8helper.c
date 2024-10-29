@@ -3,7 +3,7 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#include "utf8helper.h"
+#include "actrie/utf8helper.h"
 
 #include <alib/string/utf8.h>
 

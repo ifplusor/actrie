@@ -8,6 +8,8 @@
 #include <alib/collections/list/segarray.h>
 #include <alib/object/list.h>
 
+#include <actrie/config.h>
+
 /* Trie 内部接口，仅限 Double-Array Trie 使用 */
 size_t trie_size(trie_t self);
 
@@ -197,9 +199,21 @@ static void dat_post_construct(dat_t self, trie_t origin) {
     pDatNode->failed.ptr = dat_access_node(self, pDatNode->failed.idx);
   }
 
+  // 回溯优化
   if (self->enable_automation) {
-    // 回溯优化
-    self->value_array = segarray_construct(sizeof(dat_value_s), NULL, NULL);
+    size_t value_len = 0;
+    for (size_t index = 0; index < len; index++) {  // bfs
+      trie_node_t pNode = trie_access_node(origin, index);
+      dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
+      if (pDatNode->value.raw != NULL) {
+        value_len++;
+      }
+    }
+
+    segarray_config_s value_config = hint_segarray(value_len);
+    self->value_array =
+        segarray_construct_ext(sizeof(dat_value_s), value_config.seg_blen, value_config.region_size, NULL, NULL);
+
     for (size_t index = 0; index < len; index++) {  // bfs
       trie_node_t pNode = trie_access_node(origin, index);
       dat_node_t pDatNode = dat_access_node(self, pNode->trie_datidx);
@@ -219,7 +233,7 @@ static void dat_post_construct(dat_t self, trie_t origin) {
   }
 }
 
-dat_t dat_alloc() {
+dat_t dat_alloc(segarray_config_t config) {
   dat_t datrie = (dat_t)amalloc(sizeof(dat_s));
   if (datrie == NULL) {
     return NULL;
@@ -231,7 +245,9 @@ dat_t dat_alloc() {
 
   dat_node_s dummy_node = {0};
   datrie->_sentinel = &dummy_node;
-  datrie->node_array = segarray_construct(sizeof(dat_node_s), dat_init_segment, datrie);
+  datrie->node_array = config == NULL ? segarray_construct(sizeof(dat_node_s), dat_init_segment, datrie)
+                                      : segarray_construct_ext(sizeof(dat_node_s), config->seg_blen,
+                                                               config->region_size, dat_init_segment, datrie);
   segarray_extend(datrie->node_array, DAT_ROOT_IDX + 2);
   datrie->_sentinel = dat_access_node(datrie, 0);
 
@@ -314,7 +330,9 @@ void dat_destruct(dat_t dat, dat_node_free_f node_free_func) {
 }
 
 dat_t dat_construct_by_trie(trie_t origin, bool enable_automation) {
-  dat_t dat = dat_alloc();
+  segarray_config_s node_config = hint_segarray(trie_size(origin));
+
+  dat_t dat = dat_alloc(&node_config);
   if (dat == NULL) {
     return NULL;
   }

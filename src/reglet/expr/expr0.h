@@ -3,8 +3,8 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#ifndef __ACTRIE_EXPR_FEED_H__
-#define __ACTRIE_EXPR_FEED_H__
+#ifndef __ACTRIE_EXPR_EXPR0_H__
+#define __ACTRIE_EXPR_EXPR0_H__
 
 #include <alib/string/astr.h>
 
@@ -76,4 +76,4 @@ inline void expr_ctx_init(expr_ctx_t self, expr_t expr, expr_ctx_free_f free, ex
 }
 #endif /* __cplusplus */
 
-#endif  // __ACTRIE_EXPR_FEED_H__
+#endif  // __ACTRIE_EXPR_EXPR0_H__

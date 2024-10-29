@@ -3,7 +3,7 @@
  *
  * @author James Yin <ywhjames@hotmail.com>
  */
-#include "matcher.h"
+#include "actrie/matcher.h"
 
 #include "parser/parser.h"
 #include "reglet/engine.h"
@@ -13,7 +13,7 @@
 typedef struct _actrie_matcher_ {
   dat_t datrie;
   reglet_t reglet;
-  segarray_t extra_store;
+  segarray_t extra_store;  // keep reference of extra strings.
 } matcher_s;
 
 static matcher_t matcher_alloc() {
@@ -71,17 +71,22 @@ static matcher_t matcher_construct(vocab_t vocab,
                                    bool all_as_plain,
                                    bool ignore_bad_pattern,
                                    bool bad_as_plain,
-                                   bool deduplicate_extra) {
+                                   bool deduplicate_extra,
+                                   segarray_config_t extra_store_config) {
   trie_t extra_trie = deduplicate_extra ? trie_alloc() : NULL;
 
   // create matcher
   matcher_t matcher = matcher_alloc();
-  matcher->extra_store = segarray_construct_with_type(dstr_t);
+  matcher->extra_store =
+      extra_store_config == NULL
+          ? segarray_construct_with_type(dstr_t)
+          : segarray_construct_with_type_ext(dstr_t, extra_store_config->seg_blen, extra_store_config->region_size);
   matcher->reglet = reglet_construct();
 
   // load vocabulary
   add_pattern_params_s add_pattern_args = {.matcher = matcher, .extra_trie = extra_trie};
   if (!parse_vocab(vocab, add_pattern_to_matcher, &add_pattern_args, all_as_plain, ignore_bad_pattern, bad_as_plain)) {
+    // release trie manually
     trie_free(matcher->reglet->trie, (trie_node_free_f)expr_list_free);
     matcher->reglet->trie = NULL;
     matcher_destruct(matcher);
@@ -110,12 +115,22 @@ matcher_t matcher_construct_by_file(const char* path,
                                     bool ignore_bad_pattern,
                                     bool bad_as_plain,
                                     bool deduplicate_extra) {
+  return matcher_construct_by_file_ext(path, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra, NULL);
+}
+
+matcher_t matcher_construct_by_file_ext(const char* path,
+                                        bool all_as_plain,
+                                        bool ignore_bad_pattern,
+                                        bool bad_as_plain,
+                                        bool deduplicate_extra,
+                                        segarray_config_t extra_store_config) {
   vocab_t vocab = vocab_construct(stream_type_file, (void*)path);
   if (vocab == NULL) {
     return NULL;
   }
 
-  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
+  matcher_t matcher =
+      matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra, extra_store_config);
   vocab_destruct(vocab);
   return matcher;
 }
@@ -125,8 +140,19 @@ matcher_t matcher_construct_by_string(strlen_t string,
                                       bool ignore_bad_pattern,
                                       bool bad_as_plain,
                                       bool deduplicate_extra) {
+  return matcher_construct_by_string_ext(string, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra,
+                                         NULL);
+}
+
+matcher_t matcher_construct_by_string_ext(strlen_t string,
+                                          bool all_as_plain,
+                                          bool ignore_bad_pattern,
+                                          bool bad_as_plain,
+                                          bool deduplicate_extra,
+                                          segarray_config_t extra_store_config) {
   vocab_t vocab = vocab_construct(stream_type_string, string);
-  matcher_t matcher = matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra);
+  matcher_t matcher =
+      matcher_construct(vocab, all_as_plain, ignore_bad_pattern, bad_as_plain, deduplicate_extra, extra_store_config);
   vocab_destruct(vocab);
   return matcher;
 }

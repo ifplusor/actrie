@@ -6,8 +6,8 @@
 #ifndef __ACTRIE_UTF8POS_H__
 #define __ACTRIE_UTF8POS_H__
 
-#include <matcher.h>
-#include <utf8helper.h>
+#include <actrie/matcher.h>
+#include <actrie/utf8helper.h>
 
 #ifdef __cplusplus
 extern "C" {
